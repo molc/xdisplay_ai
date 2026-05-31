@@ -82,3 +82,8 @@
 默认只读诊断，除非我明确说“允许修改”。
 遇到超过 200 行日志，只提取关键错误栈、时间点、服务名、请求 ID、关联 draftId/previewId。
 ```
+
+## 9. 远程服务器
+
+root@172.19.103.21:/mnt/ai_orchestration(company), root@192.168.64.2:/mnt/ai_orchestration(home)
+日志: /mnt/ai_orches_log/app.log
