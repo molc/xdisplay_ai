@@ -37,12 +37,14 @@
 
 | 优先级 | 问题 | 归属 | 当前判断 |
 |---|---|---|---|
-| P0 | 微调链路失败 | 后端 + 前端 + 协议 | 需要核实 draftId/previewId 生命周期、Qt 状态写入、后端响应字段 |
-| P0 | draftId 丢失或读取不一致 | 前端为主，后端配合 | 曾定位到 preview_ready 等路径写入/读取不一致，需要任务书修复 |
-| P0 | P3/V0 文档与实际代码可能不同步 | 总指挥项目 | 需要把 P3 轻量任务卡拉回 Superpowers spec/plan 双轨 |
-| P1 | Undo/Redo 与 AI 微调语义 | 前后端协议 | 需要明确 AI tweak 是否可撤销、如何不误撤用户手工编辑 |
+| P0 | **微调链路失败** | 后端 + 前端 + 协议 | 根因：backend 返回 `responseType=page_draft_ready` 时 `draftId` 正常；turn_000011 实测成功，7 组件，drift_ratio=0.167 |
+| P0 | **撤销按钮消失** | 前端（Qt draft session） | ✅ **已修复**。根因：`undo guard` 取页面 ID 路径与 `tweak apply` 不一致 → `project.currentPageRuntimeId=-1` 导致 `no_active_page` 拒绝。Windsurf 未提交代码修复：统一 `func_resolve_active_page_runtime_id()` 优先 `currentPage.runtimeId` fallback `project.currentPageRuntimeId`。日志验证：`[TWEAK-APPLY] done canUndo=true`、`[UNDO-GUARD] allowed=true`、`[UNDO-VISIBLE] visible=true`。待提交。 |
+| P0 | **缩略图背景与画布不一致** | 前端 + 后端 | ⚠️ **部分修复**。`pageBgColor` 链路已通（C++桥接提取 `pageDraftSummary.pageBgColor` + QML Canvas `fillRect`）。但 tweak 场景后端返回 `pageTheme=null`（背景用 image 组件实现），缩略图仍显示橙色色块 `#F59E0B`（image 占位色），与画布真实背景图差异显著。 |
+| P1 | draftId 丢失或读取不一致 | 前端为主，后端配合 | 曾定位到 preview_ready 等路径写入/读取不一致，需要任务书修复 |
+| P1 | P3/V0 文档与实际代码可能不同步 | 总指挥项目 | 需要把 P3 轻量任务卡拉回 Superpowers spec/plan 双轨 |
 | P1 | 组件联动能力验证 | 前端 + 后端生成能力 | Qt 客户端已有绑定变量能力基础，后端是否能稳定生成 AI_LinkagePlan 需验证 |
 | P1 | 服务器部署与本地代码差异 | 运维/总指挥 | 服务器日志和 GitHub 代码可能不完全一致，需要 Warp/Augment 在现场核实 |
+| P1 | 后端 drafter 补充 page_bg_color | 后端 | tweak 生成 image 背景时，在 `pageTheme.page_bg_color` 写入图片主色调，使缩略图可渲染近似背景色 |
 
 ## 6. 当前风险
 
@@ -54,35 +56,24 @@
 
 ## 7. 下一步建议
 
-### Step 1：现场核实
+### Step 1：提交 Issue 1 修复代码
 
-在 `ai_orchestration`、`xdisplay`、`xdisplay_ai` 三个仓库分别执行：
+`xdisplay` 工作区存在未提交的 `T-QT-BUG-01` 修复（撤销按钮消失），需 Windsurf 提交：
 
 ```bash
-git status --short
-git rev-parse --short HEAD
-git log -1 --oneline
+cd ~/Documents/workspace/xdisplay
+git diff --stat src/Service_AI/service_ai_draft_session.cpp src/Part_Main/CompAiResultCard.qml src/Part_Main/widget_main.cpp
 ```
 
-### Step 2：复现微调失败
+### Step 2：推进 Issue 2 后端配合
 
-使用当前标准运行方式启动后端和客户端，复现一次微调失败，收集：
+Cursor 负责后端 drafter 修改：当 tweak 生成 image 背景组件时，在 `pageTheme.page_bg_color` 写入图片主色调（如提取 `#1a237e` 深蓝），使缩略图 QML Canvas 可渲染近似背景色。
 
-- 后端请求日志
-- WebSocket 消息
-- Qt 客户端日志
-- draftId / previewId / conversationId
-- 前端收到的完整 JSON 响应
-- 用户操作序列
+### Step 3：验证提交后的端到端链路
 
-### Step 3：更新任务卡
-
-复现后把问题拆为：
-
-- `T-BE-*`：交给 Cursor 的后端任务
-- `T-QT-*`：交给 Windsurf 的前端任务
-- `T-CMD-*`：交给 Warp/Augment 的总指挥诊断任务
-- `T-DOC-*`：总指挥项目文档同步任务
+重新编译 Qt 客户端 → 启动 → 生成草稿 → 应用 → 微调（image 背景）→ 应用 → 确认：
+- 撤销按钮始终可见（`[UNDO-VISIBLE] visible=true`）
+- 缩略图背景色与画布一致（需后端配合后验证）
 
 ## 8. 最近一次行动记录
 
@@ -91,13 +82,23 @@ git log -1 --oneline
 - 创建 `PROJECT_BRIEF.md`、`CURRENT_STATE.md`、`RUNBOOK.md` 三个总指挥上下文文件。
 - 目标：降低 Warp AI 上下文不足导致的漂移，让每次新会话都从稳定、短小、可更新的项目事实开始。
 
-## 9. 待补充
+### 2026-05-31 晚间（本次会话）
 
-以下内容需要从实际仓库或服务器补充：
+- **诊断问题**：微调应用后撤销按钮消失 + 预览缩略图背景与画布不一致。
+- **Issue 1 根因定位**：undo guard 取页面 ID 路径与 tweak apply 不一致 → `project.currentPageRuntimeId=-1` 导致 `no_active_page` 拒绝。Windsurf 已修复（未提交）。
+- **Issue 1 验证**：用户运行新编译二进制，日志确认 `[UNDO-GUARD] allowed=true`、`[UNDO-VISIBLE] visible=true`，撤销按钮恢复正常。
+- **Issue 2 根因定位**：前端 `pageBgColor` 链路已通，但后端 tweak 响应 `pageTheme=null`（背景用 image 组件实现），缩略图只能显示 image 占位色 `#F59E0B`。需后端配合在 `pageTheme.page_bg_color` 写入图片主色调。
+- **后端日志**：从 `192.168.64.2:/mnt/ai_orches_log/app.log` 提取。tweak 链路 turn_000011 成功，7 组件，drift_ratio=0.167，pageTheme=null。
 
-- 当前三个仓库最新 commit hash。
-- 后端服务实际部署路径、Docker compose 文件名、容器名。
-- Qt 客户端构建命令、运行命令、日志路径。
-- 当前标准测试命令。
-- 当前已知 failing tests。
-- 当前微调失败的最新日志样本。
+## 9. 已核实事实
+
+| 项目 | 核实结果 |
+|---|---|
+| `xdisplay` HEAD | `666cbec`，未提交修改存在于工作区 |
+| `ai_orchestration` HEAD | 需重新运行 `git rev-parse --short HEAD` |
+| 后端部署地址 | `ws://192.168.64.2:18001`，运行正常（FastAPI + WebSocket） |
+| 后端日志路径 | `root@192.168.64.2:/mnt/ai_orches_log/app.log` |
+| Qt 客户端日志路径 | `/Users/molc/Documents/workspace/xdisplay/bin/Xdisplay.app/Contents/MacOS/log/app.log` |
+| 未提交修改文件 | `service_ai_draft_session.cpp`（T-QT-BUG-01）、`CompAiResultCard.qml`（pageBgColor）、`widget_main.cpp`（pageBgColor 桥接） |
+| undo guard 修复状态 | ✅ 代码修复 + 新二进制编译 + 用户验证通过 |
+| 缩略图背景修复状态 | ⚠️ 前端链路通，需后端补充 `pageTheme.page_bg_color` |
