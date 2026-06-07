@@ -4,7 +4,7 @@
 
 ## 1. 当前日期
 
-- 当前记录日期：2026-06-01
+- 当前记录日期：2026-06-06
 - 记录人：项目总指挥 / AI 协作流程
 - 状态可信度：基于本次会话实际执行结果，已在服务器验证
 
@@ -42,6 +42,14 @@
 | T-QT-05 bug | `widget_main.cpp:3245` eventType 修复：`"stage_changed"` → `"stage.changed"` | ✅ 已修复 |
 | T-BE-06 | 新建 `app/ws/pipeline_ctx.py`（ContextVar 进度推送器）；`main.py` 注入 `set_pipeline_stage_emitter`；`openai_compatible_agent.py` 推送 `intent_extract`/`drafter`/`image_gen`；`autofix.py` 推送每轮 `autofix_round_N` | ✅ 语法验证通过，容器已重启 |
 
+### 2026-06-06 新增完成
+
+| 任务ID | 内容 | 状态 |
+|---|---|---|
+| T-BE-LOGIN-FREE-01 | 自由生成登录页语义合约：label/title 匹配可见文本组件，input/button 匹配对应能力；非模板路径加入语义校验 | ✅ 本地测试通过，远端已部署 |
+| T-BE-AUTOFIX-GATE-01 | AutoFix 视觉审核低分/拒绝时设置 `canApply=false`，并在 `apply_preview` 服务端二次拦截 | ✅ 本地测试通过，远端已部署 |
+| T-BE-LOGIN-ICON-TWEAK-01 | 登录按钮“改成图标”微调：登录/账号/密码候选映射到内置 `ms_lock.png`；显式 tweak 走确定性 fast path，普通登录页生成不自动加图标 | ✅ 本地测试通过，远端已部署 |
+
 ## 5. 当前关注问题
 
 | 优先级 | 问题 | 归属 | 当前判断 |
@@ -53,6 +61,7 @@
 | P1 | `AUTOFIX_EMPTY_PAGE` fixer 产出空页 | 后端 | 偶发，已知问题，fixer fallback 到 drafter 结果，不阻断流程 |
 | P1 | 服务器代码与 GitHub 严重不同步 | 运维 | 服务器含大量未推送改动，回滚风险高，需在下一个稳定点同步 |
 | P1 | P3/V0 文档与实际代码可能不同步 | 总指挥项目 | 需要把 P3 轻量任务卡拉回 Superpowers spec/plan 双轨 |
+| P1 | 自由生成登录页质量闸门 | 后端 | ✅ 已修复基础链路：坏语义不再通过，视觉审核低分/拒绝不再允许应用；仍需继续改善表单布局美观度 |
 
 ## 6. 当前风险
 
@@ -87,6 +96,16 @@
 服务器含大量未推送改动（包含本次 T-BE-06），需要推送到 GitHub，消除不同步风险。
 
 ## 8. 最近一次行动记录
+
+### 2026-06-06（本次会话）
+
+- **根因确认**：`生成一个登录页面` 在禁用模板自由生成时，LLM 能识别 `login_page`，视觉审核也能给出低分/拒绝；真正缺口是自由生成缺少通用语义合约，且 AutoFix 失败/低分后仍允许 `canApply=true`。
+- **后端修复**：新增 `app/page_dsl/semantic_contract.py`；`openai_compatible_agent.py` 在 DSL/组件计划阶段校验语义角色与组件能力；`dsl_to_ir.py` 对 label/title 误用输入组件做通用归一化；`service.py` 和 `shadow_store.py` 增加质量闸门与 `apply_preview` 二次拦截。
+- **测试结果**：聚焦与邻近回归共 58 个通过；新增覆盖语义合约和 AutoFix 低分预览不可应用。
+- **远端部署**：已通过 `rsync + docker restart ai_orches_app` 部署到 `root@192.168.64.2:/mnt/ai_orchestration`，未重建镜像。
+- **远端验证**：真实请求 `生成一个登录页面`、`recipePolicy=disabled` 返回 `preview_ready`，6 个组件：`page_title/statictext`、`username_label/statictext`、`username_input/wordtext`、`password_label/statictext`、`password_input/wordtext`、`login_button/setbutton`；随后 `apply_preview` 返回 `page_draft_ready/completed`。
+- **残余风险**：本次真实请求中 `drafter_feedback` 90s 超时降级，AutoFix 第二轮 regression 后回退到 78 分版本；语义正确性已改善，但登录页视觉布局仍需后续优化。
+- **登录按钮图标微调修复**：用户选择 `login_button_5_setbutton` 并输入“登录按钮改成图标”后，旧链路落到 LLM 并生成 `it_map_*_text_context=""` + `it_map_*_text_id="power"` 的不可落地伪图标字段，导致按钮图标和文字同时为空。后端新增登录图标候选和显式 tweak fast path，输出 `login_button_icon/image` + `src="ms_lock.png"`，同时保留普通“生成登录页”不自动增加图标。已同步 `app/service.py` 到 `root@192.168.64.2:/mnt/ai_orchestration` 并重启 `ai_orches_app`。
 
 ### 2026-06-01（本次会话）
 
