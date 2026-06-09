@@ -4,7 +4,7 @@
 
 ## 1. 当前日期
 
-- 当前记录日期：2026-06-06
+- 当前记录日期：2026-06-10
 - 记录人：项目总指挥 / AI 协作流程
 - 状态可信度：基于本次会话实际执行结果，已在服务器验证
 
@@ -106,6 +106,35 @@
 - **远端验证**：真实请求 `生成一个登录页面`、`recipePolicy=disabled` 返回 `preview_ready`，6 个组件：`page_title/statictext`、`username_label/statictext`、`username_input/wordtext`、`password_label/statictext`、`password_input/wordtext`、`login_button/setbutton`；随后 `apply_preview` 返回 `page_draft_ready/completed`。
 - **残余风险**：本次真实请求中 `drafter_feedback` 90s 超时降级，AutoFix 第二轮 regression 后回退到 78 分版本；语义正确性已改善，但登录页视觉布局仍需后续优化。
 - **登录按钮图标微调修复**：用户选择 `login_button_5_setbutton` 并输入“登录按钮改成图标”后，旧链路落到 LLM 并生成 `it_map_*_text_context=""` + `it_map_*_text_id="power"` 的不可落地伪图标字段，导致按钮图标和文字同时为空。后端新增登录图标候选和显式 tweak fast path，输出 `login_button_icon/image` + `src="ms_lock.png"`，同时保留普通“生成登录页”不自动增加图标。已同步 `app/service.py` 到 `root@192.168.64.2:/mnt/ai_orchestration` 并重启 `ai_orches_app`。
+
+### 2026-06-08（登录页上传 logo/背景图生成失败修复）
+
+- **问题现象**：Qt 发起“生成登录页面，使用上传 logo 和全屏背景图”请求后，后端返回 `clarification_needed / needs_clarification`，没有返回 `pageDraft` 或 `preview`。
+- **日志证据**：远端 `root@172.19.103.21:/mnt/ai_orches_log/app.log` 中请求 `req_02c6afb2-b11e-4933-bc25-ae976117b9b6`，session `chat_session_652bfffe-c219-4954-b33c-960cf85f7007`。Qt 已正确上传 2 个资源：`logo.png` 为 `usage_kind=logo`，背景图为 `usage_kind=full_background`；两个文件均已落盘到 `/mnt/ai_orches_data/xdisplay_images/`。
+- **根因**：昨天引入 staged drafter 后，多阶段 LLM 输出中出现带空白/大小写漂移的 `componentType`，例如 `" rectangle"`。后端没有在模型/assembler/IR 编译入口统一归一化，导致最终 `_validate_page_draft` whitelist 校验失败：`componentType ' rectangle' is not in the allowed whitelist`。
+- **修复**：在 `ai_orchestration` 中对 `PageDSLV1.RegionComponentV1.componentType`、`staged_drafter.ComponentSpec.componentType` 增加 strip+lower 归一化；在 staged assembler 直接使用 cleaned type，避免 `" Image "` 影响 logo/background 资源绑定；在 `page_dsl_to_ir` 和 semantic contract 入口加兜底清洗。
+- **验证通过**：
+  - `pytest -q tests/unit/test_semantic_contract.py tests/component/test_staged_drafter.py tests/component/test_staged_drafter_agent_integration.py`
+  - `pytest -q tests/unit/test_page_compiler.py tests/unit/test_pipeline_stages_order.py tests/integration/test_multi_asset_upload.py`
+  - `git diff --check`
+- **部署**：仅同步运行时相关 5 个后端文件到 `root@172.19.103.21:/mnt/ai_orchestration` 并重启 `ai_orches_app`。容器内最小验证输出：`rectangle setbutton image`，确认新代码已加载。
+- **待人工联调**：重新在 Qt 发起同样“登录页 + logo + 全屏背景图”请求，预期不再因 `componentType` 前导空格进入校验澄清。
+
+### 2026-06-05（A2 多资源上传与微调基础审查修复）
+
+- **审查范围**：复核 `ai_orchestration` 后端 A2B1/B2 与 `xdisplay` Qt A2Q0/Q1/Q2/Q3 相关实现，重点关注聊天附件资源、用途选择、澄清问答、prompt 版本、微调入口的一致性。
+- **后端修复**：`page_draft -> clarification -> clarification_answer` 链路现在会保存并恢复 `available_assets` 与 `_prompt_version_override`，避免 Qt 在澄清成功后清空本地附件导致后端二次起草丢失资源上下文。
+- **后端修复**：prompt 版本判断改为语义化版本比较，避免 `v2.10` 被字符串比较误判为小于 `v2.2`。
+- **后端修复**：`chat_upload_max_decoded_bytes` 配置已接入附件持久化流程，避免配置项声明后不生效。
+- **Qt 修复**：附件用途必填不再只依赖 QML 主按钮禁用；C++ 发送入口与继续微调入口都会先校验 `usage_kind`，阻止 Enter、继续修改、右键微调等路径绕过。
+- **验证通过**：
+  - `ai_orchestration`: `pytest -q tests/unit/test_chat_uploaded_assets_protocol.py tests/unit/test_chat_upload_assets.py tests/unit/test_available_assets_prompt.py`
+  - `ai_orchestration`: `pytest -q --integration tests/integration/test_multi_asset_upload.py`
+  - `xdisplay`: `make -C src -j2 widget_main.o service_ai_request.o service_ai_transport.o Part_Main_widget_panelai_qml.cpp Part_Main_widget_panelai_asset_tray_qml.cpp`
+  - `xdisplay`: `qmlcachegen` 校验 `widget_panelai.qml` 与 `widget_panelai_asset_tray.qml`
+  - 两仓库 `git diff --check` 均通过
+- **待人工联调**：重新编译/运行 Qt 客户端后，验证上传资源选择用途、生成页面、澄清问答、应用后微调四条路径；重点观察后端日志是否持续包含 `available_assets`，以及微调中人工调整内容是否仍被保留。
+- **部署与编译**：已将 `/Users/molc/Documents/tricolor_work/ai_orchestration` 通过 rsync 同步到 `root@172.19.103.21:/mnt/ai_orchestration`，并重启 `ai_orches_app`；远端 18001 端口由新 `uvicorn` 进程监听。已在本机执行 `make -C src -j4` 编译 `/Users/molc/Documents/tricolor_work/xdisplay`，产物为 `bin/Xdisplay.app/Contents/MacOS/Xdisplay`（2026-06-05 18:03）。
 
 ### 2026-06-01（本次会话）
 
