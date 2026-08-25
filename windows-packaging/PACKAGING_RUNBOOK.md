@@ -1,6 +1,9 @@
 # XDisplay AI Windows 打包 Runbook
 更新时间：2026-08-25
 
+> 第一次使用 Windows 或 PowerShell，请先看面向打包人员的
+> [一键打包新手手册](ONE_CLICK_PACKAGING_GUIDE.md)。本文主要保留 builder 运维、排障和恢复细节。
+
 > 当前为开发版可变载荷模式：Docker 镜像只承担依赖运行环境，后端源码、后端 `.env` 和
 > XDisplay release 均部署到 `C:\ProgramData\XDisplayAI\workspace`。普通代码更新不需要重新
 > 制作镜像或安装包。发布版取消源码挂载、后端二进制化不在本 Runbook 范围内。
