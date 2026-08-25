@@ -129,7 +129,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
 当前会话里实际使用的是本地开发机，关键路径如下：
 
 - 打包仓：`/Users/molc/Documents/tricolor_work/xdisplay_ai/windows-packaging`
-- 本地回收产物目录示例：`/Users/molc/Downloads/winpkg-dev-export-20260818-qtfix`
+- 当前最终产物目录：`/Users/molc/Downloads/XDisplayAI-0.1.2-dev-offline-20260825`
 
 控制端至少需要：
 
@@ -182,33 +182,36 @@ Builder 内必须具备：
 
 - `/Users/molc/Downloads/winpkg-dev-export-20260818-qtfix/dev/XDisplayAI-0.1.0-dev.exe`
 
-### 3.5 2026-08-25 最终构建与独立 Win11 验收证据
+### 3.5 2026-08-25 最终 0.1.2 构建与独立 Win11 验收证据
 
-最终构建在 `win11-wsl2-builder` 的交互用户 `molc` 会话中执行，结果如下：
+完整一键构建在 `win11-wsl2-builder` 的交互用户 `molc` 会话中执行。修复重启续装状态后，源码、
+客户端 release 和后端镜像均未变化，因此只重新执行 installer/publish 阶段生成 `0.1.2`。结果如下：
 
 - 构建状态：`succeeded`，任务退出码 `0`
-- 构建时间：`2026-08-25T01:28:01Z` 至 `2026-08-25T01:56:13Z`
 - 后端源码 revision：`c5b49da147ac89cce26c0e324256f9a5905432ed`
 - XDisplay 源码 revision：`e7565392db0f6f116c8e711b897b7848dd9da3d7`
 - 交付文件：15 个清单文件和 `artifacts-dev.json`，其中 9 个外部 CAB
-- 清单文件总大小：`2021971754` 字节
-- Bundle SHA256：`358c7460629836216ecbb53cc7c29f4a2921a7e4bfe0be4dd8eed411d349ee76`
-- `artifacts-dev.json` SHA256：`445057277e196b10e05d05281a6ff2435fbf8a704b078da0625c12e5e0ec8adf`
+- Bundle SHA256：`ea5661ed4e79ab024aa968025cd6f1d1a783552727defc341ac57de408de57ab`
+- `artifacts-dev.json` SHA256：`60a6b79950e525778f3e44eba0172f9346051795829d9f2b28f277f58ba45e69`
+- 构建机回归测试：`PASS: build-offline-package preflight behavior`，退出码 `0`
 
-产物随后通过独立 NTFS 传输盘送到干净的 `win11-wsl2-offline-verify`，逐个文件重新校验大小和
-SHA256。安装前该 VM 的 `C:\Program Files\XDisplayAI`、`C:\ProgramData\XDisplayAI` 均不存在，
-启用的物理网卡数量为 `0`。最终验收结果：
+最终 `0.1.2` 产物通过独立 ISO 送到 `win11-wsl2-offline-verify`，逐个校验 15 个清单文件，
+`BAD=0`。该 VM 先前已完成旧版的干净离线安装，因此本次对最终包执行的是 `0.1.1 -> 0.1.2`
+真实升级验证，不把它误写成 `0.1.2` 干净安装。最终验收结果：
 
-- 离线 Bundle 安装退出码 `0`，安装验证状态 `passed`
+- 离线 Bundle 升级退出码 `0`，卸载注册表中的两个相关条目均为 `0.1.2`
 - `/healthz` 和 `/api/v1/assistant/health` 均返回 `200`
 - PostgreSQL、Redis、embedding-worker、orchestration-app 共 4 个服务运行
 - orchestration-app 和 embedding-worker 的 `/app` 均为
   `C:\ProgramData\XDisplayAI\workspace\backend` 的可写 bind mount
-- 宿主机创建的探针文件在两个容器中都可见
-- `Update-BackendSource.ps1` 退出码 `0`；更新前后 `.env` SHA256 相同，重启后健康恢复
-- `Update-XDisplayClient.ps1` 退出码 `0`；客户端从 ProgramData workspace 启动
-- 重复执行 bootstrap 复用已有 XDisplay PID，没有启动第二实例
-- 日志中没有旧的“缺少服务端 LLM API key”警告，也没有 Python traceback
+- XDisplay 客户端从 ProgramData workspace 启动
+- 人工注入可识别的待重启标记后，安装流程只自动重启 1 次；重启后 `-Resume` 自动执行
+- 含中文重启原因的 UTF-8 JSON 状态可正常解析；持久待重启标记被识别为残留标记并继续，没有
+  `ConvertFrom-Json` 错误或循环重启
+- 续装后两个健康接口恢复为 `200`，状态文件和续装任务自动删除
+- `.env` SHA256 在重启测试前后保持
+  `8944A64DC5E7A62862F6F20A12F131236F25DFE72C6BDF16C11CF0266EC943AD`
+- 本次 `0.1.2` 日志中没有旧的“缺少服务端 LLM API key”警告
 
 这组证据验证的是本节记录的最终产物，不是历史安装包。
 
@@ -863,7 +866,8 @@ PY
 当前已验证可用：
 
 ```bash
-scp -r root@172.19.103.18:/var/lib/libvirt/images/winpkg-dev-export-20260818-qtfix /Users/molc/Downloads/
+scp -r root@172.19.103.18:/var/lib/libvirt/images/winpkg-dev-export-20260825-0.1.2/dev \
+  /Users/molc/Downloads/XDisplayAI-0.1.2-dev-offline-20260825
 ```
 
 ## 9. 构建成功的判断标准
@@ -876,8 +880,8 @@ scp -r root@172.19.103.18:/var/lib/libvirt/images/winpkg-dev-export-20260818-qtf
 5. `staging/dev/payload/seed/backend/app/main.py` 和 `.env` 存在
 6. 后端 `.env`、runtime env 与 Compose 中均不存在 `XDISPLAY_AI_LLM_API_KEY`
 7. `dist/dev` 至少包含：
-   - `XDisplayAI-0.1.0-dev.exe`
-   - `XDisplayAI-0.1.0-dev.msi`
+   - `XDisplayAI-0.1.2-dev.exe`（或当前 `bundle.version` 对应的文件名）
+   - `XDisplayAI-0.1.2-dev.msi`（或当前 `bundle.version` 对应的文件名）
    - `artifacts-dev.json`
    - 所有 `xdp*.cab`
    - `Docker Desktop Installer.exe`
@@ -919,7 +923,7 @@ scp -r root@172.19.103.18:/var/lib/libvirt/images/winpkg-dev-export-20260818-qtf
 或者
 - 在控制端先准备好 inputs，再离线注入 builder
 
-### 10.4 不要只交付 `XDisplayAI-0.1.0-dev.exe`
+### 10.4 不要只交付 `XDisplayAI-0.1.2-dev.exe`
 离线安装依赖同目录下的：
 
 - 外部 CAB
@@ -928,6 +932,19 @@ scp -r root@172.19.103.18:/var/lib/libvirt/images/winpkg-dev-export-20260818-qtf
 - WSL 安装器
 
 交付时必须交付整个 `dist/dev`
+
+### 10.5 发布新安装包时必须递增版本
+
+Windows Installer 依靠 `manifests/bundle.json` 中的 `bundle.version` 判断升级关系。安装逻辑、seed、
+基础镜像或首次安装内容变化并需要重新交付 EXE 时，必须把三段版本号递增；不要用同一个版本号
+覆盖旧包，否则目标机可能跳过新 payload。普通后端源码和 XDisplay release 更新走已安装的 update
+脚本，不需要重新发布安装包。
+
+### 10.6 自动重启后不要再次手工运行安装包
+
+如果 WSL/Windows 可选功能要求重启，bootstrap 会保存 UTF-8 状态并注册登录续装任务。登录原用户后
+等待 `-Resume` 自动完成即可。脚本会把重启后仍存在的同一待重启标记视为残留标记继续执行，并在
+完成后删除状态和任务，避免循环重启。
 
 ## 11. 推荐给下一个 agent 的优先级
 ### 11.1 如果只是继续当前体系打包

@@ -199,6 +199,16 @@ True
 
 ### 第 5 步：先运行预检
 
+如果这次要生成一个可以覆盖旧安装的新安装包，先打开：
+
+```text
+C:\xdisplay_ai\windows-packaging\manifests\bundle.json
+```
+
+把 `bundle.version` 改成一个比旧包大的三段版本号，例如当前已验证版本是 `0.1.2`，下一版可用
+`0.1.3`。同一个版本号不要重复发布，否则 Windows 可能把新包当成已经安装过的旧包。只改普通后端
+源码或 XDisplay release、并通过第四节的更新脚本部署时，不需要改安装包版本。
+
 把下面一整行复制到管理员 PowerShell，然后按回车：
 
 ```powershell
@@ -245,7 +255,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\xdisplay_ai\windows-
 
 ```text
 [one-click-build] Build succeeded. Delivery directory: C:\xdisplay_ai\windows-packaging\dist\dev
-[one-click-build] Installer: C:\xdisplay_ai\windows-packaging\dist\dev\XDisplayAI-0.1.0-dev.exe
+[one-click-build] Installer: C:\xdisplay_ai\windows-packaging\dist\dev\XDisplayAI-0.1.2-dev.exe
 [one-click-build] Report: C:\xdisplay_ai\windows-packaging\logs\build-dev-日期时间.json
 ```
 
@@ -275,8 +285,8 @@ explorer.exe "C:\xdisplay_ai\windows-packaging\dist\dev"
 Windows 会用文件资源管理器打开交付目录。目录中至少应该包含：
 
 ```text
-XDisplayAI-0.1.0-dev.exe
-XDisplayAI-0.1.0-dev.msi
+XDisplayAI-0.1.2-dev.exe
+XDisplayAI-0.1.2-dev.msi
 artifacts-dev.json
 xdp1.cab、xdp2.cab 等所有 xdp*.cab
 Docker Desktop Installer.exe
@@ -292,11 +302,21 @@ wsl_update_x64.msi
 C:\xdisplay_ai\windows-packaging\dist\dev
 ```
 
-不能只复制 `XDisplayAI-0.1.0-dev.exe`。这个 EXE 会使用同目录中的 CAB、Docker Desktop、VC 运行
+不能只复制 `XDisplayAI-0.1.2-dev.exe`。这个 EXE 会使用同目录中的 CAB、Docker Desktop、VC 运行
 库和 WSL 安装文件。少任何一个文件都可能导致离线安装失败。
 
 物理机上应先把完整 `dev` 目录复制到本地磁盘，然后右键单击
-`XDisplayAI-0.1.0-dev.exe`，选择“以管理员身份运行”。
+`XDisplayAI-0.1.2-dev.exe`，选择“以管理员身份运行”。以后版本号变化时，选择目录里版本号最大的
+`XDisplayAI-<版本>-dev.exe`。
+
+如果安装过程中 Windows 自动重启：
+
+1. 不要再次双击安装包。
+2. 正常登录原来的 Windows 用户。
+3. 等待自动续装任务启动 Docker、导入离线镜像并拉起后端；首次导入大镜像可能需要几分钟。
+4. 续装完成后，临时任务和状态文件会自动删除，XDisplay 客户端会启动。
+
+安装脚本会识别重启后仍存在的残留“待重启”标记并继续，不会因为同一个标记循环重启。
 
 ## 三、如果源码不在默认路径
 

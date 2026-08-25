@@ -112,8 +112,24 @@ if ($wslDefaultVersionExitCode -ne 0) {
     throw "设置 WSL 默认版本为 2 失败，退出码：$wslDefaultVersionExitCode"
 }
 
-if (Test-PendingReboot) {
-    Write-Warning '检测到系统仍存在待重启标记，但不会再次自动触发重启；继续执行后端初始化。'
+$pendingReboot = Test-PendingReboot
+$bootstrapState = Get-BootstrapState
+$pendingRebootDisposition = Get-PendingRebootDisposition `
+    -PendingReboot $pendingReboot `
+    -AutomaticRebootCount ([int]$bootstrapState.AutomaticRebootCount)
+
+if ($pendingRebootDisposition -eq 'reboot') {
+    $restartReasons.Add('bundle 前置依赖安装后系统仍存在待重启标记')
+    Write-Warning '检测到系统待重启，将在重启后继续执行离线安装流程。'
+    Write-Step '前置依赖阶段完成。'
+    return [pscustomobject]@{
+        RebootRequired = $true
+        RebootReasons = @($restartReasons)
+    }
+}
+
+if ($pendingReboot) {
+    Write-Warning '重启后仍检测到待重启标记，视为残留标记并继续执行，以避免循环重启。'
 }
 
 Write-Step '前置依赖阶段完成。'

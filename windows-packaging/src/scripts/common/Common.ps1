@@ -41,6 +41,15 @@ function Write-TextFileUtf8NoBom {
     [System.IO.File]::WriteAllText($Path, $normalizedContent, $utf8NoBom)
 }
 
+function Read-Utf8JsonFile {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    return Get-Content -Path $Path -Raw -Encoding UTF8 | ConvertFrom-Json
+}
+
 function Write-Step {
     param(
         [Parameter(Mandatory = $true)]
@@ -340,7 +349,7 @@ function Get-BootstrapState {
     }
 
     try {
-        $state = Get-Content -Path $layout.BootstrapStateFile -Raw | ConvertFrom-Json
+        $state = Read-Utf8JsonFile -Path $layout.BootstrapStateFile
     }
     catch {
         return [pscustomobject]@{
@@ -395,4 +404,24 @@ function Clear-BootstrapState {
     if (Test-Path $layout.BootstrapStateFile) {
         Remove-Item -Path $layout.BootstrapStateFile -Force -ErrorAction SilentlyContinue
     }
+}
+
+function Get-PendingRebootDisposition {
+    param(
+        [Parameter(Mandatory = $true)]
+        [bool]$PendingReboot,
+        [Parameter(Mandatory = $true)]
+        [ValidateRange(0, [int]::MaxValue)]
+        [int]$AutomaticRebootCount
+    )
+
+    if (-not $PendingReboot) {
+        return 'continue'
+    }
+
+    if ($AutomaticRebootCount -eq 0) {
+        return 'reboot'
+    }
+
+    return 'continue'
 }

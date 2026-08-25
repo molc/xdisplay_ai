@@ -116,6 +116,57 @@ try {
 
     . (Join-Path $PackagingRoot 'ci\Common.ps1')
 
+    . (Join-Path $PackagingRoot 'src\scripts\common\Common.ps1')
+    $pendingRebootDecisionCommand = Get-Command 'Get-PendingRebootDisposition' -ErrorAction SilentlyContinue
+    Assert-True `
+        -Condition ($null -ne $pendingRebootDecisionCommand) `
+        -Message 'The installed prerequisite flow must expose a testable pending-reboot decision.'
+    $initialPendingRebootDisposition = Get-PendingRebootDisposition `
+        -PendingReboot $true `
+        -AutomaticRebootCount 0
+    Assert-True `
+        -Condition ($initialPendingRebootDisposition -eq 'reboot') `
+        -Message 'A fresh installation with a pending reboot must reboot before starting Docker.'
+    $resumedPendingRebootDisposition = Get-PendingRebootDisposition `
+        -PendingReboot $true `
+        -AutomaticRebootCount 1
+    Assert-True `
+        -Condition ($resumedPendingRebootDisposition -eq 'continue') `
+        -Message 'A resumed installation must ignore a stale pending-reboot marker and avoid a reboot loop.'
+    $readyDisposition = Get-PendingRebootDisposition `
+        -PendingReboot $false `
+        -AutomaticRebootCount 0
+    Assert-True `
+        -Condition ($readyDisposition -eq 'continue') `
+        -Message 'An installation without a pending reboot must continue normally.'
+
+    $utf8JsonReaderCommand = Get-Command 'Read-Utf8JsonFile' -ErrorAction SilentlyContinue
+    Assert-True `
+        -Condition ($null -ne $utf8JsonReaderCommand) `
+        -Message 'Bootstrap state must be read explicitly as UTF-8 on Windows PowerShell 5.'
+    $utf8BootstrapReason = -join @(
+        [char]0x9700,
+        [char]0x8981,
+        [char]0x91CD,
+        [char]0x542F
+    )
+    $utf8BootstrapStatePath = Join-Path $testRoot 'utf8-bootstrap-state.json'
+    $utf8BootstrapStateContent = [pscustomobject]@{
+        AutomaticRebootCount = 1
+        LastRebootReasons = @($utf8BootstrapReason)
+        UpdatedAtUtc = '2026-08-25T00:00:00Z'
+    } | ConvertTo-Json -Depth 4
+    Write-TextFileUtf8NoBom `
+        -Path $utf8BootstrapStatePath `
+        -Content $utf8BootstrapStateContent
+    $utf8BootstrapState = Read-Utf8JsonFile -Path $utf8BootstrapStatePath
+    Assert-True `
+        -Condition ([int]$utf8BootstrapState.AutomaticRebootCount -eq 1) `
+        -Message 'A UTF-8 bootstrap state file must preserve its automatic reboot count.'
+    Assert-True `
+        -Condition ([string]$utf8BootstrapState.LastRebootReasons[0] -eq $utf8BootstrapReason) `
+        -Message 'A UTF-8 bootstrap state file must preserve non-ASCII reboot reasons.'
+
     $bundleManifest = Get-BundleManifest
     Assert-True `
         -Condition ($bundleManifest.paths.backendSourceDir -eq 'inputs/backend/source') `
