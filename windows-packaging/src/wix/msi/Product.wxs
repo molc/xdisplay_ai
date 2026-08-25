@@ -1,0 +1,91 @@
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs">
+  <Package
+      Name="$(var.ProductName)"
+      Language="1033"
+      Codepage="936"
+      Version="$(var.ProductVersion)"
+      Manufacturer="$(var.Manufacturer)"
+      UpgradeCode="$(var.UpgradeCode)"
+      Scope="perMachine">
+    <Launch Condition="VersionNT64" Message="仅支持 64 位 Windows。" />
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed." />
+    <MediaTemplate
+        EmbedCab="no"
+        CabinetTemplate="xdp{0}.cab"
+        MaximumUncompressedMediaSize="200"
+        MaximumCabinetSizeForLargeFileSplitting="200" />
+    <SetProperty
+        Id="WixQuietExecCmdLine"
+        Value="&quot;[%SystemRoot]\System32\WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLROOTDIR]scripts\install\Bootstrap-InstalledPayload.ps1&quot; -LaunchClient"
+        Before="RunBootstrapAfterInstall"
+        Sequence="execute" />
+    <CustomAction
+        Id="RunBootstrapAfterInstall"
+        BinaryRef="Wix4UtilCA_$(sys.BUILDARCHSHORT)"
+        DllEntry="WixQuietExec"
+        Execute="immediate"
+        Return="check"
+        Impersonate="yes" />
+    <InstallExecuteSequence>
+      <Custom Action="RunBootstrapAfterInstall" After="InstallFinalize" Condition="NOT Installed" />
+    </InstallExecuteSequence>
+    <Feature Id="MainFeature" Title="$(var.ProductName)" Level="1">
+      <ComponentGroupRef Id="PayloadComponents" />
+      <ComponentGroupRef Id="InstallerSupportComponents" />
+      <ComponentRef Id="DesktopShortcutComponent" />
+      <ComponentRef Id="StartMenuShortcutComponent" />
+    </Feature>
+  </Package>
+
+  <Fragment>
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLROOTDIR" Name="$(var.InstallDirectoryName)" />
+    </StandardDirectory>
+  </Fragment>
+
+  <Fragment>
+    <ComponentGroup Id="InstallerSupportComponents" Directory="INSTALLROOTDIR">
+      <Component Id="InstallRegistryComponent" Guid="D6A62FBA-548B-4F84-8E94-D8CE78D499A1" Bitness="always64">
+        <CreateFolder />
+        <RegistryValue Root="HKLM" Key="Software\molc\XDisplayAI" Name="InstallRoot" Type="string" Value="[INSTALLROOTDIR]" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+  </Fragment>
+
+  <Fragment>
+    <StandardDirectory Id="DesktopFolder">
+      <Component Id="DesktopShortcutComponent" Guid="0F2F34A7-DBB4-49CE-BDE0-8D7B3F91D4A2">
+        <Shortcut
+            Id="DesktopLaunchShortcut"
+            Name="XDisplay AI"
+            Description="Launch XDisplay AI"
+            Target="[INSTALLROOTDIR]launchers\Launch-XDisplay.cmd"
+            WorkingDirectory="INSTALLROOTDIR" />
+        <RegistryValue Root="HKCU" Key="Software\molc\XDisplayAI" Name="DesktopShortcut" Type="integer" Value="1" KeyPath="yes" />
+      </Component>
+    </StandardDirectory>
+  </Fragment>
+
+  <Fragment>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ProgramMenuDir" Name="XDisplay AI">
+        <Component Id="StartMenuShortcutComponent" Guid="A72CCF1E-63D7-4ACF-8D18-7DFB95E9D995">
+          <Shortcut
+              Id="StartMenuLaunchShortcut"
+              Name="Launch XDisplay AI"
+              Description="Launch XDisplay AI"
+              Target="[INSTALLROOTDIR]launchers\Launch-XDisplay.cmd"
+              WorkingDirectory="INSTALLROOTDIR" />
+          <Shortcut
+              Id="StartMenuCompleteSetupShortcut"
+              Name="Complete Offline Setup"
+              Description="Continue offline setup and start backend services"
+              Target="[INSTALLROOTDIR]launchers\Complete-Offline-Setup.cmd"
+              WorkingDirectory="INSTALLROOTDIR" />
+          <RemoveFolder Id="ProgramMenuDirRemove" On="uninstall" />
+          <RegistryValue Root="HKCU" Key="Software\molc\XDisplayAI" Name="StartMenuShortcuts" Type="integer" Value="1" KeyPath="yes" />
+        </Component>
+      </Directory>
+    </StandardDirectory>
+  </Fragment>
+</Wix>

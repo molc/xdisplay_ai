@@ -1,0 +1,34 @@
+{
+  "healthchecks": {
+    "app": {
+      "relativePaths": [
+        "/healthz",
+        "/api/v1/assistant/health"
+      ],
+      "timeoutSeconds": 120,
+      "retryIntervalSeconds": 5
+    },
+    "postgres": {
+      "command": [
+        "pg_isready",
+        "-U",
+        "postgres"
+      ],
+      "timeoutSeconds": 60
+    },
+    "redis": {
+      "command": [
+        "redis-cli",
+        "ping"
+      ],
+      "timeoutSeconds": 60
+    },
+    "embedding": {
+      "relativePaths": [
+        "/health"
+      ],
+      "timeoutSeconds": 60,
+      "retryIntervalSeconds": 5
+    }
+  }
+}

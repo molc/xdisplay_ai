@@ -1,0 +1,162 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "XDisplay AI offline packaging bundle manifest",
+  "type": "object",
+  "required": [
+    "bundle",
+    "paths",
+    "prerequisites",
+    "runtime"
+  ],
+  "properties": {
+    "bundle": {
+      "type": "object",
+      "required": [
+        "id",
+        "name",
+        "manufacturer",
+        "version",
+        "targetArchitecture",
+        "installDirectoryName",
+        "upgradeCodes"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "manufacturer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$"
+        },
+        "targetArchitecture": {
+          "type": "string",
+          "enum": [
+            "x64"
+          ]
+        },
+        "installDirectoryName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "upgradeCodes": {
+          "type": "object",
+          "required": [
+            "bundle",
+            "msi"
+          ],
+          "properties": {
+            "bundle": {
+              "type": "string",
+              "pattern": "^\\{[0-9A-Fa-f-]{36}\\}$"
+            },
+            "msi": {
+              "type": "string",
+              "pattern": "^\\{[0-9A-Fa-f-]{36}\\}$"
+            }
+          }
+        }
+      }
+    },
+    "paths": {
+      "type": "object",
+      "required": [
+        "clientReleaseDir",
+        "backendSourceDir",
+        "backendComposeBase",
+        "backendMigrationDir",
+        "backendImagesDir",
+        "prerequisitesRoot"
+      ]
+    },
+    "prerequisites": {
+      "type": "object",
+      "required": [
+        "dockerDesktop",
+        "vcRedist",
+        "wslKernel"
+      ]
+    },
+    "runtime": {
+      "type": "object",
+      "required": [
+        "projectName",
+        "localhostBaseUrl",
+        "dataRoot",
+        "rag",
+        "llm"
+      ],
+      "properties": {
+        "projectName": {
+          "type": "string",
+          "minLength": 1
+        },
+        "localhostBaseUrl": {
+          "type": "string",
+          "minLength": 1
+        },
+        "dataRoot": {
+          "type": "string",
+          "minLength": 1
+        },
+        "rag": {
+          "type": "object",
+          "required": [
+            "backend",
+            "activeIndexVersion",
+            "embeddingVersion"
+          ],
+          "properties": {
+            "backend": {
+              "type": "string",
+              "minLength": 1
+            },
+            "activeIndexVersion": {
+              "type": "string",
+              "minLength": 1
+            },
+            "embeddingVersion": {
+              "type": "string",
+              "minLength": 1
+            }
+          }
+        },
+        "llm": {
+          "type": "object",
+          "required": [
+            "provider",
+            "baseUrl",
+            "modelDefault"
+          ],
+          "properties": {
+            "provider": {
+              "type": "string",
+              "minLength": 1
+            },
+            "baseUrl": {
+              "type": "string",
+              "minLength": 1
+            },
+            "modelDefault": {
+              "type": "string",
+              "minLength": 1
+            }
+          },
+          "not": {
+            "required": [
+              "apiKey"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

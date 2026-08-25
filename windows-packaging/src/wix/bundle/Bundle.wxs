@@ -1,0 +1,91 @@
+<Wix
+    xmlns="http://wixtoolset.org/schemas/v4/wxs"
+    xmlns:bal="http://wixtoolset.org/schemas/v4/wxs/bal"
+    xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
+  <Bundle
+      Name="$(var.BundleName)"
+      Version="$(var.BundleVersion)"
+      Manufacturer="$(var.Manufacturer)"
+      UpgradeCode="$(var.BundleUpgradeCode)"
+      Compressed="no">
+    <bal:Condition Condition="VersionNT64 AND VersionNT >= v10.0" Message="仅支持 64 位 Windows 10/11。" />
+    <BootstrapperApplication>
+      <bal:WixStandardBootstrapperApplication
+          Theme="hyperlinkLicense"
+          SuppressOptionsUI="yes"
+          LicenseUrl="" />
+    </BootstrapperApplication>
+    <util:RegistrySearch
+        Id="VCRuntimeInstalledSearch"
+        Variable="VCRuntimeInstalled"
+        Root="HKLM"
+        Key="SOFTWARE\Microsoft\VisualStudio\14.0\VC\Runtimes\x64"
+        Value="Installed"
+        Result="value"
+        Bitness="always64" />
+    <util:RegistrySearch
+        Id="DockerDesktopInstalledSearch"
+        Variable="DockerDesktopInstalled"
+        Root="HKLM"
+        Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Docker Desktop"
+        Result="exists"
+        Bitness="always64" />
+    <util:DirectorySearch
+        Id="DockerDesktopInstallDirSearch"
+        Variable="DockerDesktopInstallDir"
+        Path="[ProgramFiles64Folder]Docker\Docker" />
+    <util:FileSearch
+        Id="DockerDesktopExecutableSearch"
+        Variable="DockerDesktopExecutableExists"
+        After="DockerDesktopInstallDirSearch"
+        Path="[DockerDesktopInstallDir]\Docker Desktop.exe"
+        Result="exists" />
+    <Chain>
+      <ExePackage
+          Id="VcRedist"
+          SourceFile="$(var.VcRedistPath)"
+          InstallArguments="/install /quiet /norestart"
+          RepairArguments="/repair /quiet /norestart"
+          DetectCondition="VCRuntimeInstalled = 1"
+          PerMachine="yes"
+          Permanent="yes"
+          Vital="yes">
+        <ExitCode Value="0" Behavior="success" />
+        <ExitCode Value="1638" Behavior="success" />
+        <ExitCode Value="-2147023258" Behavior="success" />
+        <ExitCode Value="3010" Behavior="scheduleReboot" />
+        <ExitCode Value="-2147021886" Behavior="scheduleReboot" />
+        <ExitCode Value="1641" Behavior="forceReboot" />
+        <ExitCode Value="-2147023255" Behavior="forceReboot" />
+        <ExitCode Behavior="error" />
+      </ExePackage>
+      <MsiPackage
+          Id="WslKernelUpdate"
+          SourceFile="$(var.WslKernelInstallerPath)"
+          Visible="no"
+          Permanent="yes"
+          Vital="yes" />
+      <ExePackage
+          Id="DockerDesktopPrereq"
+          SourceFile="$(var.DockerDesktopInstallerPath)"
+          InstallArguments="install --quiet --accept-license"
+          DetectCondition="DockerDesktopInstalled OR DockerDesktopExecutableExists"
+          PerMachine="yes"
+          Permanent="yes"
+          Vital="yes">
+        <ExitCode Value="0" Behavior="success" />
+        <ExitCode Value="3010" Behavior="scheduleReboot" />
+        <ExitCode Value="-2147021886" Behavior="scheduleReboot" />
+        <ExitCode Value="1641" Behavior="forceReboot" />
+        <ExitCode Value="-2147023255" Behavior="forceReboot" />
+        <ExitCode Behavior="error" />
+      </ExePackage>
+      <MsiPackage
+          Id="XDisplayAIPayload"
+          SourceFile="$(var.AppMsiPath)"
+          Visible="no"
+          Vital="yes" />
+    </Chain>
+  </Bundle>
+
+</Wix>

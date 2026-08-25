@@ -1,0 +1,6 @@
+{
+  "name": "dev",
+  "logLevel": "DEBUG",
+  "enableMonitoring": false,
+  "bundleVersionSuffix": "-dev"
+}

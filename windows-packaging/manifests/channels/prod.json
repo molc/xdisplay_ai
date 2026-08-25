@@ -1,0 +1,6 @@
+{
+  "name": "prod",
+  "logLevel": "INFO",
+  "enableMonitoring": false,
+  "bundleVersionSuffix": ""
+}

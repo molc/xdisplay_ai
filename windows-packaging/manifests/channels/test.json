@@ -1,0 +1,6 @@
+{
+  "name": "test",
+  "logLevel": "INFO",
+  "enableMonitoring": false,
+  "bundleVersionSuffix": "-test"
+}

@@ -1,0 +1,54 @@
+{
+  "bundle": {
+    "id": "XDisplayAI.Offline",
+    "name": "XDisplay AI Offline Installer",
+    "manufacturer": "molc",
+    "version": "0.1.0",
+    "targetArchitecture": "x64",
+    "installDirectoryName": "XDisplayAI",
+    "upgradeCodes": {
+      "bundle": "{63A3C5F7-4B2C-470D-9D66-5FC4166F53C1}",
+      "msi": "{DB7E309F-864F-4F88-8FC0-83D13C9C5F8F}"
+    }
+  },
+  "paths": {
+    "clientReleaseDir": "inputs/client/xdisplay-win64",
+    "backendSourceDir": "inputs/backend/source",
+    "backendComposeBase": "inputs/backend/compose/upstream/docker-compose.yml",
+    "backendMigrationDir": "inputs/backend/migrations",
+    "backendImagesDir": "inputs/backend/images",
+    "prerequisitesRoot": "inputs/prerequisites"
+  },
+  "prerequisites": {
+    "dockerDesktop": {
+      "required": true,
+      "relativePath": "docker-desktop/Docker Desktop Installer.exe",
+      "silentInstallArguments": "install --quiet --accept-license"
+    },
+    "vcRedist": {
+      "required": true,
+      "relativePath": "vcredist/VC_redist.x64.exe",
+      "silentInstallArguments": "/install /quiet /norestart"
+    },
+    "wslKernel": {
+      "required": true,
+      "relativePath": "wsl/wsl_update_x64.msi",
+      "silentInstallArguments": "/qn /norestart"
+    }
+  },
+  "runtime": {
+    "projectName": "xdisplayai",
+    "localhostBaseUrl": "http://127.0.0.1:18001",
+    "dataRoot": "C:\\ProgramData\\XDisplayAI",
+    "rag": {
+      "backend": "pgvector",
+      "activeIndexVersion": "v7",
+      "embeddingVersion": "bge-m3@1.5"
+    },
+    "llm": {
+      "provider": "openai_compatible",
+      "baseUrl": "https://openrouter.ai/api/v1",
+      "modelDefault": "qwen/qwen3-32b"
+    }
+  }
+}

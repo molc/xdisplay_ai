@@ -1,0 +1,17 @@
+{
+  "dependencies": {
+    "orchestration-app": [
+      "postgres",
+      "redis",
+      "embedding-worker"
+    ],
+    "postgres": [],
+    "redis": [],
+    "embedding-worker": []
+  },
+  "migrationOrder": [
+    "0001_init.sql",
+    "0002_rag.sql",
+    "0003_orch_runtime.sql"
+  ]
+}
