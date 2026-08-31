@@ -97,8 +97,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
   -SourcePath C:\path\to\backend-copy
 ```
 
-脚本保留目标机现有 `.env`，同步其余源码，重启 `embedding-worker` 和 `orchestration-app`，并等待
-健康检查通过。输入目录只读，不会被脚本修改。
+脚本保留目标机现有 `.env` 和已有 prompt 版本钉扎；如果新源码注册了新的 prompt agent，脚本只
+追加缺失的默认钉扎，不覆盖已有版本，并先生成 `.env.bak-prompt-pins-*` 备份。随后同步其余源码，
+重启 `embedding-worker` 和 `orchestration-app`，并等待健康检查通过。输入目录只读，不会被脚本修改。
 
 普通 XDisplay 更新先准备完整 release 目录，再执行：
 
@@ -945,6 +946,16 @@ Windows Installer 依靠 `manifests/bundle.json` 中的 `bundle.version` 判断�
 如果 WSL/Windows 可选功能要求重启，bootstrap 会保存 UTF-8 状态并注册登录续装任务。登录原用户后
 等待 `-Resume` 自动完成即可。脚本会把重启后仍存在的同一待重启标记视为残留标记继续执行，并在
 完成后删除状态和任务，避免循环重启。
+
+### 10.7 物理机必须在 BIOS/UEFI 中开启 CPU 虚拟化
+
+首次安装在等待 Docker Desktop 前会检查 `HypervisorPresent` 和
+`VirtualizationFirmwareEnabled`。如果二者都为 `False`，脚本会立即停止并显示进入 UEFI、开启
+Intel VT-x 或 AMD-V/SVM、保存重启的操作步骤，不再无意义地轮询 Docker 10 分钟。
+
+面向 Windows 新手的完整图文式操作路径见
+[ONE_CLICK_PACKAGING_GUIDE.md](ONE_CLICK_PACKAGING_GUIDE.md) 的“物理机一直显示等待 Docker Desktop
+就绪”一节。
 
 ## 11. 推荐给下一个 agent 的优先级
 ### 11.1 如果只是继续当前体系打包

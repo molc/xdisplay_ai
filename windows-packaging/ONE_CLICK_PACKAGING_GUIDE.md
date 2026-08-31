@@ -346,7 +346,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Program Files\XDispl
 
 这个命令会：
 
-- 保留目标机现有的 `C:\ProgramData\XDisplayAI\workspace\backend\.env`。
+- 保留目标机现有的 `C:\ProgramData\XDisplayAI\workspace\backend\.env` 及其中已有的版本钉扎。
+- 如果新源码注册了新的 prompt agent，只补充缺失的默认钉扎；不会覆盖已有版本，并先生成
+  `.env.bak-prompt-pins-*` 备份。
 - 更新其余后端源码。
 - 重启主后端和 embedding-worker。
 - 等待健康检查通过。
@@ -454,6 +456,37 @@ C:\work\xdisplay\src\Service_PackL\res\UpdateUnpack.exe
 4. 重新运行一键脚本。
 
 不要用 `NT AUTHORITY\SYSTEM` 身份启动完整构建。
+
+### 物理机一直显示“等待 Docker Desktop 就绪”，或提示 BIOS/UEFI 未开启虚拟化
+
+Docker Desktop 的 Linux 后端依赖 CPU 硬件虚拟化。如果安装提示 `HCS_E_HYPERV_NOT_INSTALLED`、
+`No virtualization available`，或者明确提示 BIOS/UEFI 未开启虚拟化，请按下面步骤操作。
+
+#### Windows 11 小白操作步骤
+
+1. 点击 Windows 开始菜单，打开“设置”。
+2. 进入“系统 > 恢复”。
+3. 找到“高级启动”，点击“立即重新启动”。
+4. 电脑进入蓝色菜单后，依次点击“疑难解答 > 高级选项 > UEFI 固件设置 > 重启”。
+5. 进入 BIOS/UEFI 后，在 `Advanced`、`Security`、`CPU Configuration` 或类似菜单中寻找虚拟化开关。
+6. Intel 电脑开启 `Intel Virtualization Technology`、`Intel VT-x` 或 `VMX`。
+7. AMD 电脑开启 `SVM Mode`、`AMD-V` 或 `Secure Virtual Machine`。
+8. 把开关改成 `Enabled`，按 `F10` 保存并退出。不同品牌也可能显示 `Save & Exit`。
+9. 回到 Windows 后，按 `Ctrl + Shift + Esc` 打开任务管理器，进入“性能 > CPU”，确认右下角显示
+   “虚拟化：已启用”。
+10. 重新运行 XDisplay AI 完整安装包。安装目录中的 EXE、CAB 和离线依赖必须仍放在一起。
+
+如果高级选项里没有“UEFI 固件设置”，请重新开机，并在出现品牌 Logo 时连续按该品牌的 BIOS
+按键。常见按键是 `Del`、`F2`、`F10` 或 `Esc`；以电脑厂商说明为准。
+
+也可以用管理员 PowerShell 只读验证：
+
+```powershell
+(Get-CimInstance Win32_Processor).VirtualizationFirmwareEnabled
+```
+
+输出 `True` 表示 BIOS/UEFI 的 CPU 虚拟化已经开启。安装包会自动处理 WSL 和 Virtual Machine
+Platform，不需要手工修改注册表或安装包文件。
 
 ### PowerShell 显示红色错误
 

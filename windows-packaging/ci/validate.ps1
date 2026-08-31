@@ -53,6 +53,7 @@ $requiredPaths = @(
     'src/scripts/install/Bootstrap-InstalledPayload.ps1',
     'src/scripts/install/Install-OfflinePrerequisites.ps1',
     'src/scripts/install/Install-BackendPayload.ps1',
+    'src/scripts/update/PromptPinMigration.ps1',
     'src/scripts/update/Update-BackendSource.ps1',
     'src/scripts/update/Update-XDisplayClient.ps1',
     'src/scripts/runtime/Invoke-Stack.ps1',
@@ -120,7 +121,12 @@ if ($RequirePayloads) {
         'Qt5Gui.dll',
         'Qt5Widgets.dll',
         'plugins/platforms/qwindows.dll',
-        'qml/QtQuick/Controls.2/Action.qml'
+        'qml/QtQuick/Controls.2/Action.qml',
+        'data/keyboard_a/keypage.json',
+        'data/keyboard_b/keypage.json',
+        'data/keyboard_c/keypage.json',
+        'data/keyboard_d/keypage.json',
+        'data/keyboard_e/keypage.json'
     )) {
         if (-not (Test-ClientReleaseRelativePath -ClientReleaseDir $inputLayout.ClientReleaseDir -RelativePath $requiredClientRelativePath)) {
             throw "客户端发布目录缺少必需文件：$requiredClientRelativePath"

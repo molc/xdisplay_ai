@@ -3,7 +3,7 @@
     "id": "XDisplayAI.Offline",
     "name": "XDisplay AI Offline Installer",
     "manufacturer": "molc",
-    "version": "0.1.2",
+    "version": "0.1.3",
     "targetArchitecture": "x64",
     "installDirectoryName": "XDisplayAI",
     "upgradeCodes": {
@@ -48,7 +48,7 @@
     "llm": {
       "provider": "openai_compatible",
       "baseUrl": "https://openrouter.ai/api/v1",
-      "modelDefault": "qwen/qwen3-32b"
+      "modelDefault": "qwen/qwen3-235b-a22b-2507"
     }
   }
 }

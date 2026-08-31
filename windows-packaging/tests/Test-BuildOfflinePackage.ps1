@@ -111,6 +111,9 @@ function Invoke-Preflight {
 $scriptPath = Join-Path $PackagingRoot 'build-offline-package.ps1'
 $testRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('xdisplayai-build-script-test-' + [System.Guid]::NewGuid().ToString('N'))
 
+& (Join-Path $PSScriptRoot 'Test-PromptPinMigration.ps1') `
+    -MigrationScriptPath (Join-Path $PackagingRoot 'src\scripts\update\PromptPinMigration.ps1')
+
 try {
     New-Item -ItemType Directory -Path $testRoot -Force | Out-Null
 
@@ -139,6 +142,30 @@ try {
     Assert-True `
         -Condition ($readyDisposition -eq 'continue') `
         -Message 'An installation without a pending reboot must continue normally.'
+
+    $virtualizationDisabledRejected = $false
+    try {
+        Assert-DockerHardwareVirtualization `
+            -HypervisorPresent $false `
+            -VirtualizationFirmwareEnabled @($false)
+    }
+    catch {
+        $virtualizationDisabledRejected = `
+            ($_.Exception.Message -match 'BIOS/UEFI') -and `
+            ($_.Exception.Message -match 'Intel VT-x') -and `
+            ($_.Exception.Message -match 'AMD-V/SVM') -and `
+            ($_.Exception.Message -match 'Windows')
+    }
+    Assert-True `
+        -Condition $virtualizationDisabledRejected `
+        -Message 'Disabled firmware virtualization must fail fast with actionable BIOS and Windows instructions.'
+
+    Assert-DockerHardwareVirtualization `
+        -HypervisorPresent $true `
+        -VirtualizationFirmwareEnabled @($false)
+    Assert-DockerHardwareVirtualization `
+        -HypervisorPresent $false `
+        -VirtualizationFirmwareEnabled @($true)
 
     $utf8JsonReaderCommand = Get-Command 'Read-Utf8JsonFile' -ErrorAction SilentlyContinue
     Assert-True `
@@ -171,6 +198,27 @@ try {
     Assert-True `
         -Condition ($bundleManifest.paths.backendSourceDir -eq 'inputs/backend/source') `
         -Message 'The development package manifest must define inputs/backend/source.'
+
+    Assert-True `
+        -Condition ($bundleManifest.runtime.llm.modelDefault -eq 'qwen/qwen3-235b-a22b-2507') `
+        -Message 'The offline package must use the production-safe default Qwen model.'
+
+    $backendEnvTemplatePath = Join-Path $PackagingRoot 'src\templates\env\backend.env.tmpl'
+    $backendEnvTemplate = [System.IO.File]::ReadAllText($backendEnvTemplatePath)
+    $requiredBackendRuntimeSettings = @(
+        'XDISPLAY_AI_INTENT_EXTRACT_TIMEOUT_SECONDS=300.0',
+        'XDISPLAY_AI_INTENT_EXTRACT_MAX_ATTEMPTS=3',
+        'XDISPLAY_AI_AGENT_RUNTIME_TIMEOUT_SECONDS=1500',
+        'XDISPLAY_AI_LLM_TIMEOUT_SECONDS=1800',
+        'XDISPLAY_AI_LLM_MODEL_INTENT_EXTRACTOR={{LLM_MODEL_DEFAULT}}',
+        'XDISPLAY_AI_BROWSER_SOLVER_ENABLED=true',
+        'XDISPLAY_AI_BROWSER_SOLVER_MODEL=z-ai/glm-5.2'
+    )
+    foreach ($requiredBackendRuntimeSetting in $requiredBackendRuntimeSettings) {
+        Assert-True `
+            -Condition $backendEnvTemplate.Contains($requiredBackendRuntimeSetting) `
+            -Message "Backend environment template is missing production-safe setting: $requiredBackendRuntimeSetting"
+    }
 
     $inputLayout = Get-InputLayout
     Assert-True `
@@ -387,11 +435,26 @@ try {
     Assert-True `
         -Condition ($clientBuildScriptContent -match 'Plugins = plugins' -and $clientBuildScriptContent -match 'Qml2Imports = qml') `
         -Message 'qt.conf must explicitly point Qt at the normalized plugins and qml directories.'
+    Assert-True `
+        -Condition (
+            $clientBuildScriptContent -match 'RuntimeDataDir' -and
+            $clientBuildScriptContent -match 'keyboard_a' -and
+            $clientBuildScriptContent -match 'keyboard_d' -and
+            $clientBuildScriptContent -match 'Copy-Tree -Source \\$RuntimeDataDirectory'
+        ) `
+        -Message 'The client build must copy and validate XDisplay runtime data keyboard templates.'
 
     $prepareInputsScriptContent = Get-Content -Path (Join-Path $PackagingRoot 'ci\prepare-inputs.ps1') -Raw
     Assert-True `
         -Condition ($prepareInputsScriptContent -match '--mount.*type=bind,source=\$BackendRepoPath,target=/app') `
         -Message 'The main backend smoke test must import current source through the development bind mount.'
+    Assert-True `
+        -Condition (
+            $prepareInputsScriptContent -match 'function Invoke-DockerSmokeCommand' -and
+            $prepareInputsScriptContent -match '\$ErrorActionPreference\s*=\s*''Continue''' -and
+            $prepareInputsScriptContent -match '\$ErrorActionPreference\s*=\s*\$previousErrorActionPreference'
+        ) `
+        -Message 'Docker smoke tests must tolerate successful containers writing diagnostic logs to stderr under Windows PowerShell 5.1.'
     Assert-True `
         -Condition ($prepareInputsScriptContent -notmatch 'Build-BackendSourceOverlay|Add-OrchestrationAppDataLayer') `
         -Message 'Development backend images must not bake the current app/data source into an overlay layer.'
@@ -461,10 +524,16 @@ try {
     Assert-True `
         -Condition ($backendUpdateScriptContent -match '(?s)/XF.*?\.env' -and $backendUpdateScriptContent -match "restart.*embedding-worker.*orchestration-app") `
         -Message 'Backend update must preserve .env and restart both Python services.'
+    Assert-True `
+        -Condition ($backendUpdateScriptContent -match 'Get-UpdatedBackendDefaultPromptVersions' -and $backendUpdateScriptContent -match 'Update-BackendPromptVersionPins') `
+        -Message 'Backend update must migrate missing prompt pins before restarting the updated source.'
     $clientUpdateScriptContent = Get-Content -Path $clientUpdateScriptPath -Raw
     Assert-True `
         -Condition ($clientUpdateScriptContent -match 'plugins\\platforms\\qwindows\.dll' -and $clientUpdateScriptContent -match "Join-Path.*'qml'") `
         -Message 'Client update must validate the complete Qt release before replacement.'
+    Assert-True `
+        -Condition ($clientUpdateScriptContent -match 'data\\keyboard_d\\keypage\.json') `
+        -Message 'Client update must reject a release that cannot create default keyboard pages.'
 
     $installedFixtureRoot = Join-Path $testRoot 'installed-development-layout'
     $installedDataRoot = Join-Path $testRoot 'program-data'

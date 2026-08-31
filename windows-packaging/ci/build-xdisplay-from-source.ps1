@@ -2,6 +2,7 @@
     [string]$XdisplayRepoPath = '',
     [string]$OutputDir = '',
     [string]$BuildDirectory = '',
+    [string]$RuntimeDataDir = '',
     [string]$QmakePath = '',
     [string]$MingwMakePath = '',
     [string]$WinDeployQtPath = '',
@@ -72,6 +73,57 @@ function Resolve-OptionalOutputPath {
     }
 
     return [System.IO.Path]::GetFullPath($PathValue)
+}
+
+function Resolve-XdisplayRuntimeDataDir {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [AllowEmptyString()]
+        [string]$PathValue
+    )
+
+    $candidatePaths = @()
+    if (-not [string]::IsNullOrWhiteSpace($PathValue)) {
+        $candidatePaths += $PathValue
+    }
+    $candidatePaths += @(
+        (Join-Path $RepoRoot 'bin\Xdisplay.app\Contents\MacOS\data'),
+        (Join-Path $RepoRoot 'bin\data'),
+        (Join-Path $RepoRoot 'data')
+    )
+
+    foreach ($candidatePath in $candidatePaths) {
+        if ([string]::IsNullOrWhiteSpace($candidatePath)) {
+            continue
+        }
+        if (-not (Test-Path $candidatePath -PathType Container)) {
+            continue
+        }
+        $resolvedPath = (Resolve-Path $candidatePath).Path
+        if (Test-XdisplayRuntimeDataDir -Path $resolvedPath) {
+            Write-Step "使用 XDisplay 运行时 data 目录：$resolvedPath"
+            return $resolvedPath
+        }
+    }
+
+    $searched = ($candidatePaths | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join '; '
+    throw "未找到完整 XDisplay 运行时 data 目录。必须包含 keyboard_a..keyboard_e\\keypage.json。已检查：$searched"
+}
+
+function Test-XdisplayRuntimeDataDir {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    foreach ($keyboardName in @('keyboard_a', 'keyboard_b', 'keyboard_c', 'keyboard_d', 'keyboard_e')) {
+        $keypagePath = Join-Path (Join-Path $Path $keyboardName) 'keypage.json'
+        if (-not (Test-Path $keypagePath -PathType Leaf)) {
+            return $false
+        }
+    }
+    return $true
 }
 
 function Resolve-ToolPath {
@@ -145,7 +197,12 @@ function Ensure-ClientReleaseRequirements {
         'Qt5Gui.dll',
         'Qt5Widgets.dll',
         'plugins/platforms/qwindows.dll',
-        'qml/QtQuick/Controls.2/Action.qml'
+        'qml/QtQuick/Controls.2/Action.qml',
+        'data/keyboard_a/keypage.json',
+        'data/keyboard_b/keypage.json',
+        'data/keyboard_c/keypage.json',
+        'data/keyboard_d/keypage.json',
+        'data/keyboard_e/keypage.json'
     )) {
         $requiredPath = Join-Path $ReleaseDirectory $requiredRelativePath
         if (-not (Test-Path $requiredPath)) {
@@ -159,7 +216,9 @@ function Copy-ApplicationRuntimeArtifacts {
         [Parameter(Mandatory = $true)]
         [string]$RepoRoot,
         [Parameter(Mandatory = $true)]
-        [string]$ReleaseDirectory
+        [string]$ReleaseDirectory,
+        [Parameter(Mandatory = $true)]
+        [string]$RuntimeDataDirectory
     )
 
     $artifactSpecs = @(
@@ -183,11 +242,18 @@ function Copy-ApplicationRuntimeArtifacts {
         Ensure-Directory -Path $destinationParent
         Copy-Item -Path $artifactSpec.SourcePath -Destination $destinationPath -Force
     }
+
+    $dataDestination = Join-Path $ReleaseDirectory 'data'
+    if (Test-Path $dataDestination) {
+        Remove-Item -Path $dataDestination -Recurse -Force
+    }
+    Copy-Tree -Source $RuntimeDataDirectory -Destination $dataDestination
 }
 
 $resolvedXdisplayRepoPath = Resolve-XdisplayRepoPath -PathValue $XdisplayRepoPath
 $resolvedOutputDir = Resolve-OptionalOutputPath -PathValue $OutputDir -DefaultRelativePath 'cache/client-release-from-source/xdisplay-win64'
 $resolvedBuildDirectory = Resolve-OptionalOutputPath -PathValue $BuildDirectory -DefaultRelativePath 'cache/xdisplay-build'
+$resolvedRuntimeDataDir = Resolve-XdisplayRuntimeDataDir -RepoRoot $resolvedXdisplayRepoPath -PathValue $RuntimeDataDir
 
 $projectFilePath = Join-Path $resolvedXdisplayRepoPath 'src/Xdisplay_V2.pro'
 $protoCompileScriptPath = Join-Path $resolvedXdisplayRepoPath 'src/Service_PB/compile_all_proto.bat'
@@ -300,7 +366,7 @@ if (-not (Test-Path $sourceBinaryPath)) {
 }
 
 Copy-Item -Path $sourceBinaryPath -Destination (Join-Path $resolvedOutputDir 'Xdisplay.exe') -Force
-Copy-ApplicationRuntimeArtifacts -RepoRoot $resolvedXdisplayRepoPath -ReleaseDirectory $resolvedOutputDir
+Copy-ApplicationRuntimeArtifacts -RepoRoot $resolvedXdisplayRepoPath -ReleaseDirectory $resolvedOutputDir -RuntimeDataDirectory $resolvedRuntimeDataDir
 
 Write-Step '执行 windeployqt 生成客户端发布目录。'
 try {

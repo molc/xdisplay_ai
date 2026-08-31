@@ -7,6 +7,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot '..\common\Common.ps1')
+. (Join-Path $PSScriptRoot 'PromptPinMigration.ps1')
 
 function Invoke-ElevatedSelf {
     $arguments = @(
@@ -90,6 +91,15 @@ try {
 
     Initialize-RuntimeEnvironment | Out-Null
     Assert-Command -Name 'docker'
+    Write-Step '检查新后端所需的 prompt 版本钉扎。'
+    $defaultPromptVersions = Get-UpdatedBackendDefaultPromptVersions
+    $promptMigration = Update-BackendPromptVersionPins `
+        -EnvPath $layout.BackendEnvFile `
+        -DefaultPromptVersions $defaultPromptVersions
+    if ($promptMigration.Changed) {
+        Write-Step "已补充 prompt 版本钉扎：$($promptMigration.Added -join ', ')"
+        Write-Step "原 .env 已备份：$($promptMigration.BackupPath)"
+    }
     Write-Step '重启 embedding-worker 和 orchestration-app。'
     Invoke-Compose -Arguments @('restart', 'embedding-worker', 'orchestration-app')
     & (Join-Path $PSScriptRoot '..\health\Test-Health.ps1') -TimeoutSeconds 300

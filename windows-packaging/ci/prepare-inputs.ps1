@@ -496,6 +496,32 @@ function Get-DockerImageLabelValue {
     return [string]$labelProperty.Value
 }
 
+function Invoke-DockerSmokeCommand {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments
+    )
+
+    # Windows PowerShell 5.1 turns any native stderr line into an ErrorRecord.
+    # Some successful backend imports intentionally emit structured diagnostics
+    # to stderr, so temporarily allow that stream and trust the process exit code.
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        $nativeOutput = @(& docker @Arguments 2>&1)
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+
+    foreach ($outputLine in $nativeOutput) {
+        Write-Host ([string]$outputLine)
+    }
+
+    return $exitCode
+}
+
 function Test-BackendImageSmoke {
     param(
         [Parameter(Mandatory = $true)]
@@ -509,8 +535,8 @@ function Test-BackendImageSmoke {
     }
 
     Write-Step "验证离线镜像：$DisplayName"
-    & docker run --rm @RunArguments
-    if ($LASTEXITCODE -ne 0) {
+    $exitCode = Invoke-DockerSmokeCommand -Arguments (@('run', '--rm') + $RunArguments)
+    if ($exitCode -ne 0) {
         throw "离线镜像验证失败：$DisplayName"
     }
 }

@@ -27,7 +27,12 @@ function Assert-ClientRelease {
 
     foreach ($requiredRelativePath in @(
         'Xdisplay.exe',
-        'plugins\platforms\qwindows.dll'
+        'plugins\platforms\qwindows.dll',
+        'data\keyboard_a\keypage.json',
+        'data\keyboard_b\keypage.json',
+        'data\keyboard_c\keypage.json',
+        'data\keyboard_d\keypage.json',
+        'data\keyboard_e\keypage.json'
     )) {
         $requiredPath = Join-Path $Path $requiredRelativePath
         if (-not (Test-Path $requiredPath -PathType Leaf)) {
@@ -49,7 +54,7 @@ if (-not (Test-Path $ReleasePath -PathType Container)) {
     throw "XDisplay release 目录不存在：$ReleasePath"
 }
 
-$resolvedRelease = (Resolve-Path $ReleasePath).Path
+$resolvedRelease = Resolve-XDisplayFileSystemPath -Path $ReleasePath
 Assert-ClientRelease -Path $resolvedRelease
 $layout = Initialize-DevelopmentWorkspace
 $workspaceExecutable = Join-Path $layout.ClientWorkspace 'Xdisplay.exe'

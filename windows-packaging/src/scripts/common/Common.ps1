@@ -8,6 +8,20 @@ function Get-InstallRoot {
     return $script:InstallRoot
 }
 
+function Resolve-XDisplayFileSystemPath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $resolvedPath = Resolve-Path -LiteralPath $Path
+    if ($resolvedPath.Provider.Name -ne 'FileSystem') {
+        throw "路径不是文件系统路径：$Path"
+    }
+
+    return $resolvedPath.ProviderPath
+}
+
 function Ensure-Directory {
     param(
         [Parameter(Mandatory = $true)]
@@ -424,4 +438,27 @@ function Get-PendingRebootDisposition {
     }
 
     return 'continue'
+}
+
+function Assert-DockerHardwareVirtualization {
+    param(
+        [Parameter(Mandatory = $true)]
+        [bool]$HypervisorPresent,
+        [Parameter(Mandatory = $true)]
+        [bool[]]$VirtualizationFirmwareEnabled
+    )
+
+    if ($HypervisorPresent -or ($VirtualizationFirmwareEnabled -contains $true)) {
+        return
+    }
+
+    throw @'
+Docker Desktop 无法启动：BIOS/UEFI 中未开启 CPU 硬件虚拟化。
+请按以下步骤操作：
+1. 打开 Windows“设置 > 系统 > 恢复 > 高级启动”，点击“立即重新启动”。
+2. 依次选择“疑难解答 > 高级选项 > UEFI 固件设置 > 重启”。
+3. 在 BIOS/UEFI 中开启 Intel Virtualization Technology (Intel VT-x)，或开启 AMD-V/SVM Mode。
+4. 保存设置并退出（通常按 F10），进入 Windows 后重新运行 XDisplay AI 安装。
+如果没有“UEFI 固件设置”，请在开机时按厂商指定的 Del、F2、F10 或 Esc 键进入 BIOS。
+'@
 }

@@ -37,11 +37,40 @@ function Start-DockerDesktopIfNeeded {
     }
 }
 
+function Assert-HostDockerHardwareVirtualization {
+    try {
+        $computerSystem = Get-CimInstance -ClassName Win32_ComputerSystem -ErrorAction Stop
+        $processors = @(Get-CimInstance -ClassName Win32_Processor -ErrorAction Stop)
+    }
+    catch {
+        Write-Warning "无法自动检查 BIOS/UEFI 虚拟化状态，将继续等待 Docker Desktop：$($_.Exception.Message)"
+        return
+    }
+
+    if (($null -eq $computerSystem) -or ($processors.Count -eq 0)) {
+        Write-Warning '无法自动检查 BIOS/UEFI 虚拟化状态，将继续等待 Docker Desktop。'
+        return
+    }
+
+    $firmwareVirtualizationStates = @(
+        $processors | ForEach-Object { [bool]$_.VirtualizationFirmwareEnabled }
+    )
+    Assert-DockerHardwareVirtualization `
+        -HypervisorPresent ([bool]$computerSystem.HypervisorPresent) `
+        -VirtualizationFirmwareEnabled $firmwareVirtualizationStates
+}
+
 function Wait-For-DockerReady {
     param(
         [int]$MaxAttempts = 120,
         [int]$SleepSeconds = 5
     )
+
+    if (Test-DockerDaemonReady) {
+        return
+    }
+
+    Assert-HostDockerHardwareVirtualization
     Start-DockerDesktopIfNeeded
 
     for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
