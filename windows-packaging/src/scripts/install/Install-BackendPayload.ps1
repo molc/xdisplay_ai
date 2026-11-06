@@ -89,6 +89,139 @@ function Wait-For-DockerReady {
     throw 'Docker daemon 未就绪。'
 }
 
+function ConvertTo-TcpExcludedPortRanges {
+    param(
+        [AllowEmptyCollection()]
+        [string[]]$Lines = @()
+    )
+
+    $ranges = @()
+    foreach ($line in @($Lines)) {
+        if ($line -match '^\s*(\d+)\s+(\d+)(?:\s+\*)?\s*$') {
+            $ranges += [pscustomobject]@{
+                Start = [int]$Matches[1]
+                End = [int]$Matches[2]
+            }
+        }
+    }
+    return @($ranges)
+}
+
+function Get-TcpExcludedPortRanges {
+    $output = @(& netsh interface ipv4 show excludedportrange protocol=tcp)
+    return @(ConvertTo-TcpExcludedPortRanges -Lines $output)
+}
+
+function Test-PublishedPortExcluded {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$Port,
+        [Parameter(Mandatory = $true)]
+        [object[]]$Ranges
+    )
+
+    foreach ($range in $Ranges) {
+        if ($Port -ge $range.Start -and $Port -le $range.End) {
+            return $true
+        }
+    }
+    return $false
+}
+
+function Test-LoopbackTcpPortFree {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$Port
+    )
+
+    $listener = $null
+    try {
+        $listener = New-Object System.Net.Sockets.TcpListener ([System.Net.IPAddress]::Loopback, $Port)
+        $listener.Start()
+        return $true
+    }
+    catch {
+        return $false
+    }
+    finally {
+        if ($null -ne $listener) {
+            $listener.Stop()
+        }
+    }
+}
+
+function Find-NextPublishedPort {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$StartPort,
+        [AllowEmptyCollection()]
+        [object[]]$ExcludedRanges = @(),
+        [AllowEmptyCollection()]
+        [int[]]$ReservedPorts = @()
+    )
+
+    $candidate = $StartPort
+    for ($attempt = 0; $attempt -lt 50; $attempt++) {
+        if ($candidate -gt 65535) {
+            break
+        }
+        if ($ReservedPorts -contains $candidate) {
+            $candidate++
+            continue
+        }
+
+        $coveredRange = $null
+        foreach ($range in @($ExcludedRanges)) {
+            if ($null -eq $range) {
+                continue
+            }
+            if ($candidate -ge $range.Start -and $candidate -le $range.End) {
+                $coveredRange = $range
+                break
+            }
+        }
+        if ($null -ne $coveredRange) {
+            $candidate = [int]$coveredRange.End + 1
+            continue
+        }
+        if (Test-LoopbackTcpPortFree -Port $candidate) {
+            return $candidate
+        }
+        $candidate++
+    }
+
+    throw "从端口 $StartPort 起没有可用的本机端口。"
+}
+
+function Update-PublishedHostPorts {
+    $layout = Get-DockerLayout
+    $defaults = Read-EnvFile -Path $layout.EnvDefaultsFile
+    $runtime = Read-EnvFile -Path $layout.EnvFile
+    $ranges = @(Get-TcpExcludedPortRanges)
+    $chosen = @()
+    foreach ($key in @('APP_HOST_PORT', 'POSTGRES_HOST_PORT', 'REDIS_HOST_PORT', 'EMBEDDING_HOST_PORT')) {
+        $start = [int]$defaults[$key]
+        $port = Find-NextPublishedPort -StartPort $start -ExcludedRanges $ranges -ReservedPorts $chosen
+        if ($port -ne $start) {
+            Write-Step "$key 端口 $start 不可用，改用 $port。"
+        }
+        $runtime[$key] = [string]$port
+        $chosen += $port
+    }
+    Write-EnvFile -Path $layout.EnvFile -Entries $runtime
+
+    $stateLayout = Get-InstallStateLayout
+    if (Test-Path $stateLayout.BackendEnvFile) {
+        $backendEntries = Read-EnvFile -Path $stateLayout.BackendEnvFile
+        if ($backendEntries.Contains('XDISPLAY_AI_SERVER_BASE_URL')) {
+            $backendEntries['XDISPLAY_AI_SERVER_BASE_URL'] = "http://127.0.0.1:$($runtime['APP_HOST_PORT'])"
+            Write-EnvFile -Path $stateLayout.BackendEnvFile -Entries $backendEntries
+        }
+    }
+
+    return $runtime
+}
+
 function Get-ComposeServiceContainerId {
     param(
         [Parameter(Mandatory = $true)]
@@ -96,7 +229,11 @@ function Get-ComposeServiceContainerId {
     )
 
     $layout = Get-DockerLayout
-    return (& $dockerCommand compose --project-name $layout.ProjectName --env-file $layout.EnvFile -f $layout.BaseCompose -f $layout.OverlayCompose ps -q $ServiceName).Trim()
+    $containerId = & $dockerCommand compose --project-name $layout.ProjectName --env-file $layout.EnvFile -f $layout.BaseCompose -f $layout.OverlayCompose ps -q $ServiceName
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace([string]$containerId)) {
+        return ''
+    }
+    return ([string]$containerId).Trim()
 }
 
 function Wait-For-PostgresReady {
@@ -167,6 +304,7 @@ function Mark-MigrationApplied {
     }
 }
 
+if ($MyInvocation.InvocationName -ne '.') {
 Assert-Admin
 Initialize-InstallStateDirectories
 Assert-Command -Name 'docker'
@@ -192,8 +330,14 @@ foreach ($imageFile in $imageFiles) {
     }
 }
 
+Write-Step '选择可用的本机发布端口。'
+Update-PublishedHostPorts | Out-Null
+
 Write-Step '启动离线后端服务栈。'
 Invoke-Compose -Arguments @('up', '-d')
+if ($LASTEXITCODE -ne 0) {
+    throw "启动离线后端服务栈失败，退出码：$LASTEXITCODE"
+}
 
 $postgresContainerId = Wait-For-PostgresReady
 
@@ -224,3 +368,4 @@ foreach ($migrationFile in $migrationFiles) {
 
 Write-Step '等待应用健康检查通过。'
 & (Join-Path $PSScriptRoot '..\\health\\Test-Health.ps1') -TimeoutSeconds 300
+}

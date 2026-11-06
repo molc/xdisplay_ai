@@ -349,6 +349,23 @@ function Get-SourceContentFingerprint {
     }
 }
 
+function Get-OrchestrationAppRuntimeFingerprintPaths {
+    # Application source is intentionally absent. Changing app, data, or prompts
+    # must keep this fingerprint stable so an installed machine can update code
+    # without rebuilding the image. A new installable package changes one of these.
+    return @(
+        'Dockerfile',
+        'pyproject.toml',
+        'docker\export_runtime_requirements.py',
+        'docker\strict-ocr',
+        'external\xdisplay\bin\xd_render_cli'
+    )
+}
+
+function Get-EmbeddingRuntimeFingerprintPaths {
+    return @('Dockerfile.embedding')
+}
+
 function Get-BackendRuntimeCacheDecision {
     param(
         [Parameter(Mandatory = $true)]

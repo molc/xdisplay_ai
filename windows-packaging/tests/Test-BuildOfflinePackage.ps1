@@ -226,28 +226,43 @@ try {
         -Message 'The input layout must expose the backend source snapshot directory.'
 
     $runtimeFingerprintFixture = Join-Path $testRoot 'runtime-fingerprint'
-    Write-EmptyFile -Path (Join-Path $runtimeFingerprintFixture 'Dockerfile')
-    Write-EmptyFile -Path (Join-Path $runtimeFingerprintFixture 'external\xdisplay\bin\xd_render_cli\renderer.cpp')
-    Write-EmptyFile -Path (Join-Path $runtimeFingerprintFixture 'app\main.py')
+    $runtimeFingerprintPaths = @(Get-OrchestrationAppRuntimeFingerprintPaths)
+    foreach ($runtimeFingerprintPath in @(
+        'Dockerfile',
+        'pyproject.toml',
+        'docker\export_runtime_requirements.py',
+        'docker\strict-ocr\model-manifest.json',
+        'external\xdisplay\bin\xd_render_cli\renderer.cpp',
+        'app\main.py'
+    )) {
+        Write-EmptyFile -Path (Join-Path $runtimeFingerprintFixture $runtimeFingerprintPath)
+    }
     $runtimeFingerprintBefore = Get-SourceContentFingerprint `
         -Root $runtimeFingerprintFixture `
-        -RelativePaths @('Dockerfile', 'external\xdisplay\bin\xd_render_cli')
+        -RelativePaths $runtimeFingerprintPaths
     [System.IO.File]::WriteAllText((Join-Path $runtimeFingerprintFixture 'app\main.py'), 'source-only change')
     $runtimeFingerprintAfterAppChange = Get-SourceContentFingerprint `
         -Root $runtimeFingerprintFixture `
-        -RelativePaths @('Dockerfile', 'external\xdisplay\bin\xd_render_cli')
+        -RelativePaths $runtimeFingerprintPaths
     Assert-True `
         -Condition ($runtimeFingerprintBefore -eq $runtimeFingerprintAfterAppChange) `
         -Message 'Application-only changes must not invalidate the backend runtime dependency cache.'
+    [System.IO.File]::WriteAllText((Join-Path $runtimeFingerprintFixture 'pyproject.toml'), 'numpy==9.9.9')
+    $runtimeFingerprintAfterDependencyChange = Get-SourceContentFingerprint `
+        -Root $runtimeFingerprintFixture `
+        -RelativePaths $runtimeFingerprintPaths
+    Assert-True `
+        -Condition ($runtimeFingerprintBefore -ne $runtimeFingerprintAfterDependencyChange) `
+        -Message 'A new Python dependency must invalidate the backend runtime dependency cache.'
     [System.IO.File]::WriteAllText(
         (Join-Path $runtimeFingerprintFixture 'external\xdisplay\bin\xd_render_cli\renderer.cpp'),
         'runtime dependency change'
     )
     $runtimeFingerprintAfterRuntimeChange = Get-SourceContentFingerprint `
         -Root $runtimeFingerprintFixture `
-        -RelativePaths @('Dockerfile', 'external\xdisplay\bin\xd_render_cli')
+        -RelativePaths $runtimeFingerprintPaths
     Assert-True `
-        -Condition ($runtimeFingerprintBefore -ne $runtimeFingerprintAfterRuntimeChange) `
+        -Condition ($runtimeFingerprintAfterDependencyChange -ne $runtimeFingerprintAfterRuntimeChange) `
         -Message 'Native renderer changes must invalidate the backend runtime dependency cache.'
 
     $matchingCacheDecision = Get-BackendRuntimeCacheDecision `
@@ -515,6 +530,12 @@ try {
     Assert-True `
         -Condition ($backendInstallScriptContent -notmatch 'HasApiKey|ApiKeySource|未发现可用的 LLM API key') `
         -Message 'The installer must not warn about a missing server-side LLM key because the key is configured by the client.'
+    Assert-True `
+        -Condition ($backendInstallScriptContent -match 'Find-NextPublishedPort' -and $backendInstallScriptContent -match 'Update-PublishedHostPorts') `
+        -Message 'The installer must move a published host port to the next available port when the preferred port is reserved or in use.'
+    Assert-True `
+        -Condition ($backendInstallScriptContent -notmatch '暂时停止 WinNAT') `
+        -Message 'The installer must not stop WinNAT when a published port is unavailable.'
 
     $backendUpdateScriptPath = Join-Path $PackagingRoot 'src\scripts\update\Update-BackendSource.ps1'
     $clientUpdateScriptPath = Join-Path $PackagingRoot 'src\scripts\update\Update-XDisplayClient.ps1'

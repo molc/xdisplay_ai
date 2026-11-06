@@ -82,8 +82,11 @@ C:\work\backend\external\xdisplay\bin\xd_render_cli\xd_render_cli.pro
 服务的 `/app`。日常只改 `app`、`data`、prompt、配置或其他 Python 源码时，直接同步 workspace
 并重启服务，不再重新打包。
 
-`Dockerfile`、`Dockerfile.embedding` 或 `external/xdisplay/bin/xd_render_cli` 等运行依赖发生变化
-时，指纹改变，才需要刷新 runtime cache。当前缓存标签是：
+镜像构建从 `pyproject.toml` 安装全部运行依赖。指纹覆盖 `Dockerfile`、`pyproject.toml`、
+`docker/export_runtime_requirements.py`、`docker/strict-ocr`、`external/xdisplay/bin/xd_render_cli`
+和 `Dockerfile.embedding`。这些输入变化才刷新 runtime cache。只改 `app`、`data`、prompt
+或其他已挂载源码时，指纹不变，安装机用 `Update-BackendSource.ps1` 替换代码并重启即可。
+当前缓存标签是：
 
 - `orches/orchestration-app:xdisplayai-runtime-cache`
 - `orches/embedding-http:xdisplayai-runtime-cache`

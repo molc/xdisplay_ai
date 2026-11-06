@@ -343,6 +343,14 @@ function Initialize-RuntimeEnvironment {
 
     $runtimeEntries = Read-EnvFile -Path $dockerLayout.EnvDefaultsFile
     $runtimeEntries['BACKEND_WORKSPACE_PATH'] = $stateLayout.BackendWorkspace.Replace('\', '/')
+    if (Test-Path $dockerLayout.EnvFile) {
+        $existingRuntimeEntries = Read-EnvFile -Path $dockerLayout.EnvFile
+        foreach ($portKey in @('APP_HOST_PORT', 'POSTGRES_HOST_PORT', 'REDIS_HOST_PORT', 'EMBEDDING_HOST_PORT')) {
+            if ($existingRuntimeEntries.Contains($portKey) -and -not [string]::IsNullOrWhiteSpace([string]$existingRuntimeEntries[$portKey])) {
+                $runtimeEntries[$portKey] = [string]$existingRuntimeEntries[$portKey]
+            }
+        }
+    }
     Write-EnvFile -Path $dockerLayout.EnvFile -Entries $runtimeEntries
 
     return [pscustomobject]@{

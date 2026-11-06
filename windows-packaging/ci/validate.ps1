@@ -126,7 +126,11 @@ if ($RequirePayloads) {
         'data/keyboard_b/keypage.json',
         'data/keyboard_c/keypage.json',
         'data/keyboard_d/keypage.json',
-        'data/keyboard_e/keypage.json'
+        'data/keyboard_e/keypage.json',
+        'data/keyboard_d/image/data_image.json',
+        'data/keyboard_d/font/data_font.json',
+        'data/keyboard_d/text/data_text.json',
+        'data/keyboard_d/var/data_var.json'
     )) {
         if (-not (Test-ClientReleaseRelativePath -ClientReleaseDir $inputLayout.ClientReleaseDir -RelativePath $requiredClientRelativePath)) {
             throw "客户端发布目录缺少必需文件：$requiredClientRelativePath"

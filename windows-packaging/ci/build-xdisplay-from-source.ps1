@@ -88,6 +88,7 @@ function Resolve-XdisplayRuntimeDataDir {
         $candidatePaths += $PathValue
     }
     $candidatePaths += @(
+        (Join-FromRoot 'inputs\client\runtime-data'),
         (Join-Path $RepoRoot 'bin\Xdisplay.app\Contents\MacOS\data'),
         (Join-Path $RepoRoot 'bin\data'),
         (Join-Path $RepoRoot 'data')
@@ -108,7 +109,7 @@ function Resolve-XdisplayRuntimeDataDir {
     }
 
     $searched = ($candidatePaths | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join '; '
-    throw "未找到完整 XDisplay 运行时 data 目录。必须包含 keyboard_a..keyboard_e\\keypage.json。已检查：$searched"
+    throw "未找到完整 XDisplay 运行时 data 目录。keyboard_a..keyboard_e 都必须包含真实 keypage.json，以及 image、font、text、var、audio。已检查：$searched"
 }
 
 function Test-XdisplayRuntimeDataDir {
@@ -118,8 +119,26 @@ function Test-XdisplayRuntimeDataDir {
     )
 
     foreach ($keyboardName in @('keyboard_a', 'keyboard_b', 'keyboard_c', 'keyboard_d', 'keyboard_e')) {
-        $keypagePath = Join-Path (Join-Path $Path $keyboardName) 'keypage.json'
+        $keyboardRoot = Join-Path $Path $keyboardName
+        $keypagePath = Join-Path $keyboardRoot 'keypage.json'
         if (-not (Test-Path $keypagePath -PathType Leaf)) {
+            return $false
+        }
+        $keypageText = Get-Content -LiteralPath $keypagePath -Raw -ErrorAction SilentlyContinue
+        if ([string]::IsNullOrWhiteSpace($keypageText) -or $keypageText -match '"_stub"\s*:') {
+            return $false
+        }
+        foreach ($requiredRelativePath in @(
+            'image\data_image.json',
+            'font\data_font.json',
+            'text\data_text.json',
+            'var\data_var.json'
+        )) {
+            if (-not (Test-Path -LiteralPath (Join-Path $keyboardRoot $requiredRelativePath) -PathType Leaf)) {
+                return $false
+            }
+        }
+        if (-not (Test-Path -LiteralPath (Join-Path $keyboardRoot 'audio') -PathType Container)) {
             return $false
         }
     }
@@ -202,7 +221,18 @@ function Ensure-ClientReleaseRequirements {
         'data/keyboard_b/keypage.json',
         'data/keyboard_c/keypage.json',
         'data/keyboard_d/keypage.json',
-        'data/keyboard_e/keypage.json'
+        'data/keyboard_e/keypage.json',
+        'res/OPPO Sans 4.0.ttf',
+        'res/SourceHansCN.otf',
+        'res/fangsong_GB2312.ttf',
+        'res/subset_font.exe',
+        'data/keyboard_a/font/OPPO Sans 4.0.ttf',
+        'data/keyboard_a/font/SourceHansCN.otf',
+        'data/keyboard_a/font/fangsong_GB2312.ttf',
+        'data/keyboard_d/image/data_image.json',
+        'data/keyboard_d/font/data_font.json',
+        'data/keyboard_d/text/data_text.json',
+        'data/keyboard_d/var/data_var.json'
     )) {
         $requiredPath = Join-Path $ReleaseDirectory $requiredRelativePath
         if (-not (Test-Path $requiredPath)) {
@@ -248,6 +278,58 @@ function Copy-ApplicationRuntimeArtifacts {
         Remove-Item -Path $dataDestination -Recurse -Force
     }
     Copy-Tree -Source $RuntimeDataDirectory -Destination $dataDestination
+    Copy-DefaultClientFonts -RepoRoot $RepoRoot -ReleaseDirectory $ReleaseDirectory
+}
+
+function Copy-DefaultClientFonts {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RepoRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$ReleaseDirectory
+    )
+
+    $requiredNames = @(
+        'OPPO Sans 4.0.ttf',
+        'SourceHansCN.otf',
+        'fangsong_GB2312.ttf',
+        'subset_font.exe'
+    )
+    $candidateDirectories = @(
+        (Join-Path $RepoRoot 'res'),
+        (Join-Path $RepoRoot 'bin\res'),
+        (Join-FromRoot 'inputs\client\default-fonts')
+    )
+    $sourceDirectory = $null
+    foreach ($candidateDirectory in $candidateDirectories) {
+        $complete = $true
+        foreach ($requiredName in $requiredNames) {
+            if (-not (Test-Path -LiteralPath (Join-Path $candidateDirectory $requiredName) -PathType Leaf)) {
+                $complete = $false
+                break
+            }
+        }
+        if ($complete) {
+            $sourceDirectory = $candidateDirectory
+            break
+        }
+    }
+    if ([string]::IsNullOrWhiteSpace($sourceDirectory)) {
+        throw "客户端默认字体不完整。需要在 xdisplay\res、xdisplay\bin\res 或 inputs\client\default-fonts 提供：$($requiredNames -join ', ')"
+    }
+
+    Write-Step "复制客户端默认字体：$sourceDirectory"
+    $resourceDestination = Join-Path $ReleaseDirectory 'res'
+    $keyboardFontDestination = Join-Path $ReleaseDirectory 'data\keyboard_a\font'
+    Ensure-Directory -Path $resourceDestination
+    Ensure-Directory -Path $keyboardFontDestination
+    foreach ($requiredName in $requiredNames) {
+        $sourcePath = Join-Path $sourceDirectory $requiredName
+        Copy-Item -LiteralPath $sourcePath -Destination (Join-Path $resourceDestination $requiredName) -Force
+        if ($requiredName -ne 'subset_font.exe') {
+            Copy-Item -LiteralPath $sourcePath -Destination (Join-Path $keyboardFontDestination $requiredName) -Force
+        }
+    }
 }
 
 $resolvedXdisplayRepoPath = Resolve-XdisplayRepoPath -PathValue $XdisplayRepoPath

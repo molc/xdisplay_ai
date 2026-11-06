@@ -372,16 +372,13 @@ function Build-BackendImagesFromSource {
             ImageRef = 'orches/orchestration-app:latest'
             RuntimeImageRef = 'orches/orchestration-app:xdisplayai-runtime-cache'
             Dockerfile = 'Dockerfile'
-            RuntimeFingerprintPaths = @(
-                'Dockerfile',
-                'external\xdisplay\bin\xd_render_cli'
-            )
+            RuntimeFingerprintPaths = @(Get-OrchestrationAppRuntimeFingerprintPaths)
         },
         [pscustomobject]@{
             ImageRef = 'orches/embedding-http:latest'
             RuntimeImageRef = 'orches/embedding-http:xdisplayai-runtime-cache'
             Dockerfile = 'Dockerfile.embedding'
-            RuntimeFingerprintPaths = @('Dockerfile.embedding')
+            RuntimeFingerprintPaths = @(Get-EmbeddingRuntimeFingerprintPaths)
         }
     )
 
@@ -546,6 +543,16 @@ function Test-BackendImages {
         [Parameter(Mandatory = $true)]
         [string]$BackendRepoPath
     )
+
+    $dependencyAssertion = Join-FromRoot 'ci\assert_image_dependencies.py'
+    Test-BackendImageSmoke `
+        -RunArguments @(
+            '--mount', "type=bind,source=$BackendRepoPath,target=/app",
+            '--mount', "type=bind,source=$dependencyAssertion,target=/tmp/assert_image_dependencies.py,readonly",
+            'orches/orchestration-app:latest',
+            'python', '/tmp/assert_image_dependencies.py'
+        ) `
+        -DisplayName 'orchestration-app contains every pyproject dependency'
 
     Test-BackendImageSmoke `
         -RunArguments @('--mount', "type=bind,source=$BackendRepoPath,target=/app", 'orches/orchestration-app:latest', 'python', '-c', 'import app.main') `

@@ -14,6 +14,8 @@
 !/inputs/prerequisites/vcredist/.gitkeep
 /inputs/prerequisites/wsl/**
 !/inputs/prerequisites/wsl/.gitkeep
+/inputs/client/default-fonts/**
+!/inputs/client/default-fonts/.gitkeep
 /staging/**
 !/staging/.gitkeep
 /dist/**
