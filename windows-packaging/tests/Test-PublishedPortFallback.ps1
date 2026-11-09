@@ -42,4 +42,8 @@ if ($blocked -le 55440) {
 $skipped = Find-NextPublishedPort -StartPort 20000 -ExcludedRanges @() -ReservedPorts @(20000, 20001)
 Assert-Equal -Expected 20002 -Actual $skipped -Message 'Reserved ports must be skipped before a free port is accepted.'
 
+$appPort = Resolve-AppHostPortContract -RequiredPort 18001 -LoopbackFree $true -OwnedByLocalCompose $false -PortProxyPresent $false
+Assert-Equal -Expected 18001 -Actual $appPort -Message 'APP_HOST_PORT must stay 18001 when the loopback port is free.'
+
 Write-Output 'Published port fallback checks passed.'
+exit 0

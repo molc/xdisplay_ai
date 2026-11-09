@@ -64,6 +64,7 @@ try {
     Assert-Equal -Expected $false -Actual $defaultOnlyResult.Changed -Message 'An env without an explicit prompt table must keep using code defaults.'
 
     Write-Host 'Prompt pin migration tests passed.'
+    exit 0
 }
 finally {
     if (Test-Path $testRoot) {

@@ -56,23 +56,27 @@ $featureNames = @(
 )
 
 foreach ($featureName in $featureNames) {
+    $feature = Get-WindowsOptionalFeature -Online -FeatureName $featureName -ErrorAction Stop
+    $stateName = Get-OptionalFeatureStateName -Feature $feature
+    if ($stateName -eq 'Enabled') {
+        continue
+    }
+
+    if ($stateName -eq 'EnablePending' -or $stateName -eq 'DisablePending') {
+        $restartRequired = $true
+        $restartReasons.Add("Windows 可选功能 $featureName 处于 $stateName，需要重启后继续")
+        continue
+    }
+
+    Write-Step "启用 Windows 可选功能：$featureName（当前状态：$(if ([string]::IsNullOrWhiteSpace($stateName)) { 'unknown' } else { $stateName })）"
     try {
-        $feature = Get-WindowsOptionalFeature -Online -FeatureName $featureName
-        if ($feature.State -ne 'Enabled') {
-            Write-Step "启用 Windows 可选功能：$featureName"
-            $enableResult = Enable-WindowsOptionalFeature -Online -FeatureName $featureName -All -NoRestart
-            $restartRequired = $true
-            if ($null -ne $enableResult) {
-                $restartReasons.Add("启用 Windows 可选功能：$featureName（结果状态：$($enableResult.State)）")
-            }
-            else {
-                $restartReasons.Add("启用 Windows 可选功能：$featureName")
-            }
-        }
+        Enable-WindowsOptionalFeature -Online -FeatureName $featureName -All -NoRestart -ErrorAction Stop | Out-Null
     }
     catch {
-        Write-Warning "无法检测或启用可选功能 $featureName：$($_.Exception.Message)"
+        throw "启用 Windows 可选功能 $featureName 失败：$($_.Exception.Message)。请确认离线功能源可用后重试，不要忽略该错误继续安装 Docker。"
     }
+    $restartRequired = $true
+    $restartReasons.Add("启用 Windows 可选功能：$featureName")
 }
 
 if ($restartRequired) {

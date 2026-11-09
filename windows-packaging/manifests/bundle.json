@@ -3,7 +3,7 @@
     "id": "XDisplayAI.Offline",
     "name": "XDisplay AI Offline Installer",
     "manufacturer": "molc",
-    "version": "0.1.3",
+    "version": "0.1.4",
     "targetArchitecture": "x64",
     "installDirectoryName": "XDisplayAI",
     "upgradeCodes": {

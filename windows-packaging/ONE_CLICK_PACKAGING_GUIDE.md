@@ -5,22 +5,31 @@
 
 ## 先说结论
 
-是的，builder 环境已经准备好以后，下一次打包的日常流程就是：
-
-1. 把最新后端源码**副本**放到 `C:\work\backend`。
-2. 把最新 XDisplay 源码**副本**放到 `C:\work\xdisplay`。
-3. 在 Windows 中打开管理员 PowerShell。
-4. 先执行预检命令。
-5. 再执行正式打包命令。
-6. 从 `C:\xdisplay_ai\windows-packaging\dist\dev` 取走**整个目录**。
-
-正式打包只需要复制下面这一行命令并按回车：
+当前正确性修复后的包版本是 **0.1.4**。builder 环境准备好以后，钉死输入并做 fail-closed 打包的**一条命令**是：
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\xdisplay_ai\windows-packaging\build-offline-package.ps1"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\xdisplay_ai\windows-packaging\build-offline-package.ps1" -Channel dev
 ```
 
-但是不要跳过前面的源码准备和预检。下面是从头到尾的完整步骤。
+这条命令会：校验并导出 Docker Desktop / VC / WSL 以及四个镜像 tar 的确切文件名与 SHA256/SHA512、扫描密钥、组装 Burn、核对相邻 payload 的 SHA512 绑定、跑源码/单元测试。它**不会**把候选目录复制到 Downloads，除非你同时提供隔离 Windows 验收证据且结果为 PASS：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\xdisplay_ai\windows-packaging\build-offline-package.ps1" -Channel dev -AcceptanceEvidencePath "C:\xdisplay_ai\windows-packaging\acceptance\windows-pass.json" -DownloadsDirectory "$env:USERPROFILE\Downloads\XDisplayAI-0.1.4"
+```
+
+没有该证据时，`dist\dev` 仍会留下候选安装包，但会带 `NOT_READY.txt` / `built_not_ready`，**不得**当作已接受的安装器。源码测试通过 ≠ Windows 验收通过。
+
+日常准备步骤不变：
+
+1. 把最新后端源码**副本**放到 `C:\work\backend`。
+2. 把最新 XDisplay 源码**副本**放到 `C:\work\xdisplay`（保持 catalogwrite 客户端 SHA `2A80890D...` 与 Converter `F7C50DB8...`，除非有意修复客户端）。
+3. 确认 `windows-packaging\inputs` 含全部绑定的 Docker Desktop / VC / WSL 安装包和四个镜像 tar。
+4. 在 Windows 中打开管理员 PowerShell，先预检再打包。
+5. 从 `C:\xdisplay_ai\windows-packaging\dist\dev` 取走**整个目录**做隔离 Windows 验收；只有 PASS 后才发布 Downloads。
+
+不要在文件资源管理器中双击 `.ps1` 文件。双击后窗口可能立即关闭，你看不到进度和错误。正确方法
+是先打开 PowerShell，再把本文给出的完整命令粘贴进去。命令中的 `-ExecutionPolicy Bypass` 只对
+这一次启动的 PowerShell 进程生效，不会永久修改 Windows 的执行策略。
 
 不要在文件资源管理器中双击 `.ps1` 文件。双击后窗口可能立即关闭，你看不到进度和错误。正确方法
 是先打开 PowerShell，再把本文给出的完整命令粘贴进去。命令中的 `-ExecutionPolicy Bypass` 只对

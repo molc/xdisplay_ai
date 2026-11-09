@@ -40,18 +40,23 @@ $missingArtifacts = $requiredEntryPoints | Where-Object { -not (Test-Path $_) }
 if ($missingArtifacts) {
     throw "缺少构建产物：$($missingArtifacts -join ', ')"
 }
-$artifactPaths = @(Get-ChildItem -Path $stagingLayout.Dist -File -Recurse | Sort-Object FullName | Select-Object -ExpandProperty FullName)
+$manifestFileName = "artifacts-$Channel.json"
+$artifactPaths = @(Get-ChildItem -Path $stagingLayout.Dist -File -Recurse | Where-Object {
+    -not [string]::Equals($_.Name, $manifestFileName, [StringComparison]::OrdinalIgnoreCase)
+} | Sort-Object FullName | Select-Object -ExpandProperty FullName)
 if ($artifactPaths.Count -eq 0) {
     throw "离线交付目录为空：$($stagingLayout.Dist)"
 }
 
 $artifactManifest = @()
 foreach ($artifactPath in $artifactPaths) {
-    $hash = Get-FileHash -Path $artifactPath -Algorithm SHA256
+    $sha256 = Get-FileHash -Path $artifactPath -Algorithm SHA256
+    $sha512 = Get-FileHash -Path $artifactPath -Algorithm SHA512
     $artifactManifest += [pscustomobject]@{
         relativePath = Get-RelativeArtifactPath -BasePath $stagingLayout.Dist -ArtifactPath $artifactPath
         sizeBytes = (Get-Item -Path $artifactPath).Length
-        sha256 = $hash.Hash.ToLowerInvariant()
+        sha256 = $sha256.Hash.ToLowerInvariant()
+        sha512 = $sha512.Hash.ToLowerInvariant()
     }
 }
 

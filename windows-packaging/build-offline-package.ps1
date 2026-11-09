@@ -10,7 +10,9 @@ param(
     [string]$ReportPath = '',
     [switch]$PreflightOnly,
     [switch]$SkipClientProtoCompile,
-    [switch]$SkipBackendImageBuild
+    [switch]$SkipBackendImageBuild,
+    [string]$AcceptanceEvidencePath = '',
+    [string]$DownloadsDirectory = ''
 )
 
 Set-StrictMode -Version Latest
@@ -21,6 +23,8 @@ $startedAtUtc = [DateTime]::UtcNow
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 
 . (Join-Path $packagingRoot 'ci\Common.ps1')
+. (Join-Path $packagingRoot 'src\scripts\common\InstallerCorrectness.ps1')
+. (Join-Path $packagingRoot 'ci\InstallerPackagingGates.ps1')
 
 function Ensure-Directory {
     param(
@@ -274,6 +278,13 @@ function Test-DeliveryDirectory {
             throw "Artifact SHA256 mismatch: $relativePath"
         }
 
+        if ($entry.PSObject.Properties.Name -contains 'sha512' -and -not [string]::IsNullOrWhiteSpace([string]$entry.sha512)) {
+            $actualSha512 = (Get-FileHash -Path $artifactPath -Algorithm SHA512).Hash.ToLowerInvariant()
+            if (-not [string]::Equals($actualSha512, [string]$entry.sha512, [System.StringComparison]::OrdinalIgnoreCase)) {
+                throw "Artifact SHA512 mismatch: $relativePath"
+            }
+        }
+
         $manifestByPath[$relativePath.ToLowerInvariant()] = $true
     }
 
@@ -419,6 +430,13 @@ try {
     $report.tools.mingwMake = $resolvedMingwMakePath
     $report.tools.winDeployQt = $resolvedWinDeployQtPath
 
+    Write-BuildStep 'Running source/unit installer correctness tests (not Windows acceptance).'
+    $sourceTestPath = Join-Path $packagingRoot 'tests\Test-InstallerCorrectness.ps1'
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $sourceTestPath
+    if ($LASTEXITCODE -ne 0) {
+        throw "Source/unit installer correctness tests failed with exit code $LASTEXITCODE"
+    }
+
     if ($PreflightOnly) {
         $report.status = 'preflight_passed'
         $report.finishedAtUtc = [DateTime]::UtcNow.ToString('o')
@@ -462,7 +480,33 @@ try {
     $artifactManifestName = "artifacts-$Channel.json"
     $artifactManifestPath = Join-Path $distDirectory $artifactManifestName
 
-    Write-BuildStep 'Verifying the complete offline delivery directory and SHA256 manifest.'
+    Write-BuildStep 'Scanning staged inputs and delivery directory for packaged secrets.'
+    Invoke-SecretsScan -Root $resolvedPrerequisitesRoot | Out-Null
+    Invoke-SecretsScan -Root (Join-Path $packagingRoot 'inputs') | Out-Null
+    Invoke-SecretsScan -Root $distDirectory | Out-Null
+
+    $inputPinsPath = Join-Path $distDirectory 'input-pins.json'
+    Write-BuildStep 'Exporting pinned input size/SHA256/SHA512 hashes.'
+    Export-InputPins -InputsRoot (Join-Path $packagingRoot 'inputs') -OutputPath $inputPinsPath | Out-Null
+
+    Write-BuildStep 'Verifying Burn SHA512 bindings for adjacent payloads.'
+    Assert-BurnExternalPayloadBindings `
+        -BundlePath (Join-Path $distDirectory $bundleName) `
+        -PayloadPaths @(
+            (Join-Path $distDirectory $msiName),
+            (Join-Path $distDirectory 'Docker Desktop Installer.exe'),
+            (Join-Path $distDirectory 'VC_redist.x64.exe'),
+            (Join-Path $distDirectory 'wsl_update_x64.msi')
+        )
+
+    $acceptance = Assert-WindowsAcceptanceEvidence -EvidencePath $AcceptanceEvidencePath
+    $releaseStatus = if ($acceptance.Ok) { 'pass' } else { 'built_not_ready' }
+    Write-ReleaseHold -DistDirectory $distDirectory -Status $releaseStatus -Failures @($acceptance.Failures) | Out-Null
+
+    Write-BuildStep 'Refreshing SHA256/SHA512 manifest after gate metadata.'
+    & (Join-Path $packagingRoot 'ci\publish.ps1') -Channel $Channel
+
+    Write-BuildStep 'Verifying the complete offline delivery directory and SHA256/SHA512 manifest.'
     $deliverySummary = Test-DeliveryDirectory `
         -DistDirectory $distDirectory `
         -ArtifactManifestPath $artifactManifestPath `
@@ -471,8 +515,34 @@ try {
             $msiName,
             'Docker Desktop Installer.exe',
             'VC_redist.x64.exe',
-            'wsl_update_x64.msi'
+            'wsl_update_x64.msi',
+            'input-pins.json',
+            "artifacts-$Channel.json"
         )
+
+    if (-not $acceptance.Ok) {
+        $report.status = 'built_not_ready'
+        $report.finishedAtUtc = [DateTime]::UtcNow.ToString('o')
+        $report.output.directory = $distDirectory
+        $report.output.bundle = Join-Path $distDirectory $bundleName
+        $report.output.msi = Join-Path $distDirectory $msiName
+        $report.output.artifactManifest = $artifactManifestPath
+        $report.output.fileCount = $deliverySummary.fileCount
+        $report.output.cabCount = $deliverySummary.cabCount
+        $report.error = ($acceptance.Failures -join ' ')
+        Write-BuildReport -Report $report -Path $ReportPath
+        Write-BuildStep "Build produced a candidate at $distDirectory but status is NOT_READY / built_not_ready."
+        Write-BuildStep 'Downloads will not be published until isolated Windows fresh-install reboot-resume and old-version preservation actually PASS.'
+        Write-BuildStep "Installer: $($report.output.bundle)"
+        Write-BuildStep "Report: $ReportPath"
+        return
+    }
+
+    if (-not [string]::IsNullOrWhiteSpace($DownloadsDirectory)) {
+        Ensure-Directory -Path $DownloadsDirectory
+        Write-BuildStep "Windows acceptance PASS. Publishing delivery directory to $DownloadsDirectory"
+        Copy-Item -Path (Join-Path $distDirectory '*') -Destination $DownloadsDirectory -Recurse -Force
+    }
 
     $report.status = 'succeeded'
     $report.finishedAtUtc = [DateTime]::UtcNow.ToString('o')

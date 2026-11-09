@@ -3,6 +3,7 @@ $ErrorActionPreference = 'Stop'
 
 $script:InstallRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $script:BundleMetadataCache = $null
+. (Join-Path $PSScriptRoot 'InstallerCorrectness.ps1')
 
 function Get-InstallRoot {
     return $script:InstallRoot
@@ -134,6 +135,132 @@ function Initialize-InstallStateDirectories {
     Ensure-Directory -Path $layout.WorkspaceRoot
 }
 
+function Get-WorkspaceSyncStatePath {
+    $layout = Get-InstallStateLayout
+    return Join-Path $layout.ConfigRoot 'workspace-sync.json'
+}
+
+function Get-WorkspaceSyncSlotName {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$RequiredRelativePath
+    )
+
+    if ($RequiredRelativePath -match 'Xdisplay\.exe') {
+        return 'clientSeedFingerprint'
+    }
+
+    return 'backendSeedFingerprint'
+}
+
+function Read-WorkspaceSyncFingerprint {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SlotName
+    )
+
+    $path = Get-WorkspaceSyncStatePath
+    if (-not (Test-Path -LiteralPath $path)) {
+        return ''
+    }
+
+    try {
+        $state = Read-Utf8JsonFile -Path $path
+    }
+    catch {
+        return ''
+    }
+
+    if ($state.PSObject.Properties.Name -contains $SlotName) {
+        return [string]$state.$SlotName
+    }
+
+    return ''
+}
+
+function Save-WorkspaceSyncFingerprint {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SlotName,
+        [Parameter(Mandatory = $true)]
+        [string]$SeedFingerprint
+    )
+
+    Initialize-InstallStateDirectories
+    $path = Get-WorkspaceSyncStatePath
+    $state = [pscustomobject]@{
+        clientSeedFingerprint = ''
+        backendSeedFingerprint = ''
+        packageVersion = ''
+        updatedAtUtc = [DateTime]::UtcNow.ToString('o')
+    }
+    if (Test-Path -LiteralPath $path) {
+        try {
+            $existing = Read-Utf8JsonFile -Path $path
+            foreach ($name in @('clientSeedFingerprint', 'backendSeedFingerprint', 'packageVersion')) {
+                if ($existing.PSObject.Properties.Name -contains $name) {
+                    $state.$name = [string]$existing.$name
+                }
+            }
+        }
+        catch {
+        }
+    }
+
+    $metadata = Get-BundleMetadata
+    if (($metadata.PSObject.Properties.Name -contains 'bundle') -and ($metadata.bundle.PSObject.Properties.Name -contains 'version')) {
+        $state.packageVersion = [string]$metadata.bundle.version
+    }
+    $state.$SlotName = $SeedFingerprint
+    $state.updatedAtUtc = [DateTime]::UtcNow.ToString('o')
+    Write-TextFileUtf8NoBom -Path $path -Content ($state | ConvertTo-Json -Depth 4)
+}
+
+function Copy-WorkspaceSeedAtomically {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Seed,
+        [Parameter(Mandatory = $true)]
+        [string]$Destination,
+        [Parameter(Mandatory = $true)]
+        [string]$RequiredRelativePath
+    )
+
+    $destinationParent = Split-Path -Path $Destination -Parent
+    Ensure-Directory -Path $destinationParent
+    $temporaryDestination = Join-Path $destinationParent ('.xdisplayai-seed-' + [System.Guid]::NewGuid().ToString('N'))
+    try {
+        Copy-Item -Path $Seed -Destination $temporaryDestination -Recurse -Force
+        $copiedRequiredPath = Join-InstallRelativePath -Root $temporaryDestination -RelativePath $RequiredRelativePath
+        if (-not (Test-Path -LiteralPath $copiedRequiredPath)) {
+            throw "复制后的开发工作目录不完整：$RequiredRelativePath"
+        }
+        if (Test-Path -LiteralPath $Destination) {
+            $backupDestination = Join-Path $destinationParent ('.xdisplayai-workspace-backup-' + [System.Guid]::NewGuid().ToString('N'))
+            Move-Item -Path $Destination -Destination $backupDestination
+            try {
+                Move-Item -Path $temporaryDestination -Destination $Destination
+                Remove-Item -Path $backupDestination -Recurse -Force -ErrorAction SilentlyContinue
+            }
+            catch {
+                if (Test-Path -LiteralPath $Destination) {
+                    Remove-Item -Path $Destination -Recurse -Force -ErrorAction SilentlyContinue
+                }
+                Move-Item -Path $backupDestination -Destination $Destination
+                throw
+            }
+        }
+        else {
+            Move-Item -Path $temporaryDestination -Destination $Destination
+        }
+    }
+    finally {
+        if (Test-Path -LiteralPath $temporaryDestination) {
+            Remove-Item -Path $temporaryDestination -Recurse -Force -ErrorAction SilentlyContinue
+        }
+    }
+}
+
 function Initialize-WorkspaceDirectory {
     param(
         [Parameter(Mandatory = $true)]
@@ -144,34 +271,41 @@ function Initialize-WorkspaceDirectory {
         [string]$RequiredRelativePath
     )
 
-    $requiredDestinationPath = Join-Path $Destination $RequiredRelativePath
-    if (Test-Path $Destination) {
-        if (-not (Test-Path $requiredDestinationPath)) {
-            throw "开发工作目录不完整，缺少：$requiredDestinationPath"
-        }
-        return
-    }
-
-    $requiredSeedPath = Join-Path $Seed $RequiredRelativePath
-    if (-not (Test-Path $requiredSeedPath)) {
+    $requiredSeedPath = Join-InstallRelativePath -Root $Seed -RelativePath $RequiredRelativePath
+    if (-not (Test-Path -LiteralPath $requiredSeedPath)) {
         throw "安装种子不完整，缺少：$requiredSeedPath"
     }
 
-    $destinationParent = Split-Path -Path $Destination -Parent
-    Ensure-Directory -Path $destinationParent
-    $temporaryDestination = Join-Path $destinationParent ('.xdisplayai-seed-' + [System.Guid]::NewGuid().ToString('N'))
-    try {
-        Copy-Item -Path $Seed -Destination $temporaryDestination -Recurse -Force
-        if (-not (Test-Path (Join-Path $temporaryDestination $RequiredRelativePath))) {
-            throw "复制后的开发工作目录不完整：$RequiredRelativePath"
-        }
-        Move-Item -Path $temporaryDestination -Destination $Destination
+    $slotName = Get-WorkspaceSyncSlotName -RequiredRelativePath $RequiredRelativePath
+    $currentSeedFingerprint = Get-PathContentFingerprint -Root $Seed -RelativePaths @($RequiredRelativePath)
+    $lastSeedFingerprint = Read-WorkspaceSyncFingerprint -SlotName $slotName
+    $decision = Get-WorkspaceSyncDecision `
+        -Seed $Seed `
+        -Destination $Destination `
+        -RequiredRelativePath $RequiredRelativePath `
+        -LastSeedFingerprint $lastSeedFingerprint `
+        -CurrentSeedFingerprint $currentSeedFingerprint
+
+    if ($decision -eq 'keep') {
+        return
     }
-    finally {
-        if (Test-Path $temporaryDestination) {
-            Remove-Item -Path $temporaryDestination -Recurse -Force -ErrorAction SilentlyContinue
+
+    Write-Step "按种子指纹同步工作目录（$decision）：$RequiredRelativePath"
+    if ($decision -eq 'create' -or -not (Test-Path -LiteralPath $Destination)) {
+        Copy-WorkspaceSeedAtomically -Seed $Seed -Destination $Destination -RequiredRelativePath $RequiredRelativePath
+    }
+    else {
+        Sync-WorkspaceTreeFromSeed `
+            -Seed $Seed `
+            -Destination $Destination `
+            -PreserveRelativePaths @(Get-WorkspacePreserveRelativePaths)
+        $requiredDestinationPath = Join-InstallRelativePath -Root $Destination -RelativePath $RequiredRelativePath
+        if (-not (Test-Path -LiteralPath $requiredDestinationPath)) {
+            throw "工作目录修复后仍缺少：$requiredDestinationPath"
         }
     }
+
+    Save-WorkspaceSyncFingerprint -SlotName $slotName -SeedFingerprint $currentSeedFingerprint
 }
 
 function Initialize-DevelopmentWorkspace {
@@ -334,6 +468,8 @@ function Get-RuntimeSettings {
 }
 
 function Initialize-RuntimeEnvironment {
+    $stateLayout = Get-InstallStateLayout
+    $backendEnvExisted = Test-Path -LiteralPath $stateLayout.BackendEnvFile
     $stateLayout = Initialize-DevelopmentWorkspace
 
     $dockerLayout = Get-DockerLayout
@@ -341,17 +477,73 @@ function Initialize-RuntimeEnvironment {
         throw "缺少 runtime 默认配置文件：$($dockerLayout.EnvDefaultsFile)"
     }
 
-    $runtimeEntries = Read-EnvFile -Path $dockerLayout.EnvDefaultsFile
-    $runtimeEntries['BACKEND_WORKSPACE_PATH'] = $stateLayout.BackendWorkspace.Replace('\', '/')
+    $runtimeDefaults = Read-EnvFile -Path $dockerLayout.EnvDefaultsFile
+    $existingRuntimeEntries = $null
     if (Test-Path $dockerLayout.EnvFile) {
         $existingRuntimeEntries = Read-EnvFile -Path $dockerLayout.EnvFile
-        foreach ($portKey in @('APP_HOST_PORT', 'POSTGRES_HOST_PORT', 'REDIS_HOST_PORT', 'EMBEDDING_HOST_PORT')) {
-            if ($existingRuntimeEntries.Contains($portKey) -and -not [string]::IsNullOrWhiteSpace([string]$existingRuntimeEntries[$portKey])) {
-                $runtimeEntries[$portKey] = [string]$existingRuntimeEntries[$portKey]
-            }
+        $runtimeBackupPath = Join-Path $stateLayout.ConfigRoot ('runtime.env.bak-' + [DateTime]::UtcNow.ToString('yyyyMMddHHmmss'))
+        Copy-Item -LiteralPath $dockerLayout.EnvFile -Destination $runtimeBackupPath -Force
+    }
+
+    $legacyCandidates = @(
+        $dockerLayout.EnvFile,
+        (Join-Path (Get-InstallRoot) 'docker\env\runtime.env')
+    )
+    if (-not [string]::IsNullOrWhiteSpace([string]$env:ProgramFiles)) {
+        $legacyCandidates += (Join-Path $env:ProgramFiles 'XDisplayAI\docker\env\runtime.env')
+    }
+    foreach ($legacyPath in $legacyCandidates) {
+        if ([string]::IsNullOrWhiteSpace([string]$legacyPath)) {
+            continue
+        }
+        if (-not (Test-Path -LiteralPath $legacyPath)) {
+            continue
+        }
+        if ($null -eq $existingRuntimeEntries) {
+            $existingRuntimeEntries = Read-EnvFile -Path $legacyPath
+        }
+        else {
+            $legacyEntries = Read-EnvFile -Path $legacyPath
+            $existingRuntimeEntries = Merge-EnvEntries -Defaults $legacyEntries -Existing $existingRuntimeEntries
         }
     }
+
+    $runtimeEntries = Merge-EnvEntries `
+        -Defaults $runtimeDefaults `
+        -Existing $existingRuntimeEntries `
+        -ForceEntries @{
+            APP_HOST_PORT = [string](Get-RequiredAppHostPort)
+            BACKEND_WORKSPACE_PATH = $stateLayout.BackendWorkspace.Replace('\', '/')
+        }
     Write-EnvFile -Path $dockerLayout.EnvFile -Entries $runtimeEntries
+
+    $legacyApplicationEntries = Get-LegacyApplicationEnvEntries -RuntimeEntries $runtimeEntries
+    if ($legacyApplicationEntries.Count -gt 0) {
+        $backendEnvPath = $stateLayout.BackendEnvFile
+        $backendEntries = [ordered]@{}
+        if (Test-Path -LiteralPath $backendEnvPath) {
+            $backendEntries = Read-EnvFile -Path $backendEnvPath
+        }
+        $backendChanged = $false
+        foreach ($key in @($legacyApplicationEntries.Keys)) {
+            $currentBackendValue = ''
+            if ($backendEntries.Contains($key)) {
+                $currentBackendValue = [string]$backendEntries[$key]
+            }
+            $legacyWins = -not $backendEnvExisted
+            $missingOrEmpty = [string]::IsNullOrWhiteSpace($currentBackendValue)
+            if ($legacyWins -or $missingOrEmpty) {
+                if ($currentBackendValue -ne [string]$legacyApplicationEntries[$key]) {
+                    $backendEntries[$key] = $legacyApplicationEntries[$key]
+                    $backendChanged = $true
+                }
+            }
+        }
+        if ($backendChanged) {
+            Write-EnvFile -Path $backendEnvPath -Entries $backendEntries
+            Write-Step '已将旧 runtime.env 中的应用配置迁入 backend .env（密钥值未写入日志）。'
+        }
+    }
 
     return [pscustomobject]@{
         RuntimeEnvFile = $dockerLayout.EnvFile
@@ -367,6 +559,8 @@ function Get-BootstrapState {
             AutomaticRebootCount = 0
             LastRebootReasons = @()
             UpdatedAtUtc = ''
+            Phase = ''
+            LaunchClientRequested = $false
         }
     }
 
@@ -378,6 +572,8 @@ function Get-BootstrapState {
             AutomaticRebootCount = 0
             LastRebootReasons = @()
             UpdatedAtUtc = ''
+            Phase = ''
+            LaunchClientRequested = $false
         }
     }
 
@@ -396,17 +592,31 @@ function Get-BootstrapState {
         $updatedAtUtc = [string]$state.UpdatedAtUtc
     }
 
+    $phase = ''
+    if ($state.PSObject.Properties.Name -contains 'Phase') {
+        $phase = [string]$state.Phase
+    }
+
+    $launchClientRequested = $false
+    if ($state.PSObject.Properties.Name -contains 'LaunchClientRequested') {
+        $launchClientRequested = [bool]$state.LaunchClientRequested
+    }
+
     return [pscustomobject]@{
         AutomaticRebootCount = $automaticRebootCount
         LastRebootReasons = $lastRebootReasons
         UpdatedAtUtc = $updatedAtUtc
+        Phase = $phase
+        LaunchClientRequested = $launchClientRequested
     }
 }
 
 function Save-BootstrapState {
     param(
         [int]$AutomaticRebootCount = 0,
-        [string[]]$LastRebootReasons = @()
+        [string[]]$LastRebootReasons = @(),
+        [string]$Phase = 'reboot-pending',
+        [bool]$LaunchClientRequested = $false
     )
 
     Initialize-InstallStateDirectories
@@ -415,6 +625,8 @@ function Save-BootstrapState {
         AutomaticRebootCount = $AutomaticRebootCount
         LastRebootReasons = @($LastRebootReasons | Where-Object { -not [string]::IsNullOrWhiteSpace([string]$_) })
         UpdatedAtUtc = [DateTime]::UtcNow.ToString('o')
+        Phase = $Phase
+        LaunchClientRequested = $LaunchClientRequested
     }
 
     $content = $state | ConvertTo-Json -Depth 4
@@ -469,4 +681,93 @@ Docker Desktop 无法启动：BIOS/UEFI 中未开启 CPU 硬件虚拟化。
 4. 保存设置并退出（通常按 F10），进入 Windows 后重新运行 XDisplay AI 安装。
 如果没有“UEFI 固件设置”，请在开机时按厂商指定的 Del、F2、F10 或 Esc 键进入 BIOS。
 '@
+}
+
+function Get-LoopbackListenerProcessName {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$Port
+    )
+
+    try {
+        $connection = Get-NetTCPConnection -LocalAddress '127.0.0.1' -LocalPort $Port -State Listen -ErrorAction SilentlyContinue |
+            Select-Object -First 1
+        if ($null -eq $connection) {
+            return ''
+        }
+
+        $process = Get-Process -Id $connection.OwningProcess -ErrorAction SilentlyContinue
+        if ($null -eq $process) {
+            return ''
+        }
+        return [string]$process.Name
+    }
+    catch {
+        return ''
+    }
+}
+
+function Get-LocalBackendOriginFacts {
+    param(
+        [int]$HealthzStatus = 0,
+        [int]$AssistantStatus = 0,
+        [int]$RequiredPort = 18001
+    )
+
+    $facts = [pscustomobject]@{
+        HealthzStatus = $HealthzStatus
+        AssistantStatus = $AssistantStatus
+        PublishedBinding = ''
+        ListenerProcess = Get-LoopbackListenerProcessName -Port $RequiredPort
+        PortProxyEntries = @()
+        RunningServices = @()
+        DockerHost = ''
+        ServerOs = ''
+        OperatingSystem = ''
+    }
+
+    try {
+        $proxyLines = @(& netsh.exe interface portproxy show all 2>$null)
+        $facts.PortProxyEntries = @(ConvertTo-PortProxyListenEntries -Lines $proxyLines)
+    }
+    catch {
+        $facts.PortProxyEntries = @()
+    }
+
+    try {
+        $dockerCommand = Get-DockerCommand
+        $previousErrorActionPreference = $ErrorActionPreference
+        try {
+            $ErrorActionPreference = 'Continue'
+            $facts.DockerHost = ((& $dockerCommand context inspect --format '{{.Endpoints.docker.Host}}' | Out-String).Trim())
+            $facts.ServerOs = ((& $dockerCommand info --format '{{.OSType}}' | Out-String).Trim())
+            $facts.OperatingSystem = ((& $dockerCommand info --format '{{.OperatingSystem}}' | Out-String).Trim())
+            $composeLines = @(& $dockerCommand compose --project-name (Get-DockerLayout).ProjectName ps --format '{{.Service}}')
+            $facts.RunningServices = @($composeLines | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+        }
+        finally {
+            $ErrorActionPreference = $previousErrorActionPreference
+        }
+    }
+    catch {
+    }
+
+    try {
+        $dockerCommand = Get-DockerCommand
+        $layout = Get-DockerLayout
+        $published = ((& $dockerCommand compose --project-name $layout.ProjectName --env-file $layout.EnvFile -f $layout.BaseCompose -f $layout.OverlayCompose port orchestration-app 8000 | Out-String).Trim())
+        if ($published -match '127\.0\.0\.1:(\d+)') {
+            $facts.PublishedBinding = "127.0.0.1:$($Matches[1])"
+        }
+        elseif ($facts.RunningServices -contains 'orchestration-app') {
+            $facts.PublishedBinding = "127.0.0.1:$RequiredPort"
+        }
+    }
+    catch {
+        if ($facts.RunningServices -contains 'orchestration-app') {
+            $facts.PublishedBinding = "127.0.0.1:$RequiredPort"
+        }
+    }
+
+    return $facts
 }

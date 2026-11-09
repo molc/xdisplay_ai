@@ -21,7 +21,8 @@ function Start-DockerDesktopIfNeeded {
     }
 
     $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-    if ($currentUser -eq 'NT AUTHORITY\\SYSTEM') {
+    if (Test-IsSystemIdentity -IdentityName $currentUser) {
+        Write-Warning '当前是 NT AUTHORITY\SYSTEM，不会启动 Docker Desktop GUI。需要交互用户会话才能完成 Docker Desktop 就绪。'
         return
     }
 
@@ -78,7 +79,7 @@ function Wait-For-DockerReady {
             return
         }
 
-        Write-Step "等待 Docker Desktop 就绪（$attempt/$MaxAttempts）"
+        Write-Step (New-BoundedWaitStatus -Stage '等待 Docker Desktop 就绪' -Attempt $attempt -MaxAttempts $MaxAttempts -LastError 'docker info 未成功' -TimeoutSeconds ($MaxAttempts * $SleepSeconds))
 
         if (($attempt % 6) -eq 0) {
             Start-DockerDesktopIfNeeded
@@ -86,7 +87,7 @@ function Wait-For-DockerReady {
         Start-Sleep -Seconds $SleepSeconds
     }
 
-    throw 'Docker daemon 未就绪。'
+    throw "Docker daemon 未在 $($MaxAttempts * $SleepSeconds) 秒内就绪。请在交互用户会话确认 Docker Desktop 已启动，并检查 WSL2/虚拟化，而不是改用其他端口或外部转发。"
 }
 
 function ConvertTo-TcpExcludedPortRanges {
@@ -193,17 +194,61 @@ function Find-NextPublishedPort {
     throw "从端口 $StartPort 起没有可用的本机端口。"
 }
 
+function Test-AppPortOwnedByLocalCompose {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$Port
+    )
+
+    try {
+        $containerId = Get-ComposeServiceContainerId -ServiceName 'orchestration-app'
+        if ([string]::IsNullOrWhiteSpace($containerId)) {
+            return $false
+        }
+
+        $published = (& $dockerCommand port $containerId '8000' | Out-String)
+        return [bool]($published -match "127\.0\.0\.1:$Port")
+    }
+    catch {
+        return $false
+    }
+}
+
 function Update-PublishedHostPorts {
     $layout = Get-DockerLayout
     $defaults = Read-EnvFile -Path $layout.EnvDefaultsFile
     $runtime = Read-EnvFile -Path $layout.EnvFile
     $ranges = @(Get-TcpExcludedPortRanges)
-    $chosen = @()
-    foreach ($key in @('APP_HOST_PORT', 'POSTGRES_HOST_PORT', 'REDIS_HOST_PORT', 'EMBEDDING_HOST_PORT')) {
+    $requiredAppPort = Get-RequiredAppHostPort
+    if (Test-PublishedPortExcluded -Port $requiredAppPort -Ranges $ranges) {
+        $ownedDuringExclusion = Test-AppPortOwnedByLocalCompose -Port $requiredAppPort
+        if (-not $ownedDuringExclusion) {
+            throw "127.0.0.1:$requiredAppPort 位于 Windows 排除端口范围。安装器不会改用 18002。请释放该排除范围后重试。"
+        }
+    }
+
+    $proxyEntries = @()
+    try {
+        $proxyEntries = @(ConvertTo-PortProxyListenEntries -Lines @(& netsh.exe interface portproxy show all 2>$null))
+    }
+    catch {
+        $proxyEntries = @()
+    }
+
+    $appPort = Resolve-AppHostPortContract `
+        -RequiredPort $requiredAppPort `
+        -LoopbackFree (Test-LoopbackTcpPortFree -Port $requiredAppPort) `
+        -OwnedByLocalCompose (Test-AppPortOwnedByLocalCompose -Port $requiredAppPort) `
+        -PortProxyPresent (Test-AppPortProxyPresent -Entries $proxyEntries -Port $requiredAppPort) `
+        -ListenerProcess (Get-LoopbackListenerProcessName -Port $requiredAppPort)
+    $runtime['APP_HOST_PORT'] = [string]$appPort
+    $chosen = @($appPort)
+
+    foreach ($key in @('POSTGRES_HOST_PORT', 'REDIS_HOST_PORT', 'EMBEDDING_HOST_PORT')) {
         $start = [int]$defaults[$key]
         $port = Find-NextPublishedPort -StartPort $start -ExcludedRanges $ranges -ReservedPorts $chosen
         if ($port -ne $start) {
-            Write-Step "$key 端口 $start 不可用，改用 $port。"
+            Write-Step "$key 端口 $start 不可用，改用 $port。APP_HOST_PORT 仍固定为 $requiredAppPort。"
         }
         $runtime[$key] = [string]$port
         $chosen += $port
@@ -251,11 +296,11 @@ function Wait-For-PostgresReady {
             }
         }
 
-        Write-Step "等待 PostgreSQL 就绪（$attempt/$MaxAttempts）"
+        Write-Step (New-BoundedWaitStatus -Stage '等待 PostgreSQL 就绪' -Attempt $attempt -MaxAttempts $MaxAttempts -LastError 'pg_isready 未成功' -TimeoutSeconds ($MaxAttempts * $SleepSeconds))
         Start-Sleep -Seconds $SleepSeconds
     }
 
-    throw 'PostgreSQL 容器未就绪。'
+    throw "PostgreSQL 容器未在 $($MaxAttempts * $SleepSeconds) 秒内就绪。请查看 compose 日志，不要删除命名卷。"
 }
 
 function Ensure-MigrationHistoryTable {

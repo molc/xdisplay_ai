@@ -18,7 +18,7 @@ Invoke-Compose -Arguments @('ps') | Out-File -FilePath (Join-Path $outputRoot 'c
 Invoke-Compose -Arguments @('logs', '--no-color') | Out-File -FilePath (Join-Path $outputRoot 'compose-logs.txt') -Encoding utf8
 if (Test-Path $layout.EnvFile) {
     $redactedLines = Get-Content -Path $layout.EnvFile | ForEach-Object {
-        if ($_ -match '^[A-Z0-9_]*(API_KEY|TOKEN|SECRET)[A-Z0-9_]*=') {
+        if ($_ -match '^[A-Z0-9_]*(API_KEY|TOKEN|SECRET|PASSWORD|PRIVATE_KEY)[A-Z0-9_]*=') {
             $name = $_.Split('=', 2)[0]
             "$name=***REDACTED***"
         }
