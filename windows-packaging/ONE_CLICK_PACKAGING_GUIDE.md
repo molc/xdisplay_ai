@@ -5,19 +5,21 @@
 
 ## 先说结论
 
-当前正确性修复后的包版本是 **0.1.4**。在现有 Windows builder 上重建安装器时，**不要重编客户端**：使用已钉死的 catalogwrite 客户端与 Converter，以及现有 `inputs` 镜像。把暂存/输出放到父流程准备好的 scratch（`-WorkRoot`），避免写满 C:/P:。
+当前正确性修复后的包版本是 **0.1.4**。在现有 Windows builder 上重建安装器时，**不要重编客户端**：使用已钉死的 catalogwrite 客户端与 Converter。s63f 后端必须先由父流程 Docker builder 按批准源树重建 app 镜像，再喂进 `inputs`；不要把旧 app tar F3EECC91 改名。把暂存/输出放到父流程准备好的 scratch（`-WorkRoot`），避免写满 C:/P:。
 
 ```powershell
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\xdisplay_ai\windows-packaging\build-offline-package.ps1" -Channel dev `
   -SkipClientBuild `
   -UseExistingBackendInputs `
-  -SkipBackendImageBuild `
   -ClientReleaseDir "P:\catalogwrite-9aa152b7\client" `
   -ConverterReleaseDir "P:\converter-fix-10b7\bin" `
   -ExpectedClientSha256 "2A80890DB988157371CF28D24CA23685D7933C4E59630E5A2DCD2363B7DB5600" `
   -ExpectedConverterSha256 "F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36" `
+  -ExpectedInputPinsPath "C:\xdisplay_ai\windows-packaging\manifests\pins\offline-inputs.s63f.json" `
   -WorkRoot "<SCRATCH_ROOT>"
 ```
+
+`-SkipBackendImageBuild` is **invalid** for s63f from-source packaging: `docker/export_runtime_requirements.py` and `docker/strict-ocr` do not exist, and F3EECC91 is not s63f. Parent Docker builder must run the sanctioned `rebuild-orches-app-image.sh` (see `manifests/pins/s63f-app-image-build-recipe.md`) so `inputs/backend/images/orches_orchestration-app_latest.tar` has companion `*.inspect.json` labels for `dd6ab3d50` / `prod/s63f`. Do not require a cached Linux `xd_render_cli` ELF; Dockerfile `qt_builder` deletes the Mach-O leftover and rebuilds it. Do not use `C:\xdisplay_ai\windows-packaging\inputs\client\xdisplay-win64` (old client).
 
 `<SCRATCH_ROOT>` 由父流程在非破坏性新盘上提供后再填。预检加 `-PreflightOnly`。不要使用 `C:\xdisplay_ai\windows-packaging\inputs\client\xdisplay-win64`（旧客户端）。不要用未安装的 pwsh 7，也不要改系统代码页；脚本带 UTF-8 BOM，供原生 `powershell.exe` 5.1 / CP936 解析。
 
@@ -32,7 +34,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\xdisplay_ai\windows-
 日常准备步骤不变：
 
 1. 0.1.4 安装器重建：**不要**准备 `C:\work\xdisplay`，**不要**重编客户端。使用 `P:\catalogwrite-9aa152b7\client` 与 `P:\converter-fix-10b7\bin`。
-2. 使用现有 `windows-packaging\inputs` 中的 Docker Desktop / VC / WSL 和四个镜像 tar（以及已缓存的 `inputs\backend\source`）。不要为了打包去 clone 后端。
+2. 使用现有 `windows-packaging\inputs` 中的 Docker Desktop / VC / WSL。s63f **app** 镜像 tar 必须来自父流程 `rebuild-orches-app-image.sh`（带 inspect companion），不得使用 F3EECC91。embedding/pg/redis 仅在 inspect 证明后可沿用历史 tar。源码快照必须是 `dd6ab3d50` / `prod/s63f`。不要为了打包去 clone 后端。
 3. 仅在有意从源码重编客户端时才使用 `C:\work\backend` / `C:\work\xdisplay`（会改变 catalogwrite/Converter 哈希，本任务不允许）。
 4. 在 Windows 中打开管理员 PowerShell，先预检再打包。
 5. 从 `C:\xdisplay_ai\windows-packaging\dist\dev` 取走**整个目录**做隔离 Windows 验收；只有 PASS 后才发布 Downloads。

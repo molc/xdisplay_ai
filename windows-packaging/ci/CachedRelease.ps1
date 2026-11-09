@@ -310,6 +310,173 @@ function Set-PackagingWorkLayout {
     }
 }
 
+function Get-InputsRelativePath {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Root,
+        [Parameter(Mandatory = $true)]
+        [string]$RelativePath
+    )
+
+    $absolutePath = $Root
+    foreach ($segment in @($RelativePath -split '[\\/]' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })) {
+        $absolutePath = Join-Path $absolutePath $segment
+    }
+    return $absolutePath
+}
+
+function Get-DockerInspectImageDocument {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
+        throw "Missing Docker inspect companion $Path. Rebuild the s63f app image with the sanctioned recipe and write docker inspect JSON next to the tar. A renamed F3EECC91 tar is not proof."
+    }
+
+    $parsed = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
+    if ($null -eq $parsed) {
+        throw "Docker inspect companion $Path is empty."
+    }
+    if ($parsed -is [System.Array]) {
+        if ($parsed.Count -lt 1) {
+            throw "Docker inspect companion $Path has no images."
+        }
+        return $parsed[0]
+    }
+    return $parsed
+}
+
+function Get-DockerInspectLabelValue {
+    param(
+        [Parameter(Mandatory = $true)]
+        $Image,
+        [Parameter(Mandatory = $true)]
+        [string]$LabelName
+    )
+
+    if ($null -eq $Image.Config -or $null -eq $Image.Config.Labels) {
+        return ''
+    }
+    $property = $Image.Config.Labels.PSObject.Properties[$LabelName]
+    if ($null -eq $property) {
+        return ''
+    }
+    return [string]$property.Value
+}
+
+function Assert-S63fMigrationSet {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$MigrationDir
+    )
+
+    $expected = @(Get-S63fMigrationFileNames)
+    $migrationFiles = @(Get-ChildItem -LiteralPath $MigrationDir -Filter '*.sql' -File -ErrorAction SilentlyContinue | Sort-Object Name)
+    if ($migrationFiles.Count -eq 0) {
+        throw "UseExistingBackendInputs is missing SQL migrations under $MigrationDir."
+    }
+    $actual = @($migrationFiles | ForEach-Object { $_.Name })
+    $unexpected = @($actual | Where-Object { $expected -notcontains $_ })
+    $missing = @($expected | Where-Object { $actual -notcontains $_ })
+    if ($missing.Count -gt 0 -or $unexpected.Count -gt 0) {
+        throw "s63f ships db/migrations $($expected -join ', ') only (no new data migration). Found: $($actual -join ', ')."
+    }
+}
+
+function Assert-S63fXdRenderCliSourcePresent {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$SourceRoot
+    )
+
+    foreach ($relativePath in @(Get-OrchestrationAppRuntimeFingerprintPaths)) {
+        $absolutePath = Get-InputsRelativePath -Root $SourceRoot -RelativePath $relativePath
+        if (-not (Test-Path -LiteralPath $absolutePath)) {
+            throw "s63f runtime fingerprint input is missing: $relativePath. docker/export_runtime_requirements.py and docker/strict-ocr are not part of this tree."
+        }
+    }
+
+    $binaryPath = Get-InputsRelativePath -Root $SourceRoot -RelativePath 'external\xdisplay\bin\xd_render_cli\xd_render_cli'
+    if (Test-Path -LiteralPath $binaryPath -PathType Leaf) {
+        # Sanctioned export may include a 50200-byte Mach-O leftover (SHA256 58618EC2...).
+        # Dockerfile qt_builder does `rm -f xd_render_cli && qmake6 xd_render_cli.pro && make`
+        # on python:3.11-slim-bookworm with qt6-base-dev/libgl-dev. Presence or absence of
+        # that leftover must not block packaging, and a cached Linux ELF is not required.
+        return
+    }
+}
+
+function Assert-S63fAppImageCompanionInspect {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$InspectPath,
+        [Parameter(Mandatory = $true)]
+        [string]$SourceRoot,
+        [Parameter(Mandatory = $true)]
+        [string]$ExpectedRevision
+    )
+
+    $image = Get-DockerInspectImageDocument -Path $InspectPath
+    $gitSha = (Get-DockerInspectLabelValue -Image $image -LabelName 'xdisplayai.packaging.git-sha').Trim()
+    $tag = (Get-DockerInspectLabelValue -Image $image -LabelName 'xdisplayai.packaging.tag').Trim()
+    $fingerprintLabel = (Get-DockerInspectLabelValue -Image $image -LabelName 'xdisplayai.packaging.runtime-fingerprint').Trim()
+    if (-not $gitSha.StartsWith((Get-ApprovedBackendRevisionPrefix), [StringComparison]::OrdinalIgnoreCase)) {
+        throw "App image inspect git-sha '$gitSha' is not s63f tip $(Get-ApprovedBackendRevisionPrefix). Do not reuse F3EECC91."
+    }
+    $revisionMatchesInspect = [string]::Equals($gitSha, $ExpectedRevision, [StringComparison]::OrdinalIgnoreCase) -or
+        $gitSha.StartsWith($ExpectedRevision, [StringComparison]::OrdinalIgnoreCase) -or
+        $ExpectedRevision.StartsWith($gitSha, [StringComparison]::OrdinalIgnoreCase)
+    if (-not $revisionMatchesInspect) {
+        throw "App image inspect git-sha '$gitSha' does not match SOURCE_REVISION '$ExpectedRevision'."
+    }
+    if ($tag -ne (Get-ApprovedBackendTag)) {
+        throw "App image inspect tag '$tag' is not $(Get-ApprovedBackendTag)."
+    }
+
+    $repoTags = @()
+    if ($null -ne $image.RepoTags) {
+        $repoTags = @($image.RepoTags | ForEach-Object { [string]$_ })
+    }
+    foreach ($requiredTag in @(Get-S63fAppImageCompanionTags)) {
+        if ($repoTags -notcontains $requiredTag) {
+            throw "App image inspect is missing companion tag $requiredTag (found: $($repoTags -join ', '))."
+        }
+    }
+
+    $expectedFingerprint = Get-SourceContentFingerprint `
+        -Root $SourceRoot `
+        -RelativePaths @(Get-OrchestrationAppRuntimeFingerprintPaths)
+    if (-not [string]::Equals($expectedFingerprint, $fingerprintLabel, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "App image runtime-fingerprint label '$fingerprintLabel' does not match source snapshot fingerprint '$expectedFingerprint'. Image and bind-mounted source must be a pair; do not retag an old cache."
+    }
+
+    if ([string]::IsNullOrWhiteSpace([string]$image.Id)) {
+        throw "App image inspect is missing Id."
+    }
+}
+
+function Assert-SkipBackendImageBuildFromSource {
+    param(
+        [Parameter(Mandatory = $true)]
+        [bool]$SkipBackendImageBuild,
+        [Parameter(Mandatory = $true)]
+        [bool]$UseExistingBackendInputs
+    )
+
+    if ($SkipBackendImageBuild -and -not $UseExistingBackendInputs) {
+        throw (
+            'SkipBackendImageBuild is invalid for s63f from-source packaging. ' +
+            'docker/export_runtime_requirements.py and docker/strict-ocr do not exist at prod/s63f. ' +
+            'The app image must be built from Dockerfile (qt_builder qmake6 + pip + playwright 1.56 Chromium 1194). ' +
+            'Do not require a cached Linux xd_render_cli ELF; Dockerfile rm -f of the Mach-O leftover and rebuilds it. ' +
+            'Parent Docker builder runs the sanctioned rebuild-orches-app-image.sh, then Windows packaging uses -UseExistingBackendInputs with companion inspect JSON. ' +
+            'Do not reuse F3EECC91.'
+        )
+    }
+}
+
 function Assert-ExistingBackendInputs {
     param(
         [Parameter(Mandatory = $true)]
@@ -333,22 +500,20 @@ function Assert-ExistingBackendInputs {
         'backend/compose/upstream/docker-compose.yml'
     )
     foreach ($relativePath in $requiredRelativePaths) {
-        $absolutePath = $InputsRoot
-        foreach ($segment in @($relativePath -split '[\\/]' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })) {
-            $absolutePath = Join-Path $absolutePath $segment
-        }
+        $absolutePath = Get-InputsRelativePath -Root $InputsRoot -RelativePath $relativePath
         if (-not (Test-Path -LiteralPath $absolutePath)) {
             throw "UseExistingBackendInputs is missing $relativePath under $InputsRoot. Source clones are not a permitted workaround."
         }
     }
 
-    $migrationDir = Join-Path $InputsRoot 'backend\migrations'
-    $migrationFiles = @(Get-ChildItem -LiteralPath $migrationDir -Filter '*.sql' -File -ErrorAction SilentlyContinue)
-    if ($migrationFiles.Count -eq 0) {
-        throw "UseExistingBackendInputs is missing SQL migrations under $migrationDir."
-    }
+    $sourceRoot = Get-InputsRelativePath -Root $InputsRoot -RelativePath 'backend/source'
+    $migrationDir = Get-InputsRelativePath -Root $InputsRoot -RelativePath 'backend/migrations'
 
     if ([string]::IsNullOrWhiteSpace($PinManifestPath)) {
+        $migrationFiles = @(Get-ChildItem -LiteralPath $migrationDir -Filter '*.sql' -File -ErrorAction SilentlyContinue)
+        if ($migrationFiles.Count -eq 0) {
+            throw "UseExistingBackendInputs is missing SQL migrations under $migrationDir."
+        }
         return
     }
     if (-not (Test-Path -LiteralPath $PinManifestPath -PathType Leaf)) {
@@ -369,7 +534,7 @@ function Assert-ExistingBackendInputs {
         $forbiddenAppSha = Get-ForbiddenS63fAppImageSha256
     }
 
-    $revisionFile = Join-Path $InputsRoot 'backend\source\SOURCE_REVISION.txt'
+    $revisionFile = Get-InputsRelativePath -Root $InputsRoot -RelativePath 'backend/source/SOURCE_REVISION.txt'
     if (-not (Test-Path -LiteralPath $revisionFile -PathType Leaf)) {
         throw "s63f backend source snapshot is missing SOURCE_REVISION.txt under $InputsRoot. Refusing to treat an unproven tree as dd6ab3d50."
     }
@@ -378,12 +543,50 @@ function Assert-ExistingBackendInputs {
         throw "Backend SOURCE_REVISION '$revision' is not the author-approved s63f tip $requiredPrefix (tag prod/s63f). HEAD and stale snapshots are rejected."
     }
 
-    $appTarPath = Join-Path $InputsRoot 'backend\images\orches_orchestration-app_latest.tar'
+    $tagFile = Get-InputsRelativePath -Root $InputsRoot -RelativePath 'backend/source/SOURCE_TAG.txt'
+    if (-not (Test-Path -LiteralPath $tagFile -PathType Leaf)) {
+        throw 's63f backend source snapshot is missing SOURCE_TAG.txt (expected prod/s63f).'
+    }
+    $tag = ([System.IO.File]::ReadAllText($tagFile)).Trim()
+    if ($tag -ne (Get-ApprovedBackendTag)) {
+        throw "Backend SOURCE_TAG '$tag' is not $(Get-ApprovedBackendTag)."
+    }
+
+    $submoduleFile = Get-InputsRelativePath -Root $InputsRoot -RelativePath 'backend/source/SOURCE_SUBMODULE.txt'
+    if (-not (Test-Path -LiteralPath $submoduleFile -PathType Leaf)) {
+        throw 's63f backend source snapshot is missing SOURCE_SUBMODULE.txt.'
+    }
+    $submoduleText = [System.IO.File]::ReadAllText($submoduleFile)
+    if ($submoduleText -notmatch [regex]::Escape((Get-ApprovedXdisplaySubmoduleCommit))) {
+        throw "SOURCE_SUBMODULE.txt does not record xdisplay gitlink $(Get-ApprovedXdisplaySubmoduleCommit)."
+    }
+
+    Assert-S63fXdRenderCliSourcePresent -SourceRoot $sourceRoot
+    Assert-S63fMigrationSet -MigrationDir $migrationDir
+
+    $dockerfile = Get-Content -LiteralPath (Get-InputsRelativePath -Root $sourceRoot -RelativePath 'Dockerfile') -Raw
+    if ($dockerfile -notmatch 'PLAYWRIGHT_VERSION=1\.56\.0' -or $dockerfile -notmatch 'CHROMIUM_REVISION=1194') {
+        throw 's63f Dockerfile must pin playwright 1.56.0 and Chromium revision 1194.'
+    }
+    if ($dockerfile -notmatch 'qmake6 xd_render_cli\.pro' -or $dockerfile -notmatch 'rm -f xd_render_cli') {
+        throw 's63f Dockerfile must rebuild Linux xd_render_cli in qt_builder (rm -f leftover binary, qmake6, make). Do not require a cached ELF.'
+    }
+    $dockerIgnore = Get-Content -LiteralPath (Get-InputsRelativePath -Root $sourceRoot -RelativePath '.dockerignore') -Raw
+    if ($dockerIgnore -notmatch '(?m)^uv\.lock$') {
+        throw 's63f .dockerignore must ignore uv.lock; image build uses pip from Dockerfile, not uv.lock.'
+    }
+
+    $appTarPath = Get-InputsRelativePath -Root $InputsRoot -RelativePath 'backend/images/orches_orchestration-app_latest.tar'
     $actualAppSha = Convert-ToNormalizedSha256 -Value (Get-FileHash -Path $appTarPath -Algorithm SHA256).Hash
     $forbiddenNormalized = Convert-ToNormalizedSha256 -Value $forbiddenAppSha
     if ([string]::Equals($actualAppSha, $forbiddenNormalized, [StringComparison]::Ordinal)) {
         throw "App image $appTarPath SHA256 $actualAppSha is the forbidden previous 0.1.4 tar F3EECC91... — it is not proven s63f. Do not rename the old tar; rebuild from dd6ab3d50 / prod/s63f."
     }
+
+    Assert-S63fAppImageCompanionInspect `
+        -InspectPath (Get-InputsRelativePath -Root $InputsRoot -RelativePath 'backend/images/orches_orchestration-app_latest.inspect.json') `
+        -SourceRoot $sourceRoot `
+        -ExpectedRevision $revision
 
     foreach ($entry in @($manifest.files)) {
         $relativePath = [string]$entry.relativePath
@@ -397,10 +600,7 @@ function Assert-ExistingBackendInputs {
         if (-not $assertSha -or [string]::IsNullOrWhiteSpace([string]$entry.sha256)) {
             continue
         }
-        $absolutePath = $InputsRoot
-        foreach ($segment in @($relativePath -split '[\\/]' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })) {
-            $absolutePath = Join-Path $absolutePath $segment
-        }
+        $absolutePath = Get-InputsRelativePath -Root $InputsRoot -RelativePath $relativePath
         Assert-PinnedFileIdentity `
             -Path $absolutePath `
             -ExpectedSha256 ([string]$entry.sha256) `
@@ -422,8 +622,12 @@ function Export-CachedReleasePins {
         status = 'pinned-cached-release'
         backend = [pscustomobject]@{
             requiredRevisionPrefix = Get-ApprovedBackendRevisionPrefix
+            requiredRevisionFull = Get-ApprovedBackendRevisionFull
             requiredTag = Get-ApprovedBackendTag
+            xdisplaySubmodule = Get-ApprovedXdisplaySubmoduleCommit
             forbiddenAppImageSha256 = Get-ForbiddenS63fAppImageSha256
+            skipBackendImageBuild = 'invalid-from-source; UseExistingBackendInputs only after sanctioned Docker rebuild + inspect companion'
+            linuxRenderCli = 'built-in-qt_builder; Mach-O leftover optional; cached ELF not required'
         }
         client = $QualifiedRelease.client
         converter = $QualifiedRelease.converter

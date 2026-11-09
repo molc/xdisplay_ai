@@ -198,12 +198,48 @@ function Get-ApprovedBackendRevisionPrefix {
     return 'dd6ab3d50'
 }
 
+function Get-ApprovedBackendRevisionFull {
+    return 'dd6ab3d505827a94cbc9d59d7067fcce14db6fbe'
+}
+
 function Get-ApprovedBackendTag {
     return 'prod/s63f'
 }
 
+function Get-ApprovedXdisplaySubmoduleCommit {
+    return '0c657ad3eac7ece814206bd40fea807ec6568f81'
+}
+
+function Get-ApprovedS63fSourceArchiveSha256 {
+    return '767E9305A7C9C6B57CE9220A971C9F1BE0F8102E46F9A8C67444203253B76A84'
+}
+
 function Get-ForbiddenS63fAppImageSha256 {
     return 'F3EECC91AB386DE950F175329AB7CCF078435FF9E863E55708F60485BFFC2309'
+}
+
+function Get-S63fPlaywrightVersion {
+    return '1.56.0'
+}
+
+function Get-S63fChromiumRevision {
+    return '1194'
+}
+
+function Get-S63fMigrationFileNames {
+    return @(
+        '0001_init.sql',
+        '0002_rag.sql',
+        '0003_orch_runtime.sql'
+    )
+}
+
+function Get-S63fExportMachOXdRenderCliSha256 {
+    return '58618EC212229AC900E48304922AFD50EDFFD0F54CB325DCFA60F34382A606EA'
+}
+
+function Get-S63fExportMachOXdRenderCliBytes {
+    return [long]50200
 }
 
 function Get-S63fPromptVersionPins {

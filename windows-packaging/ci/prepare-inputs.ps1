@@ -17,6 +17,7 @@ Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'Common.ps1')
+. (Join-Path $PSScriptRoot 'CachedRelease.ps1')
 
 function Resolve-ExistingPath {
     param(
@@ -319,6 +320,13 @@ function Sync-BackendSourceSnapshot {
         }
     }
     [System.IO.File]::WriteAllText((Join-Path $Destination 'SOURCE_REVISION.txt'), $revision + [Environment]::NewLine)
+
+    foreach ($sidecarName in @('SOURCE_TAG.txt', 'SOURCE_SUBMODULE.txt')) {
+        $sidecarSource = Join-Path $Source $sidecarName
+        if (Test-Path -LiteralPath $sidecarSource -PathType Leaf) {
+            Copy-Item -LiteralPath $sidecarSource -Destination (Join-Path $Destination $sidecarName) -Force
+        }
+    }
 }
 
 function Export-BackendImages {
@@ -365,6 +373,13 @@ function Export-BackendImages {
         }
 
         Move-Item -Path $temporaryTarPath -Destination $tarPath -Force
+
+        $inspectPath = [System.IO.Path]::ChangeExtension($tarPath, '.inspect.json')
+        $inspectJson = (& docker image inspect $imageSpec.ImageRef | Out-String).Trim()
+        if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($inspectJson)) {
+            throw "docker inspect companion failed：$($imageSpec.ImageRef)"
+        }
+        [System.IO.File]::WriteAllText($inspectPath, $inspectJson + [Environment]::NewLine)
     }
 
     Get-ChildItem -Path $DestinationDirectory -Filter '*.tar' -File -ErrorAction SilentlyContinue | Where-Object {
@@ -382,18 +397,34 @@ function Build-BackendImagesFromSource {
         throw 'prepare-inputs 需要 docker 命令来构建后端镜像。'
     }
 
+    Assert-S63fXdRenderCliSourcePresent -SourceRoot $BackendRepoPath
+    Assert-S63fMigrationSet -MigrationDir (Join-Path $BackendRepoPath 'db\migrations')
+
+    $sourceRevision = 'unknown'
+    $revisionFile = Join-Path $BackendRepoPath 'SOURCE_REVISION.txt'
+    if (Test-Path -LiteralPath $revisionFile -PathType Leaf) {
+        $sourceRevision = ([System.IO.File]::ReadAllText($revisionFile)).Trim()
+    }
+    if (-not $sourceRevision.StartsWith((Get-ApprovedBackendRevisionPrefix), [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Backend SOURCE_REVISION '$sourceRevision' is not s63f $(Get-ApprovedBackendRevisionPrefix). HEAD is rejected. Do not skip the image rebuild."
+    }
+
     $imageBuilds = @(
         [pscustomobject]@{
             ImageRef = 'orches/orchestration-app:latest'
             RuntimeImageRef = 'orches/orchestration-app:xdisplayai-runtime-cache'
             Dockerfile = 'Dockerfile'
             RuntimeFingerprintPaths = @(Get-OrchestrationAppRuntimeFingerprintPaths)
+            CompanionTags = @(Get-S63fAppImageCompanionTags)
+            RequireS63fLabels = $true
         },
         [pscustomobject]@{
             ImageRef = 'orches/embedding-http:latest'
             RuntimeImageRef = 'orches/embedding-http:xdisplayai-runtime-cache'
             Dockerfile = 'Dockerfile.embedding'
             RuntimeFingerprintPaths = @(Get-EmbeddingRuntimeFingerprintPaths)
+            CompanionTags = @('orches/embedding-http:latest')
+            RequireS63fLabels = $false
         }
     )
 
@@ -401,19 +432,6 @@ function Build-BackendImagesFromSource {
         $dockerfilePath = Join-Path $BackendRepoPath $imageBuild.Dockerfile
         if (-not (Test-Path $dockerfilePath)) {
             throw "未找到 Dockerfile：$dockerfilePath"
-        }
-
-        if ($SkipBackendImageBuild) {
-            Write-Step "跳过基础镜像构建，复用运行时依赖缓存：$($imageBuild.RuntimeImageRef)"
-            & docker image inspect $imageBuild.RuntimeImageRef > $null 2> $null
-            if ($LASTEXITCODE -ne 0) {
-                throw "缺少可复用的后端基础镜像：$($imageBuild.RuntimeImageRef)"
-            }
-            & docker image tag $imageBuild.RuntimeImageRef $imageBuild.ImageRef
-            if ($LASTEXITCODE -ne 0) {
-                throw "标记后端基础镜像失败：$($imageBuild.ImageRef)"
-            }
-            continue
         }
 
         $runtimeFingerprint = Get-SourceContentFingerprint `
@@ -434,20 +452,57 @@ function Build-BackendImagesFromSource {
             -ExpectedFingerprint $runtimeFingerprint `
             -CachedFingerprint $cachedFingerprint
 
-        if ($cacheDecision -eq 'refresh') {
+        if ($SkipBackendImageBuild) {
+            $cachedGitSha = if ($runtimeImageExists) {
+                Get-DockerImageLabelValue -ImageMetadata $runtimeMetadata -LabelName 'xdisplayai.packaging.git-sha'
+            }
+            else {
+                ''
+            }
+            $cachedTag = if ($runtimeImageExists) {
+                Get-DockerImageLabelValue -ImageMetadata $runtimeMetadata -LabelName 'xdisplayai.packaging.tag'
+            }
+            else {
+                ''
+            }
+            $s63fLabelsOk = -not $imageBuild.RequireS63fLabels -or (
+                $cachedGitSha.StartsWith((Get-ApprovedBackendRevisionPrefix), [StringComparison]::OrdinalIgnoreCase) -and
+                $cachedTag -eq (Get-ApprovedBackendTag)
+            )
+            if ($cacheDecision -ne 'reuse' -or -not $s63fLabelsOk) {
+                throw (
+                    "SkipBackendImageBuild is invalid for s63f：$($imageBuild.ImageRef). " +
+                    "expectedFingerprint=$runtimeFingerprint cachedFingerprint=$cachedFingerprint " +
+                    "git-sha=$cachedGitSha tag=$cachedTag. " +
+                    'docker/export_runtime_requirements.py and docker/strict-ocr do not exist. ' +
+                    'Rebuild from Dockerfile (qt_builder qmake6, pip, playwright 1.56 Chromium 1194). ' +
+                    'Do not require a cached Linux xd_render_cli ELF. Do not reuse F3EECC91.'
+                )
+            }
+            Write-Step "s63f runtime-cache labels matched; tagging proven image：$($imageBuild.ImageRef)"
+        }
+        elseif ($cacheDecision -eq 'refresh') {
             Write-Step "运行时依赖缓存缺失或指纹不匹配，完整构建：$($imageBuild.RuntimeImageRef)"
-            & docker build `
-                --file $dockerfilePath `
-                --label "xdisplayai.packaging.runtime-fingerprint=$runtimeFingerprint" `
-                --label "xdisplayai.packaging.build-method=full-runtime-cache" `
-                --tag $imageBuild.RuntimeImageRef `
-                $BackendRepoPath
+            $buildArgs = @(
+                'build',
+                '--file', $dockerfilePath,
+                '--label', "xdisplayai.packaging.runtime-fingerprint=$runtimeFingerprint",
+                '--label', 'xdisplayai.packaging.build-method=full-runtime-cache',
+                '--label', "xdisplayai.packaging.git-sha=$sourceRevision",
+                '--label', "xdisplayai.packaging.tag=$(Get-ApprovedBackendTag)",
+                '--tag', $imageBuild.RuntimeImageRef
+            )
+            foreach ($companionTag in @($imageBuild.CompanionTags)) {
+                $buildArgs += @('--tag', $companionTag)
+            }
+            $buildArgs += $BackendRepoPath
+            & docker @buildArgs
             if ($LASTEXITCODE -ne 0) {
                 throw (
                     "后端运行时依赖缓存刷新失败：$($imageBuild.ImageRef)。" +
                     "期望指纹=$runtimeFingerprint；缓存指纹=$cachedFingerprint。" +
                     '源码依赖或 Dockerfile 变化后必须先在可联网环境刷新 runtime-cache 镜像，' +
-                    '普通 app/data 源码更新可继续离线一键打包。'
+                    '普通 app/data 源码更新可继续离线一键打包。Linux xd_render_cli 由 qt_builder 重建，不要求缓存 ELF。'
                 )
             }
         }
@@ -459,6 +514,12 @@ function Build-BackendImagesFromSource {
         & docker image tag $imageBuild.RuntimeImageRef $imageBuild.ImageRef
         if ($LASTEXITCODE -ne 0) {
             throw "标记后端基础镜像失败：$($imageBuild.ImageRef)"
+        }
+        foreach ($companionTag in @($imageBuild.CompanionTags)) {
+            & docker image tag $imageBuild.RuntimeImageRef $companionTag
+            if ($LASTEXITCODE -ne 0) {
+                throw "标记后端 companion tag 失败：$companionTag"
+            }
         }
     }
 }

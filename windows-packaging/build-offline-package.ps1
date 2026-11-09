@@ -426,6 +426,10 @@ try {
         $report.sources.xdisplay.path = $ClientReleaseDir
         $report.sources.xdisplay.revision = "pinned:$ExpectedClientSha256"
 
+        Assert-SkipBackendImageBuildFromSource `
+            -SkipBackendImageBuild $SkipBackendImageBuild.IsPresent `
+            -UseExistingBackendInputs $UseExistingBackendInputs.IsPresent
+
         if ($UseExistingBackendInputs) {
             if ([string]::IsNullOrWhiteSpace($ExpectedInputPinsPath)) {
                 $ExpectedInputPinsPath = Join-Path $packagingRoot 'manifests\pins\offline-inputs.s63f.json'
@@ -568,6 +572,9 @@ try {
         if ($SkipClientProtoCompile) {
             $buildArguments.SkipClientProtoCompile = $true
         }
+        Assert-SkipBackendImageBuildFromSource `
+            -SkipBackendImageBuild $SkipBackendImageBuild.IsPresent `
+            -UseExistingBackendInputs $false
         if ($SkipBackendImageBuild) {
             $buildArguments.SkipBackendImageBuild = $true
         }
