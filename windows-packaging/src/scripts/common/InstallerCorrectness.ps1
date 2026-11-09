@@ -79,6 +79,154 @@ function Get-RequiredAppHostPort {
     return 18001
 }
 
+function Get-PostgresReadyConsecutiveSuccessTarget {
+    return 2
+}
+
+function Get-PostgresReadyStabilityDelaySeconds {
+    return 2
+}
+
+function Get-F09ColdPostgresFatalShuttingDownOutput {
+    return '2026-11-09 14:38:14.937 UTC [81] FATAL:  the database system is shutting down'
+}
+
+function Get-F09ColdPostgresPgIsReadyAcceptingOutput {
+    return '/var/run/postgresql:5432 - accepting connections'
+}
+
+function Test-IsPostgresTransientUnavailableMessage {
+    param(
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$Message
+    )
+
+    $text = [string]$Message
+    if ([string]::IsNullOrWhiteSpace($text)) {
+        return $false
+    }
+
+    $normalized = $text.ToLowerInvariant()
+    $needles = @(
+        'the database system is shutting down',
+        'the database system is starting up',
+        'the database system is not yet accepting connections',
+        'the database system is in recovery mode',
+        'connection refused',
+        'could not connect to server',
+        'database "ai_orchestration" does not exist'
+    )
+    foreach ($needle in $needles) {
+        if ($normalized.Contains($needle.ToLowerInvariant())) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
+function ConvertTo-PostgresQueryProbeResult {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$ExitCode,
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$Output
+    )
+
+    $text = [string]$Output
+    $firstDataLine = @(
+        $text -split "`r?`n" |
+            ForEach-Object { $_.Trim() } |
+            Where-Object {
+                -not [string]::IsNullOrWhiteSpace($_) -and
+                $_ -notmatch '^(psql:|WARNING:|NOTICE:)'
+            } |
+            Select-Object -First 1
+    )
+    $ready = ($ExitCode -eq 0) -and ($firstDataLine.Count -eq 1) -and ($firstDataLine[0] -eq '1')
+    return [pscustomobject]@{
+        Ready = [bool]$ready
+        Transient = (-not $ready) -and (Test-IsPostgresTransientUnavailableMessage -Message $text)
+        Detail = $text
+        ExitCode = $ExitCode
+    }
+}
+
+function ConvertTo-PostgresHistoryTablePresenceResult {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$ExitCode,
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$Output
+    )
+
+    $text = [string]$Output
+    $firstDataLine = @(
+        $text -split "`r?`n" |
+            ForEach-Object { $_.Trim() } |
+            Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+            Select-Object -First 1
+    )
+    $present = ($ExitCode -eq 0) -and ($firstDataLine.Count -eq 1) -and ($firstDataLine[0] -eq 'offline_migration_history')
+    return [pscustomobject]@{
+        Present = [bool]$present
+        Transient = (-not $present) -and (Test-IsPostgresTransientUnavailableMessage -Message $text)
+        Detail = $text
+        ExitCode = $ExitCode
+    }
+}
+
+function Update-PostgresReadyConsecutiveCount {
+    param(
+        [int]$CurrentCount = 0,
+        [Parameter(Mandatory = $true)]
+        [bool]$ProbeReady
+    )
+
+    if ($ProbeReady) {
+        return ([int]$CurrentCount + 1)
+    }
+
+    return 0
+}
+
+function Test-PostgresReadyConsecutiveCountMet {
+    param(
+        [int]$ConsecutiveCount = 0
+    )
+
+    return ([int]$ConsecutiveCount -ge (Get-PostgresReadyConsecutiveSuccessTarget))
+}
+
+function Test-PostgresReadyProbeSequence {
+    param(
+        [AllowEmptyCollection()]
+        [object[]]$Probes = @()
+    )
+
+    $count = 0
+    foreach ($probe in @($Probes)) {
+        $ready = $false
+        if ($null -ne $probe) {
+            if ($probe -is [bool]) {
+                $ready = [bool]$probe
+            }
+            elseif ($probe.PSObject.Properties.Name -contains 'Ready') {
+                $ready = [bool]$probe.Ready
+            }
+        }
+        $count = Update-PostgresReadyConsecutiveCount -CurrentCount $count -ProbeReady $ready
+        if (Test-PostgresReadyConsecutiveCountMet -ConsecutiveCount $count) {
+            return $true
+        }
+    }
+
+    return $false
+}
+
 function Get-WorkspacePreserveRelativePaths {
     return @('.env', '.env.local', 'secret.env')
 }

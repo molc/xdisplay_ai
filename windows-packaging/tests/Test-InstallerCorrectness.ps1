@@ -466,6 +466,10 @@ try {
     Assert-True -Condition ($backendInstallContent -match 'Resolve-AppHostPortContract') -Message 'Backend install must enforce the 18001 contract.'
     Assert-True -Condition ($backendInstallContent -match "NT AUTHORITY\\SYSTEM" -or $backendInstallContent -match 'Test-IsSystemIdentity') -Message 'SYSTEM identity comparison must use the real Windows account name.'
     Assert-True -Condition ($backendInstallContent -notmatch "NT AUTHORITY\\\\SYSTEM") -Message 'Install-BackendPayload must not compare against a two-backslash SYSTEM string.'
+    Assert-True -Condition ($backendInstallContent -notmatch 'pg_isready -U') -Message 'Migration readiness must not invoke pg_isready as the docker-entrypoint temp-server false positive.'
+    Assert-True -Condition ($backendInstallContent -match 'ConvertTo-PostgresQueryProbeResult') -Message 'Postgres wait must require a successful SELECT 1 against ai_orchestration.'
+    Assert-True -Condition ($backendInstallContent -match 'to_regclass') -Message 'offline_migration_history init must verify the table exists after CREATE.'
+    Assert-True -Condition ($backendInstallContent -match 'Test-IsPostgresTransientUnavailableMessage') -Message 'History-table init must retry only transient cold-start/shutdown errors, not skip the gate.'
 
     $bundleJson = Get-Content -Path (Join-Path $PackagingRoot 'manifests\bundle.json') -Raw | ConvertFrom-Json
     Assert-Equal -Expected '0.1.4' -Actual $bundleJson.bundle.version -Message 'Correctness rebuild must increment the package version above the failed 0.1.3 candidate.'

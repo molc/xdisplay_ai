@@ -281,39 +281,109 @@ function Get-ComposeServiceContainerId {
     return ([string]$containerId).Trim()
 }
 
+function Invoke-PostgresSql {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$PostgresContainerId,
+        [Parameter(Mandatory = $true)]
+        [string]$Sql,
+        [string]$Database = 'ai_orchestration'
+    )
+
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        $output = @(& $dockerCommand exec $PostgresContainerId psql -U postgres -d $Database -t -A -v ON_ERROR_STOP=1 -c $Sql 2>&1)
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+
+    return [pscustomobject]@{
+        ExitCode = [int]$exitCode
+        Output = ((@($output) | ForEach-Object { [string]$_ }) -join [Environment]::NewLine)
+    }
+}
+
 function Wait-For-PostgresReady {
     param(
         [int]$MaxAttempts = 120,
         [int]$SleepSeconds = 3
     )
 
+    $consecutive = 0
+    $lastError = 'postgres 容器尚未接受 ai_orchestration 查询'
+    $stabilityDelaySeconds = Get-PostgresReadyStabilityDelaySeconds
     for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
         $postgresContainerId = Get-ComposeServiceContainerId -ServiceName 'postgres'
         if ($postgresContainerId) {
-            & $dockerCommand exec $postgresContainerId pg_isready -U postgres 2> $null | Out-Null
-            if ($LASTEXITCODE -eq 0) {
+            $query = Invoke-PostgresSql -PostgresContainerId $postgresContainerId -Sql 'SELECT 1;'
+            $probe = ConvertTo-PostgresQueryProbeResult -ExitCode $query.ExitCode -Output $query.Output
+            if (-not [string]::IsNullOrWhiteSpace([string]$probe.Detail)) {
+                $lastError = [string]$probe.Detail
+            }
+            $consecutive = Update-PostgresReadyConsecutiveCount -CurrentCount $consecutive -ProbeReady ([bool]$probe.Ready)
+            if (Test-PostgresReadyConsecutiveCountMet -ConsecutiveCount $consecutive) {
                 return $postgresContainerId
             }
+            if ($probe.Ready) {
+                Write-Step (New-BoundedWaitStatus -Stage '确认 PostgreSQL 已越过 docker-entrypoint 临时进程' -Attempt $consecutive -MaxAttempts (Get-PostgresReadyConsecutiveSuccessTarget) -LastError 'SELECT 1 成功，但冷启动需要连续两次查询成功' -TimeoutSeconds ($MaxAttempts * $SleepSeconds))
+                Start-Sleep -Seconds $stabilityDelaySeconds
+                continue
+            }
+        }
+        else {
+            $consecutive = 0
+            $lastError = 'postgres 容器尚未出现'
         }
 
-        Write-Step (New-BoundedWaitStatus -Stage '等待 PostgreSQL 就绪' -Attempt $attempt -MaxAttempts $MaxAttempts -LastError 'pg_isready 未成功' -TimeoutSeconds ($MaxAttempts * $SleepSeconds))
+        Write-Step (New-BoundedWaitStatus -Stage '等待 PostgreSQL 接受迁移查询' -Attempt $attempt -MaxAttempts $MaxAttempts -LastError $lastError -TimeoutSeconds ($MaxAttempts * $SleepSeconds))
         Start-Sleep -Seconds $SleepSeconds
     }
 
-    throw "PostgreSQL 容器未在 $($MaxAttempts * $SleepSeconds) 秒内就绪。请查看 compose 日志，不要删除命名卷。"
+    throw "PostgreSQL 未在 $($MaxAttempts * $SleepSeconds) 秒内稳定接受 ai_orchestration 查询（docker-entrypoint 冷启动临时进程会在 shutdown 窗口误报监听就绪）。最后错误：$lastError"
 }
 
 function Ensure-MigrationHistoryTable {
     param(
         [Parameter(Mandatory = $true)]
-        [string]$PostgresContainerId
+        [string]$PostgresContainerId,
+        [int]$MaxAttempts = 30,
+        [int]$SleepSeconds = 2
     )
 
-    $sql = 'CREATE TABLE IF NOT EXISTS offline_migration_history (migration_name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW());'
-    & $dockerCommand exec $PostgresContainerId psql -U postgres -d ai_orchestration -v ON_ERROR_STOP=1 -c $sql | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        throw '初始化 offline_migration_history 失败。'
+    $createSql = 'CREATE TABLE IF NOT EXISTS offline_migration_history (migration_name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW());'
+    $presenceSql = "SELECT COALESCE(to_regclass('public.offline_migration_history')::text, '');"
+    $lastError = 'offline_migration_history 尚未创建'
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        $create = Invoke-PostgresSql -PostgresContainerId $PostgresContainerId -Sql $createSql
+        if ($create.ExitCode -ne 0) {
+            $lastError = [string]$create.Output
+            if (-not (Test-IsPostgresTransientUnavailableMessage -Message $create.Output)) {
+                throw "初始化 offline_migration_history 失败。$lastError"
+            }
+            Write-Step (New-BoundedWaitStatus -Stage '初始化 offline_migration_history' -Attempt $attempt -MaxAttempts $MaxAttempts -LastError $lastError -TimeoutSeconds ($MaxAttempts * $SleepSeconds))
+            Start-Sleep -Seconds $SleepSeconds
+            continue
+        }
+
+        $presence = Invoke-PostgresSql -PostgresContainerId $PostgresContainerId -Sql $presenceSql
+        $presenceResult = ConvertTo-PostgresHistoryTablePresenceResult -ExitCode $presence.ExitCode -Output $presence.Output
+        if ($presenceResult.Present) {
+            return
+        }
+
+        $lastError = [string]$presence.Output
+        if (($presence.ExitCode -ne 0) -and -not $presenceResult.Transient) {
+            throw "初始化 offline_migration_history 失败：CREATE 返回成功但无法确认表存在。$lastError"
+        }
+
+        Write-Step (New-BoundedWaitStatus -Stage '确认 offline_migration_history 已存在' -Attempt $attempt -MaxAttempts $MaxAttempts -LastError $lastError -TimeoutSeconds ($MaxAttempts * $SleepSeconds))
+        Start-Sleep -Seconds $SleepSeconds
     }
+
+    throw "初始化 offline_migration_history 失败。$lastError"
 }
 
 function Test-MigrationApplied {
