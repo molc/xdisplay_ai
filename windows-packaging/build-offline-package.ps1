@@ -25,6 +25,7 @@
     [switch]$UseExistingBackendInputs,
     [switch]$SkipClientProtoCompile,
     [switch]$SkipBackendImageBuild,
+    [switch]$VerifyExistingOutputsOnly,
     [string]$AcceptanceEvidencePath = '',
     [string]$DownloadsDirectory = ''
 )
@@ -533,8 +534,12 @@ try {
     $report.status = 'building'
     Write-BuildReport -Report $report -Path $ReportPath
 
+    if ($VerifyExistingOutputsOnly -and -not $SkipClientBuild) {
+        throw 'VerifyExistingOutputsOnly is an incremental re-verify of an already generated dist tree; it requires -SkipClientBuild and does not rebuild MSI/CAB/Burn.'
+    }
+
     if ($SkipClientBuild) {
-        if (-not $UseExistingBackendInputs) {
+        if (-not $UseExistingBackendInputs -and -not $VerifyExistingOutputsOnly) {
             $resolvedDockerPath = Resolve-ToolPath -ToolName 'docker' -CandidatePaths @(
                 'C:\Program Files\Docker\Docker\resources\bin\docker.exe'
             )
@@ -552,9 +557,14 @@ try {
             & $prepareInputsScriptPath @prepareArguments
         }
 
-        Write-BuildStep 'Building MSI and offline bundle from pinned cached client and existing images; not calling build-xdisplay-from-source.'
-        & $buildInstallerScriptPath -Channel $Channel
-        & $publishScriptPath -Channel $Channel
+        if ($VerifyExistingOutputsOnly) {
+            Write-BuildStep 'Re-verifying existing dist Burn/MSI/CAB outputs; not rebuilding payload, MSI, or Burn.'
+        }
+        else {
+            Write-BuildStep 'Building MSI and offline bundle from pinned cached client and existing images; not calling build-xdisplay-from-source.'
+            & $buildInstallerScriptPath -Channel $Channel
+            & $publishScriptPath -Channel $Channel
+        }
     }
     else {
         Wait-ForDockerDaemon -DockerPath $resolvedDockerPath
@@ -592,6 +602,14 @@ try {
     $msiName = "XDisplayAI-$version$versionSuffix.msi"
     $artifactManifestName = "artifacts-$Channel.json"
     $artifactManifestPath = Join-Path $distDirectory $artifactManifestName
+    $bundlePath = Join-Path $distDirectory $bundleName
+    $msiPath = Join-Path $distDirectory $msiName
+
+    if ($VerifyExistingOutputsOnly) {
+        if (-not (Test-Path -LiteralPath $bundlePath -PathType Leaf) -or -not (Test-Path -LiteralPath $msiPath -PathType Leaf)) {
+            throw "VerifyExistingOutputsOnly requires existing $bundleName and $msiName under $distDirectory. This switch does not compile missing outputs."
+        }
+    }
 
     Write-BuildStep 'Scanning staged inputs and delivery directory for packaged secrets.'
     Invoke-SecretsScan -Root $resolvedPrerequisitesRoot | Out-Null
@@ -609,9 +627,9 @@ try {
 
     Write-BuildStep 'Verifying Burn SHA512 bindings for adjacent payloads.'
     Assert-BurnExternalPayloadBindings `
-        -BundlePath (Join-Path $distDirectory $bundleName) `
+        -BundlePath $bundlePath `
         -PayloadPaths @(
-            (Join-Path $distDirectory $msiName),
+            $msiPath,
             (Join-Path $distDirectory 'Docker Desktop Installer.exe'),
             (Join-Path $distDirectory 'VC_redist.x64.exe'),
             (Join-Path $distDirectory 'wsl_update_x64.msi')

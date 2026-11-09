@@ -23,6 +23,12 @@ if ($LASTEXITCODE -ne 0) {
     throw "Test-CachedReleasePackaging.ps1 failed (exit $LASTEXITCODE)"
 }
 
+Write-Host 'RUN Test-BurnSha512Bindings.ps1'
+& (Join-Path $PSScriptRoot 'Test-BurnSha512Bindings.ps1') -PackagingRoot $PackagingRoot
+if ($LASTEXITCODE -ne 0) {
+    throw "Test-BurnSha512Bindings.ps1 failed (exit $LASTEXITCODE)"
+}
+
 Write-Host 'RUN Test-InstallerCorrectness.ps1'
 & (Join-Path $PSScriptRoot 'Test-InstallerCorrectness.ps1') -PackagingRoot $PackagingRoot
 if ($LASTEXITCODE -ne 0) {

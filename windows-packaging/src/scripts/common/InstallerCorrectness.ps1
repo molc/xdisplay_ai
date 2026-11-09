@@ -686,12 +686,156 @@ function Get-MissingOfflineInputRelativePaths {
     return @($missing)
 }
 
+function Convert-ToNormalizedSha512 {
+    param(
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$Value
+    )
+
+    if ([string]::IsNullOrWhiteSpace($Value)) {
+        return ''
+    }
+    return $Value.Replace('-', '').Trim().ToUpperInvariant()
+}
+
+function Get-BurnManifestExternalPayloads {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ManifestPath
+    )
+
+    if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) {
+        throw "Burn manifest.xml 不存在：$ManifestPath"
+    }
+
+    $xml = New-Object System.Xml.XmlDocument
+    $xml.XmlResolver = $null
+    $xml.Load((Resolve-Path -LiteralPath $ManifestPath).Path)
+    $namespaceManager = New-Object System.Xml.XmlNamespaceManager($xml.NameTable)
+    $namespaceManager.AddNamespace('burn', 'http://wixtoolset.org/schemas/v4/2008/Burn')
+    $nodes = $xml.SelectNodes('//burn:Payload[@Packaging="external"]', $namespaceManager)
+    if ($null -eq $nodes) {
+        return @()
+    }
+
+    $payloads = New-Object System.Collections.Generic.List[object]
+    foreach ($node in $nodes) {
+        $filePath = [string]$node.GetAttribute('FilePath')
+        $hash = Convert-ToNormalizedSha512 -Value ([string]$node.GetAttribute('Hash'))
+        $sizeText = [string]$node.GetAttribute('FileSize')
+        $fileSize = [int64]0
+        if (-not [string]::IsNullOrWhiteSpace($sizeText)) {
+            $fileSize = [int64]$sizeText
+        }
+        $payloads.Add([pscustomobject]@{
+            Id = [string]$node.GetAttribute('Id')
+            FilePath = $filePath
+            FileName = [IO.Path]::GetFileName($filePath)
+            Hash = $hash
+            FileSize = $fileSize
+        })
+    }
+    return @($payloads.ToArray())
+}
+
+function Resolve-WixBurnExtractCommand {
+    $command = Get-Command wix -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($null -ne $command -and -not [string]::IsNullOrWhiteSpace([string]$command.Source)) {
+        return [string]$command.Source
+    }
+    foreach ($candidate in @('C:\WINDOWS\wix.cmd', 'C:\Program Files\WiX Toolset v5.0\bin\wix.exe')) {
+        if (Test-Path -LiteralPath $candidate) {
+            return $candidate
+        }
+    }
+    throw 'Official WiX burn extract is required to read BurnManifest payload hashes. WiX 5 stores Hash attributes in the compressed UX container; grepping uncompressed EXE bytes is not a Burn binding.'
+}
+
+function Export-BurnBundleApplicationManifest {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$BundlePath,
+        [string]$OutputDirectory = ''
+    )
+
+    if (-not (Test-Path -LiteralPath $BundlePath -PathType Leaf)) {
+        throw "Burn bundle 不存在：$BundlePath"
+    }
+
+    $wix = Resolve-WixBurnExtractCommand
+    $extractRoot = $OutputDirectory
+    if ([string]::IsNullOrWhiteSpace($extractRoot)) {
+        $tempRoot = [string]$env:XDISPLAYAI_TEMP_ROOT
+        if ([string]::IsNullOrWhiteSpace($tempRoot)) {
+            $tempRoot = [IO.Path]::GetTempPath()
+        }
+        $extractRoot = Join-Path $tempRoot ('burn-oba-' + [guid]::NewGuid().ToString('N'))
+    }
+    $obaDirectory = Join-Path $extractRoot 'oba'
+    $intermediateDirectory = Join-Path $extractRoot 'intermediate'
+    New-Item -ItemType Directory -Path $obaDirectory -Force | Out-Null
+    New-Item -ItemType Directory -Path $intermediateDirectory -Force | Out-Null
+
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        & $wix burn extract $BundlePath -oba $obaDirectory -intermediateFolder $intermediateDirectory
+        $extractExitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+    if ($extractExitCode -ne 0) {
+        throw "wix burn extract failed for $BundlePath (exit $extractExitCode). Official WiX 5.0.2 BA extract is the source of Burn SHA512 bindings."
+    }
+
+    $manifestPath = Join-Path $obaDirectory 'manifest.xml'
+    if (-not (Test-Path -LiteralPath $manifestPath -PathType Leaf)) {
+        $found = @(Get-ChildItem -LiteralPath $obaDirectory -Filter 'manifest.xml' -Recurse -File -ErrorAction SilentlyContinue | Select-Object -First 1)
+        if ($found.Count -lt 1) {
+            throw "wix burn extract did not produce manifest.xml under $obaDirectory"
+        }
+        $manifestPath = $found[0].FullName
+    }
+
+    return [pscustomobject]@{
+        ManifestPath = $manifestPath
+        ExtractRoot = $extractRoot
+        ObaDirectory = $obaDirectory
+    }
+}
+
+function Get-BurnPayloadBindingVerdict {
+    param(
+        [Parameter(Mandatory = $true)]
+        $ManifestEntry,
+        [Parameter(Mandatory = $true)]
+        [string]$PayloadPath
+    )
+
+    if ($null -eq $ManifestEntry -or [string]::IsNullOrWhiteSpace([string]$ManifestEntry.Hash)) {
+        return 'missing'
+    }
+    if (-not (Test-Path -LiteralPath $PayloadPath -PathType Leaf)) {
+        return 'missing-file'
+    }
+
+    $actualHash = Convert-ToNormalizedSha512 -Value ((Get-FileHash -LiteralPath $PayloadPath -Algorithm SHA512).Hash)
+    $actualSize = [int64](Get-Item -LiteralPath $PayloadPath).Length
+    if ($actualHash -eq [string]$ManifestEntry.Hash -and $actualSize -eq [int64]$ManifestEntry.FileSize) {
+        return 'match'
+    }
+    return 'mismatch'
+}
+
 function Test-BurnPayloadSha512Binding {
     param(
         [Parameter(Mandatory = $true)]
         [string]$BundlePath,
         [Parameter(Mandatory = $true)]
-        [string]$PayloadPath
+        [string]$PayloadPath,
+        [string]$ManifestXmlPath = ''
     )
 
     if (-not (Test-Path -LiteralPath $BundlePath)) {
@@ -701,35 +845,28 @@ function Test-BurnPayloadSha512Binding {
         throw "Burn 相邻 payload 不存在：$PayloadPath"
     }
 
-    $sha = [System.Security.Cryptography.SHA512]::Create()
+    $extractRoot = ''
     try {
-        $stream = [System.IO.File]::OpenRead($PayloadPath)
-        try {
-            $hashBytes = $sha.ComputeHash($stream)
+        if ([string]::IsNullOrWhiteSpace($ManifestXmlPath)) {
+            $exported = Export-BurnBundleApplicationManifest -BundlePath $BundlePath
+            $ManifestXmlPath = $exported.ManifestPath
+            $extractRoot = [string]$exported.ExtractRoot
         }
-        finally {
-            $stream.Dispose()
+
+        $leaf = [IO.Path]::GetFileName($PayloadPath)
+        $entry = @(Get-BurnManifestExternalPayloads -ManifestPath $ManifestXmlPath | Where-Object {
+            [string]::Equals([string]$_.FileName, $leaf, [StringComparison]::OrdinalIgnoreCase)
+        } | Select-Object -First 1)
+        if ($entry.Count -lt 1) {
+            return $false
         }
+        return ((Get-BurnPayloadBindingVerdict -ManifestEntry $entry[0] -PayloadPath $PayloadPath) -eq 'match')
     }
     finally {
-        $sha.Dispose()
+        if (-not [string]::IsNullOrWhiteSpace($extractRoot) -and (Test-Path -LiteralPath $extractRoot)) {
+            Remove-Item -LiteralPath $extractRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
-
-    $hex = ([BitConverter]::ToString($hashBytes)).Replace('-', '')
-    $hexLower = $hex.ToLowerInvariant()
-    $base64 = [Convert]::ToBase64String($hashBytes)
-    $bundleBytes = [System.IO.File]::ReadAllBytes($BundlePath)
-    $ascii = [System.Text.Encoding]::ASCII.GetString($bundleBytes)
-    $unicode = [System.Text.Encoding]::Unicode.GetString($bundleBytes)
-
-    return (
-        $ascii.Contains($hex) -or
-        $ascii.Contains($hexLower) -or
-        $ascii.Contains($base64) -or
-        $unicode.Contains($hex) -or
-        $unicode.Contains($hexLower) -or
-        $unicode.Contains($base64)
-    )
 }
 
 function Test-WindowsAcceptanceEvidence {

@@ -238,17 +238,31 @@ try {
 
     $payload = Join-Path $testRoot 'VC_redist.x64.exe'
     [System.IO.File]::WriteAllText($payload, 'payload-bytes')
-    $sha = [System.Security.Cryptography.SHA512]::Create()
-    $payloadBytes = [System.IO.File]::ReadAllBytes($payload)
-    $payloadHash = $sha.ComputeHash($payloadBytes)
-    $sha.Dispose()
-    $hex = ([BitConverter]::ToString($payloadHash)).Replace('-', '')
+    $payloadHash = Convert-ToNormalizedSha512 -Value ((Get-FileHash -LiteralPath $payload -Algorithm SHA512).Hash)
+    $payloadSize = [int64](Get-Item -LiteralPath $payload).Length
     $boundBundle = Join-Path $testRoot 'bound-bundle.exe'
     $unboundBundle = Join-Path $testRoot 'unbound-bundle.exe'
-    [System.IO.File]::WriteAllText($boundBundle, "hdr$hex tail")
+    [System.IO.File]::WriteAllText($boundBundle, "hdr$payloadHash tail")
     [System.IO.File]::WriteAllText($unboundBundle, 'hdr NOHASH tail')
-    Assert-True -Condition (Test-BurnPayloadSha512Binding -BundlePath $boundBundle -PayloadPath $payload) -Message 'Burn binding check must accept a bundle that embeds the payload SHA512.'
-    Assert-True -Condition (-not (Test-BurnPayloadSha512Binding -BundlePath $unboundBundle -PayloadPath $payload)) -Message 'Burn binding check must fail closed when the SHA512 is missing.'
+    $boundManifest = Join-Path $testRoot 'bound-manifest.xml'
+    $unboundManifest = Join-Path $testRoot 'unbound-manifest.xml'
+    $boundXml = @"
+<?xml version="1.0" encoding="utf-8"?>
+<BurnManifest xmlns="http://wixtoolset.org/schemas/v4/2008/Burn">
+  <Payload Id="VcRedist" FilePath="VC_redist.x64.exe" FileSize="$payloadSize" Hash="$payloadHash" Packaging="external" SourcePath="VC_redist.x64.exe" />
+</BurnManifest>
+"@
+    $unboundXml = @"
+<?xml version="1.0" encoding="utf-8"?>
+<BurnManifest xmlns="http://wixtoolset.org/schemas/v4/2008/Burn">
+  <Payload Id="UxTheme" FilePath="thm.xml" SourcePath="u0" />
+</BurnManifest>
+"@
+    [System.IO.File]::WriteAllText($boundManifest, $boundXml)
+    [System.IO.File]::WriteAllText($unboundManifest, $unboundXml)
+    Assert-True -Condition (Test-BurnPayloadSha512Binding -BundlePath $boundBundle -PayloadPath $payload -ManifestXmlPath $boundManifest) -Message 'Burn binding check must accept a WiX 5 BurnManifest Hash that matches the adjacent payload.'
+    Assert-True -Condition (-not (Test-BurnPayloadSha512Binding -BundlePath $unboundBundle -PayloadPath $payload -ManifestXmlPath $unboundManifest)) -Message 'Burn binding check must fail closed when BurnManifest has no external payload Hash.'
+    Assert-True -Condition (-not (Test-BurnPayloadSha512Binding -BundlePath $boundBundle -PayloadPath $payload -ManifestXmlPath $unboundManifest)) -Message 'A raw EXE containing SHA512 hex is not a Burn binding without BurnManifest Hash attributes.'
 
     $secretHit = Test-SecretLikeValue -Value 'sk-live-examplekey'
     $placeholderMiss = Test-SecretLikeValue -Value '{{LLM_API_KEY}}'
@@ -410,6 +424,7 @@ try {
     Assert-True -Condition ($buildScript -match 'Invoke-SecretsScan|Assert-SecretsScan') -Message 'One-command packaging must scan for secrets.'
     Assert-True -Condition ($buildScript -match 'SHA512|sha512') -Message 'One-command packaging must emit SHA512 as well as SHA256.'
     Assert-True -Condition ($buildScript -match 'Test-BurnPayloadSha512Binding|Assert-BurnExternalPayloadBindings') -Message 'One-command packaging must verify Burn SHA512 bindings.'
+    Assert-True -Condition ($buildScript -match 'VerifyExistingOutputsOnly') -Message 'One-command packaging must support re-verifying an already generated dist tree without rebuilding MSI/CAB/Burn.'
     Assert-True -Condition ($buildScript -match 'Test-WindowsAcceptanceEvidence|Assert-WindowsAcceptanceEvidence') -Message 'One-command packaging must fail closed without Windows acceptance evidence.'
     Assert-True -Condition ($buildScript -match 'NOT_READY|built_not_ready') -Message 'Downloads publish must stay blocked with an unmistakable NOT_READY result until Windows gates pass.'
 }

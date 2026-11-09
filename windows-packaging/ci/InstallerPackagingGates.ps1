@@ -119,22 +119,88 @@ function Assert-BurnExternalPayloadBindings {
         [Parameter(Mandatory = $true)]
         [string]$BundlePath,
         [Parameter(Mandatory = $true)]
-        [string[]]$PayloadPaths
+        [string[]]$PayloadPaths,
+        [string]$ManifestXmlPath = ''
     )
 
-    $missing = @()
-    foreach ($payloadPath in $PayloadPaths) {
-        if (-not (Test-Path -LiteralPath $payloadPath)) {
-            $missing += Split-Path -Path $payloadPath -Leaf
-            continue
-        }
-        if (-not (Test-BurnPayloadSha512Binding -BundlePath $BundlePath -PayloadPath $payloadPath)) {
-            $missing += Split-Path -Path $payloadPath -Leaf
-        }
+    if (-not (Test-Path -LiteralPath $BundlePath -PathType Leaf)) {
+        throw "Burn bundle 不存在：$BundlePath"
     }
 
-    if ($missing.Count -gt 0) {
-        throw "Burn SHA512 绑定校验失败，未在 bundle 中找到这些相邻 payload 的哈希：$($missing -join ', ')"
+    $extractRoot = ''
+    try {
+        if ([string]::IsNullOrWhiteSpace($ManifestXmlPath)) {
+            $exported = Export-BurnBundleApplicationManifest -BundlePath $BundlePath
+            $ManifestXmlPath = $exported.ManifestPath
+            $extractRoot = [string]$exported.ExtractRoot
+        }
+
+        $manifestEntries = @(Get-BurnManifestExternalPayloads -ManifestPath $ManifestXmlPath)
+        $byName = @{}
+        foreach ($entry in $manifestEntries) {
+            if (-not [string]::IsNullOrWhiteSpace([string]$entry.FileName)) {
+                $byName[[string]$entry.FileName] = $entry
+            }
+        }
+
+        $missing = New-Object System.Collections.Generic.List[string]
+        $mismatched = New-Object System.Collections.Generic.List[string]
+        $checkedNames = @{}
+
+        foreach ($payloadPath in $PayloadPaths) {
+            $leaf = Split-Path -Path $payloadPath -Leaf
+            $checkedNames[$leaf] = $true
+            if (-not (Test-Path -LiteralPath $payloadPath -PathType Leaf)) {
+                $missing.Add($leaf)
+                continue
+            }
+            if (-not $byName.ContainsKey($leaf) -or [string]::IsNullOrWhiteSpace([string]$byName[$leaf].Hash)) {
+                $missing.Add($leaf)
+                continue
+            }
+            $verdict = Get-BurnPayloadBindingVerdict -ManifestEntry $byName[$leaf] -PayloadPath $payloadPath
+            if ($verdict -eq 'match') {
+                continue
+            }
+            if ($verdict -eq 'mismatch') {
+                $mismatched.Add($leaf)
+            }
+            else {
+                $missing.Add($leaf)
+            }
+        }
+
+        $bundleDirectory = Split-Path -Path $BundlePath -Parent
+        foreach ($entry in $manifestEntries) {
+            $leaf = [string]$entry.FileName
+            if ([string]::IsNullOrWhiteSpace($leaf) -or $checkedNames.Contains($leaf)) {
+                continue
+            }
+            $adjacentPath = Join-Path $bundleDirectory $leaf
+            if (-not (Test-Path -LiteralPath $adjacentPath -PathType Leaf) -or [string]::IsNullOrWhiteSpace([string]$entry.Hash)) {
+                $missing.Add($leaf)
+                continue
+            }
+            $verdict = Get-BurnPayloadBindingVerdict -ManifestEntry $entry -PayloadPath $adjacentPath
+            if ($verdict -eq 'mismatch') {
+                $mismatched.Add($leaf)
+            }
+            elseif ($verdict -ne 'match') {
+                $missing.Add($leaf)
+            }
+        }
+
+        if ($missing.Count -gt 0) {
+            throw "Burn SHA512 绑定校验失败，未在 bundle 中找到这些相邻 payload 的哈希：$($missing -join ', ')"
+        }
+        if ($mismatched.Count -gt 0) {
+            throw "Burn SHA512 绑定校验失败，这些相邻 payload 的大小或 SHA512 与 BurnManifest 不一致：$($mismatched -join ', ')"
+        }
+    }
+    finally {
+        if (-not [string]::IsNullOrWhiteSpace($extractRoot) -and (Test-Path -LiteralPath $extractRoot)) {
+            Remove-Item -LiteralPath $extractRoot -Recurse -Force -ErrorAction SilentlyContinue
+        }
     }
 }
 

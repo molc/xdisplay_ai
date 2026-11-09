@@ -21,7 +21,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\xdisplay_ai\windows-
 
 `-SkipBackendImageBuild` is **invalid** for s63f from-source packaging: `docker/export_runtime_requirements.py` and `docker/strict-ocr` do not exist, and F3EECC91 is not s63f. Parent Docker builder must run the sanctioned `rebuild-orches-app-image.sh` (see `manifests/pins/s63f-app-image-build-recipe.md`) so `inputs/backend/images/orches_orchestration-app_latest.tar` has companion `*.inspect.json` labels for `dd6ab3d50` / `prod/s63f`. Do not require a cached Linux `xd_render_cli` ELF; Dockerfile `qt_builder` deletes the Mach-O leftover and rebuilds it. Do not use `C:\xdisplay_ai\windows-packaging\inputs\client\xdisplay-win64` (old client).
 
-`<SCRATCH_ROOT>` 由父流程在非破坏性新盘上提供后再填。预检加 `-PreflightOnly`。不要使用 `C:\xdisplay_ai\windows-packaging\inputs\client\xdisplay-win64`（旧客户端）。不要用未安装的 pwsh 7，也不要改系统代码页；脚本带 UTF-8 BOM，供原生 `powershell.exe` 5.1 / CP936 解析。
+`<SCRATCH_ROOT>` 由父流程在非破坏性新盘上提供后再填。预检加 `-PreflightOnly`。不要使用未钉死的 `inputs\client\xdisplay-win64`（旧客户端 `D3EEC1B4`）。不要用未安装的 pwsh 7，也不要改系统代码页；脚本带 UTF-8 BOM，供原生 `powershell.exe` 5.1 / CP936 解析。
+
+若 MSI/11 CAB/Burn EXE 已经生成、只是 Burn SHA512 门需要用官方 `wix burn extract` 的 `manifest.xml` 再验，加 `-VerifyExistingOutputsOnly` 指向现有 `-WorkRoot`（不要重编 ~69 分钟 payload）。这仍会跑 secretscan、pins、Burn 绑定、NOT_READY。没有隔离 Windows PASS 不得发 Downloads。
 
 这条命令会：校验并导出 Docker Desktop / VC / WSL 以及四个镜像 tar 的确切文件名与 SHA256/SHA512、扫描密钥、组装 Burn、核对相邻 payload 的 SHA512 绑定、跑源码/单元测试。它**不会**把候选目录复制到 Downloads，除非你同时提供隔离 Windows 验收证据且结果为 PASS：
 

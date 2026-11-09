@@ -39,6 +39,7 @@ Assert-True -Condition ($entrypoint -match '\[switch\]\$SkipClientBuild') -Messa
 Assert-True -Condition ($entrypoint -match '\[string\]\$ClientReleaseDir') -Message 'The one-click entrypoint must expose -ClientReleaseDir.'
 Assert-True -Condition ($entrypoint -match '\[string\]\$ConverterReleaseDir') -Message 'The one-click entrypoint must expose -ConverterReleaseDir.'
 Assert-True -Condition ($entrypoint -match '\[switch\]\$UseExistingBackendInputs') -Message 'The one-click entrypoint must expose -UseExistingBackendInputs.'
+Assert-True -Condition ($entrypoint -match '\[switch\]\$VerifyExistingOutputsOnly') -Message 'The one-click entrypoint must expose -VerifyExistingOutputsOnly for incremental Burn re-verify.'
 Assert-True -Condition ($entrypoint -match '\[string\]\$WorkRoot') -Message 'The one-click entrypoint must expose -WorkRoot for scarce C:/P: scratch.'
 Assert-True -Condition ($entrypoint -match '\[string\]\$StagingRoot') -Message 'The one-click entrypoint must expose -StagingRoot.'
 Assert-True -Condition ($entrypoint -match '\[string\]\$DistRoot') -Message 'The one-click entrypoint must expose -DistRoot.'
