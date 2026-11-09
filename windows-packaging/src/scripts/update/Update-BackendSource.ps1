@@ -100,6 +100,10 @@ try {
         Write-Step "已补充 prompt 版本钉扎：$($promptMigration.Added -join ', ')"
         Write-Step "原 .env 已备份：$($promptMigration.BackupPath)"
     }
+    $retired = Remove-RetiredBackendEnvKeys -EnvPath $layout.BackendEnvFile
+    if ($retired.Changed) {
+        Write-Step ("已删除退役 .env 键：" + ($retired.Removed -join ', '))
+    }
     Write-Step '重启 embedding-worker 和 orchestration-app。'
     Invoke-Compose -Arguments @('restart', 'embedding-worker', 'orchestration-app')
     & (Join-Path $PSScriptRoot '..\health\Test-Health.ps1') -TimeoutSeconds 300

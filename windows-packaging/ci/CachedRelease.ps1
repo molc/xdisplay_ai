@@ -2,6 +2,7 @@
 $ErrorActionPreference = 'Stop'
 
 . (Join-Path $PSScriptRoot 'Common.ps1')
+. (Join-Path $PSScriptRoot '..\src\scripts\common\InstallerCorrectness.ps1')
 
 function Get-PinnedCatalogwriteClientSha256 {
     return '2A80890DB988157371CF28D24CA23685D7933C4E59630E5A2DCD2363B7DB5600'
@@ -355,9 +356,45 @@ function Assert-ExistingBackendInputs {
     }
 
     $manifest = Get-Content -LiteralPath $PinManifestPath -Raw | ConvertFrom-Json
+    $requiredPrefix = ''
+    $forbiddenAppSha = ''
+    if ($null -ne $manifest.backend) {
+        $requiredPrefix = [string]$manifest.backend.requiredRevisionPrefix
+        $forbiddenAppSha = [string]$manifest.backend.forbiddenAppImageSha256
+    }
+    if ([string]::IsNullOrWhiteSpace($requiredPrefix)) {
+        $requiredPrefix = Get-ApprovedBackendRevisionPrefix
+    }
+    if ([string]::IsNullOrWhiteSpace($forbiddenAppSha)) {
+        $forbiddenAppSha = Get-ForbiddenS63fAppImageSha256
+    }
+
+    $revisionFile = Join-Path $InputsRoot 'backend\source\SOURCE_REVISION.txt'
+    if (-not (Test-Path -LiteralPath $revisionFile -PathType Leaf)) {
+        throw "s63f backend source snapshot is missing SOURCE_REVISION.txt under $InputsRoot. Refusing to treat an unproven tree as dd6ab3d50."
+    }
+    $revision = ([System.IO.File]::ReadAllText($revisionFile)).Trim()
+    if (-not $revision.StartsWith($requiredPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        throw "Backend SOURCE_REVISION '$revision' is not the author-approved s63f tip $requiredPrefix (tag prod/s63f). HEAD and stale snapshots are rejected."
+    }
+
+    $appTarPath = Join-Path $InputsRoot 'backend\images\orches_orchestration-app_latest.tar'
+    $actualAppSha = Convert-ToNormalizedSha256 -Value (Get-FileHash -Path $appTarPath -Algorithm SHA256).Hash
+    $forbiddenNormalized = Convert-ToNormalizedSha256 -Value $forbiddenAppSha
+    if ([string]::Equals($actualAppSha, $forbiddenNormalized, [StringComparison]::Ordinal)) {
+        throw "App image $appTarPath SHA256 $actualAppSha is the forbidden previous 0.1.4 tar F3EECC91... — it is not proven s63f. Do not rename the old tar; rebuild from dd6ab3d50 / prod/s63f."
+    }
+
     foreach ($entry in @($manifest.files)) {
         $relativePath = [string]$entry.relativePath
         if ([string]::IsNullOrWhiteSpace($relativePath)) {
+            continue
+        }
+        $assertSha = $true
+        if ($entry.PSObject.Properties.Name -contains 'assertSha256') {
+            $assertSha = [bool]$entry.assertSha256
+        }
+        if (-not $assertSha -or [string]::IsNullOrWhiteSpace([string]$entry.sha256)) {
             continue
         }
         $absolutePath = $InputsRoot
@@ -383,8 +420,20 @@ function Export-CachedReleasePins {
     $payload = [pscustomobject]@{
         generatedAtUtc = [DateTime]::UtcNow.ToString('o')
         status = 'pinned-cached-release'
+        backend = [pscustomobject]@{
+            requiredRevisionPrefix = Get-ApprovedBackendRevisionPrefix
+            requiredTag = Get-ApprovedBackendTag
+            forbiddenAppImageSha256 = Get-ForbiddenS63fAppImageSha256
+        }
         client = $QualifiedRelease.client
         converter = $QualifiedRelease.converter
+        clientProvenance = [pscustomobject]@{
+            policy = 'retain-word-fix-superset'
+            notAuthorC180MailBytes = $true
+            authorClientCard = '2026-11-07-c180'
+            catalogwriteSha256 = Get-PinnedCatalogwriteClientSha256
+            converterSha256 = Get-PinnedConverterSha256
+        }
         destination = $QualifiedRelease.destination
     }
     Write-TextFileUtf8NoBom -Path $OutputPath -Content ($payload | ConvertTo-Json -Depth 6)

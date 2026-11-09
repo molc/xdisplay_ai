@@ -514,7 +514,8 @@ function Initialize-RuntimeEnvironment {
         -ForceEntries @{
             APP_HOST_PORT = [string](Get-RequiredAppHostPort)
             BACKEND_WORKSPACE_PATH = $stateLayout.BackendWorkspace.Replace('\', '/')
-        }
+        } `
+        -DropKeys @(Get-RetiredBackendEnvKeys)
     Write-EnvFile -Path $dockerLayout.EnvFile -Entries $runtimeEntries
 
     $legacyApplicationEntries = Get-LegacyApplicationEnvEntries -RuntimeEntries $runtimeEntries
@@ -540,8 +541,12 @@ function Initialize-RuntimeEnvironment {
             }
         }
         if ($backendChanged) {
+            $backendEntries = Merge-EnvEntries -Defaults $backendEntries -Existing @{} -DropKeys @(Get-RetiredBackendEnvKeys)
             Write-EnvFile -Path $backendEnvPath -Entries $backendEntries
             Write-Step '已将旧 runtime.env 中的应用配置迁入 backend .env（密钥值未写入日志）。'
+        }
+        elseif (Test-Path -LiteralPath $backendEnvPath) {
+            Remove-RetiredBackendEnvKeys -EnvPath $backendEnvPath | Out-Null
         }
     }
 

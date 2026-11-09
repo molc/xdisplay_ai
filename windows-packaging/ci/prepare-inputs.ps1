@@ -302,6 +302,23 @@ function Sync-BackendSourceSnapshot {
     if (-not (Test-Path (Join-Path $Destination 'app\main.py'))) {
         throw '后端源码快照缺少 app\main.py。'
     }
+
+    $revision = 'unknown'
+    $sourceRevisionFile = Join-Path $Source 'SOURCE_REVISION.txt'
+    if (Test-Path -LiteralPath $sourceRevisionFile -PathType Leaf) {
+        $revision = ([System.IO.File]::ReadAllText($sourceRevisionFile)).Trim()
+    }
+    elseif ((Test-Path (Join-Path $Source '.git')) -and (Get-Command git -ErrorAction SilentlyContinue)) {
+        try {
+            $gitRevision = (& git -C $Source rev-parse HEAD 2>$null | Out-String).Trim()
+            if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($gitRevision)) {
+                $revision = $gitRevision
+            }
+        }
+        catch {
+        }
+    }
+    [System.IO.File]::WriteAllText((Join-Path $Destination 'SOURCE_REVISION.txt'), $revision + [Environment]::NewLine)
 }
 
 function Export-BackendImages {

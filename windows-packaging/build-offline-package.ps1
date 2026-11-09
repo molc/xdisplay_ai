@@ -428,7 +428,7 @@ try {
 
         if ($UseExistingBackendInputs) {
             if ([string]::IsNullOrWhiteSpace($ExpectedInputPinsPath)) {
-                $ExpectedInputPinsPath = Join-Path $packagingRoot 'manifests\pins\offline-inputs.0.1.4.json'
+                $ExpectedInputPinsPath = Join-Path $packagingRoot 'manifests\pins\offline-inputs.s63f.json'
             }
             Write-BuildStep 'Using existing backend images/source inputs; no source clone and no image rebuild.'
             Assert-ExistingBackendInputs `

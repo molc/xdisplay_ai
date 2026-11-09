@@ -11,6 +11,12 @@ if ($LASTEXITCODE -ne 0) {
     throw "Test-NativePowerShellEncoding.ps1 failed (exit $LASTEXITCODE)"
 }
 
+Write-Host 'RUN Test-S63fPackagingContract.ps1'
+& (Join-Path $PSScriptRoot 'Test-S63fPackagingContract.ps1') -PackagingRoot $PackagingRoot
+if ($LASTEXITCODE -ne 0) {
+    throw "Test-S63fPackagingContract.ps1 failed (exit $LASTEXITCODE)"
+}
+
 Write-Host 'RUN Test-CachedReleasePackaging.ps1'
 & (Join-Path $PSScriptRoot 'Test-CachedReleasePackaging.ps1') -PackagingRoot $PackagingRoot
 if ($LASTEXITCODE -ne 0) {

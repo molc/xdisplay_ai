@@ -190,6 +190,26 @@ function Get-WorkspaceSyncDecision {
     return 'update'
 }
 
+function Get-RetiredBackendEnvKeys {
+    return @('XDISPLAY_AI_STAGED_DRAFTER_ENABLED')
+}
+
+function Get-ApprovedBackendRevisionPrefix {
+    return 'dd6ab3d50'
+}
+
+function Get-ApprovedBackendTag {
+    return 'prod/s63f'
+}
+
+function Get-ForbiddenS63fAppImageSha256 {
+    return 'F3EECC91AB386DE950F175329AB7CCF078435FF9E863E55708F60485BFFC2309'
+}
+
+function Get-S63fPromptVersionPins {
+    return 'intent_extractor:v2.24,PAGE_HTML:v19,read_display_declarer:v1.15,write_action_declarer:v1.10,write_action_declarer_link:v1.8,sketch_interpreter:v4.0,STYLESHEET:v6'
+}
+
 function Merge-EnvEntries {
     param(
         [Parameter(Mandatory = $true)]
@@ -197,7 +217,9 @@ function Merge-EnvEntries {
         [AllowNull()]
         [System.Collections.IDictionary]$Existing = $null,
         [AllowNull()]
-        [System.Collections.IDictionary]$ForceEntries = $null
+        [System.Collections.IDictionary]$ForceEntries = $null,
+        [AllowEmptyCollection()]
+        [string[]]$DropKeys = @()
     )
 
     $merged = [ordered]@{}
@@ -217,7 +239,66 @@ function Merge-EnvEntries {
         }
     }
 
+    foreach ($dropKey in @($DropKeys)) {
+        if ($merged.Contains($dropKey)) {
+            $merged.Remove($dropKey)
+        }
+    }
+
     return $merged
+}
+
+function Remove-RetiredBackendEnvKeys {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$EnvPath
+    )
+
+    if (-not (Test-Path -LiteralPath $EnvPath -PathType Leaf)) {
+        return [pscustomobject]@{
+            Changed = $false
+            Removed = @()
+        }
+    }
+
+    $retired = @(Get-RetiredBackendEnvKeys)
+    $original = [System.IO.File]::ReadAllText($EnvPath)
+    $removed = New-Object System.Collections.Generic.List[string]
+    $kept = New-Object System.Collections.Generic.List[string]
+    foreach ($line in @($original -split "`r?`n", [System.StringSplitOptions]::None)) {
+        $trimmed = $line.Trim()
+        $dropped = $false
+        if ($trimmed -and -not $trimmed.StartsWith('#')) {
+            $eq = $trimmed.IndexOf('=')
+            if ($eq -gt 0) {
+                $name = $trimmed.Substring(0, $eq).Trim()
+                if ($retired -contains $name) {
+                    $removed.Add($name)
+                    $dropped = $true
+                }
+            }
+        }
+        if (-not $dropped) {
+            $kept.Add($line)
+        }
+    }
+
+    if ($removed.Count -eq 0) {
+        return [pscustomobject]@{
+            Changed = $false
+            Removed = @()
+        }
+    }
+
+    $updated = ($kept -join "`n")
+    if ($original.Contains("`r`n")) {
+        $updated = ($kept -join "`r`n")
+    }
+    [System.IO.File]::WriteAllText($EnvPath, $updated, (New-Object System.Text.UTF8Encoding($false)))
+    return [pscustomobject]@{
+        Changed = $true
+        Removed = @($removed)
+    }
 }
 
 function Get-LegacyApplicationEnvEntries {
@@ -231,8 +312,9 @@ function Get-LegacyApplicationEnvEntries {
         return $legacy
     }
 
+    $retired = @(Get-RetiredBackendEnvKeys)
     foreach ($key in @($RuntimeEntries.Keys)) {
-        if ($key -like 'XDISPLAY_AI_*') {
+        if ($key -like 'XDISPLAY_AI_*' -and $retired -notcontains $key) {
             $legacy[$key] = $RuntimeEntries[$key]
         }
     }
