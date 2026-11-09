@@ -41,6 +41,12 @@ if ($LASTEXITCODE -ne 0) {
     throw "Test-PromptPinMigration.ps1 failed (exit $LASTEXITCODE)"
 }
 
+Write-Host 'RUN Test-GeneratedPromptRegistry.ps1'
+& (Join-Path $PSScriptRoot 'Test-GeneratedPromptRegistry.ps1') -PackagingRoot $PackagingRoot
+if ($LASTEXITCODE -ne 0) {
+    throw "Test-GeneratedPromptRegistry.ps1 failed (exit $LASTEXITCODE)"
+}
+
 Write-Host 'RUN Test-PublishedPortFallback.ps1'
 & (Join-Path $PSScriptRoot 'Test-PublishedPortFallback.ps1') -PackagingRoot $PackagingRoot
 if ($LASTEXITCODE -ne 0) {

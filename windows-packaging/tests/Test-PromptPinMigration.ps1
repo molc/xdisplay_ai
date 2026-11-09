@@ -16,9 +16,14 @@ function Assert-Equal {
     }
 }
 
+$correctnessScript = Join-Path $PSScriptRoot '..\src\scripts\common\InstallerCorrectness.ps1'
 if (-not (Test-Path -LiteralPath $MigrationScriptPath -PathType Leaf)) {
     throw "Prompt pin migration script is missing: $MigrationScriptPath"
 }
+if (-not (Test-Path -LiteralPath $correctnessScript -PathType Leaf)) {
+    throw "Installer correctness script is missing: $correctnessScript"
+}
+. $correctnessScript
 . $MigrationScriptPath
 
 $testRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('xdisplayai-prompt-pin-test-' + [Guid]::NewGuid().ToString('N'))
@@ -62,6 +67,37 @@ try {
         -EnvPath $defaultOnlyPath `
         -DefaultPromptVersions 'planner:v1.2'
     Assert-Equal -Expected $false -Actual $defaultOnlyResult.Changed -Message 'An env without an explicit prompt table must keep using code defaults.'
+
+    $crashPath = Join-Path $testRoot 'a62-crash.env'
+    $crashTable = Get-S63fRejectedTruncatedPromptVersionPins
+    $fullTable = Get-S63fRegisteredPromptVersionTable
+    [IO.File]::WriteAllText(
+        $crashPath,
+        "T014_UPGRADE_SENTINEL=keep-t014`r`nXDISPLAY_AI_PROMPT_VERSIONS=$crashTable`r`nXDISPLAY_AI_LOG_LEVEL=DEBUG`r`n",
+        (New-Object Text.UTF8Encoding($false))
+    )
+    $crashResult = Update-BackendPromptVersionPins `
+        -EnvPath $crashPath `
+        -DefaultPromptVersions $fullTable
+    Assert-Equal -Expected $true -Actual $crashResult.Changed -Message 'The a62 truncated table must be expanded to the full registered-agent map.'
+    if (($crashResult.Removed -join ',') -notmatch 'PAGE_HTML') { throw 'PAGE_HTML must be dropped from prompt_versions.' }
+    if (($crashResult.Removed -join ',') -notmatch 'STYLESHEET') { throw 'STYLESHEET must be dropped from prompt_versions.' }
+    if (@($crashResult.Added).Count -lt 26) { throw 'Migration must append the 26 registered agents missing from the a62 crash table.' }
+    $healed = [IO.File]::ReadAllText($crashPath)
+    if ($healed -notmatch 'T014_UPGRADE_SENTINEL=keep-t014') { throw 'Prompt pin migration must preserve upgrade sentinels.' }
+    if ($healed -notmatch 'XDISPLAY_AI_LOG_LEVEL=DEBUG') { throw 'Prompt pin migration must preserve unrelated settings.' }
+    $healedTable = [regex]::Match($healed, '(?m)^XDISPLAY_AI_PROMPT_VERSIONS=(?<value>[^\r\n]*)\s*$').Groups['value'].Value
+    $healedProblems = @(Get-PromptVersionTableStartupProblems -EffectiveTable $healedTable -DefaultTable $fullTable)
+    if ($healedProblems.Count -ne 0) { throw "Healed table still fails registry-shape checks: $($healedProblems -join '; ')" }
+    if ($healedTable -match 'PAGE_HTML' -or $healedTable -match 'STYLESHEET') { throw 'Healed table must not keep PAGE_HTML/STYLESHEET as agents.' }
+
+    $browserPath = Join-Path $testRoot 'browser-pins.env'
+    [IO.File]::WriteAllText($browserPath, "XDISPLAY_AI_LOG_LEVEL=INFO`r`n", (New-Object Text.UTF8Encoding($false)))
+    $browserResult = Ensure-BackendBrowserSolverPromptPins -EnvPath $browserPath
+    Assert-Equal -Expected $true -Actual $browserResult.Changed -Message 'Missing browser-solver PAGE_HTML/STYLESHEET keys must be added.'
+    $browserContent = [IO.File]::ReadAllText($browserPath)
+    if ($browserContent -notmatch 'XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION=v19') { throw 'PAGE_HTML must be seeded as XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION.' }
+    if ($browserContent -notmatch 'XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION=v6') { throw 'STYLESHEET must be seeded as XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION.' }
 
     Write-Host 'Prompt pin migration tests passed.'
     exit 0

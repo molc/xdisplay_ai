@@ -242,8 +242,129 @@ function Get-S63fExportMachOXdRenderCliBytes {
     return [long]50200
 }
 
-function Get-S63fPromptVersionPins {
+function ConvertTo-PromptVersionMap {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Value
+    )
+
+    $map = [ordered]@{}
+    foreach ($rawEntry in $Value.Split(',')) {
+        $entry = $rawEntry.Trim()
+        if ([string]::IsNullOrWhiteSpace($entry)) {
+            continue
+        }
+
+        $separatorIndex = $entry.IndexOf(':')
+        if ($separatorIndex -le 0 -or $separatorIndex -eq ($entry.Length - 1)) {
+            throw "Invalid prompt version entry: $entry"
+        }
+
+        $agent = $entry.Substring(0, $separatorIndex).Trim()
+        $version = $entry.Substring($separatorIndex + 1).Trim()
+        if ($map.Contains($agent)) {
+            throw "Duplicate prompt agent: $agent"
+        }
+        $map[$agent] = $version
+    }
+
+    return $map
+}
+
+function ConvertFrom-PromptVersionMap {
+    param(
+        [Parameter(Mandatory = $true)]
+        [System.Collections.IDictionary]$Map
+    )
+
+    return @(
+        foreach ($agent in @($Map.Keys)) {
+            "$agent`:$($Map[$agent])"
+        }
+    ) -join ','
+}
+
+function Get-S63fSettingsDefaultPromptVersionTable {
+    # Exact s63f Settings.prompt_versions default (app/config.py at dd6ab3d50).
+    return 'planner:v1.2,clarifier:v1.0,diagnoser:v1.0,explainer:v1.0,drafter:v1.0,drafter_dsl:v2.4,sketch_interpreter:v4.0,sketch_interpretation_auditor:v1.0,sketch_layout_auditor:v1.0,auditor_dsl:v1.5,intent_extractor:v2.24,linker_dsl:v1.1,layout_planner:v1.1,component_planner:v1.4,composition_layout_planner:v2.5,component_slot_type_selector:v1.0,component_slot_props_planner:v2.0,page_scene_tweak_planner:v1.0,fixer:v2.2,write_action_declarer:v1.10,nav_declarer:v1.6,engineering_setting_declarer:v1.0,write_action_declarer_link:v1.8,page_set_skeleton_declarer:v1.5,placement_declarer:v1.0,read_display_declarer:v1.15,point_table_column_annotator:v1.1,repeated_series_declarer:v1.2,style_token_declarer:v1.2,strict_region_reader:v1.0,navigation_target_grouping_judge:v1.0'
+}
+
+function Get-S63fAuthorAgentPromptPins {
+    return 'intent_extractor:v2.24,read_display_declarer:v1.15,write_action_declarer:v1.10,write_action_declarer_link:v1.8,sketch_interpreter:v4.0'
+}
+
+function Get-S63fNonAgentPromptPinNames {
+    return @('PAGE_HTML', 'STYLESHEET')
+}
+
+function Get-S63fRejectedTruncatedPromptVersionPins {
+    # Exact a62 native crash table: author-card pins written as the entire XDISPLAY_AI_PROMPT_VERSIONS value.
     return 'intent_extractor:v2.24,PAGE_HTML:v19,read_display_declarer:v1.15,write_action_declarer:v1.10,write_action_declarer_link:v1.8,sketch_interpreter:v4.0,STYLESHEET:v6'
+}
+
+function Get-S63fBrowserSolverPageHtmlPromptVersion {
+    return 'v19'
+}
+
+function Get-S63fBrowserSolverEngineeringStylesheetContractVersion {
+    return 'v6'
+}
+
+function Get-S63fRegisteredPromptVersionTable {
+    $map = ConvertTo-PromptVersionMap -Value (Get-S63fSettingsDefaultPromptVersionTable)
+    $authorPins = ConvertTo-PromptVersionMap -Value (Get-S63fAuthorAgentPromptPins)
+    $nonAgentNames = @(Get-S63fNonAgentPromptPinNames)
+    foreach ($agent in @($authorPins.Keys)) {
+        if ($nonAgentNames -contains $agent) {
+            continue
+        }
+        $map[$agent] = $authorPins[$agent]
+    }
+
+    return ConvertFrom-PromptVersionMap -Map $map
+}
+
+function Get-S63fPromptVersionPins {
+    # Compatibility alias: this is the FULL registered-agent table, never the 7-entry author-card replacement.
+    return Get-S63fRegisteredPromptVersionTable
+}
+
+function Get-PromptVersionTableStartupProblems {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$EffectiveTable,
+        [Parameter(Mandatory = $true)]
+        [string]$DefaultTable,
+        [AllowEmptyCollection()]
+        [string[]]$RegisteredAgentNames = @()
+    )
+
+    $effective = ConvertTo-PromptVersionMap -Value $EffectiveTable
+    $defaults = ConvertTo-PromptVersionMap -Value $DefaultTable
+    $problems = New-Object System.Collections.Generic.List[string]
+    foreach ($agent in @($defaults.Keys)) {
+        if (-not $effective.Contains($agent)) {
+            $problems.Add("missing registered agent $agent")
+        }
+    }
+
+    $nonAgentNames = @(Get-S63fNonAgentPromptPinNames)
+    $registeredSet = @{}
+    foreach ($name in @($RegisteredAgentNames)) {
+        $registeredSet[$name] = $true
+    }
+
+    foreach ($agent in @($effective.Keys)) {
+        if ($nonAgentNames -contains $agent) {
+            $problems.Add("non-directory agent alias $agent")
+            continue
+        }
+        if ($registeredSet.Count -gt 0 -and -not $registeredSet.ContainsKey($agent)) {
+            $problems.Add("unregistered agent $agent")
+        }
+    }
+
+    return @($problems)
 }
 
 function Merge-EnvEntries {

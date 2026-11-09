@@ -4,6 +4,7 @@ $ErrorActionPreference = 'Stop'
 $script:InstallRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..')).Path
 $script:BundleMetadataCache = $null
 . (Join-Path $PSScriptRoot 'InstallerCorrectness.ps1')
+. (Join-Path $PSScriptRoot '..\update\PromptPinMigration.ps1')
 
 function Get-InstallRoot {
     return $script:InstallRoot
@@ -547,6 +548,20 @@ function Initialize-RuntimeEnvironment {
         }
         elseif (Test-Path -LiteralPath $backendEnvPath) {
             Remove-RetiredBackendEnvKeys -EnvPath $backendEnvPath | Out-Null
+        }
+    }
+
+    if (Test-Path -LiteralPath $stateLayout.BackendEnvFile -PathType Leaf) {
+        $promptMigration = Update-BackendPromptVersionPins `
+            -EnvPath $stateLayout.BackendEnvFile `
+            -DefaultPromptVersions (Get-S63fRegisteredPromptVersionTable)
+        if ($promptMigration.Changed) {
+            $changedAgents = @($promptMigration.Added + $promptMigration.Removed)
+            Write-Step ('已按 s63f 注册表补全 prompt 钉扎（保留用户已有版本，删除 PAGE_HTML/STYLESHEET 别名）：' + ($changedAgents -join ', '))
+        }
+        $browserPins = Ensure-BackendBrowserSolverPromptPins -EnvPath $stateLayout.BackendEnvFile
+        if ($browserPins.Changed) {
+            Write-Step ('已补全浏览器求解器 PAGE_HTML/STYLESHEET 合同键：' + ($browserPins.Added -join ', '))
         }
     }
 

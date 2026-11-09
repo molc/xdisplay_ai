@@ -361,6 +361,54 @@ try {
         $script:BundleMetadataCache = $previousBundleMetadataCache
     }
 
+    $healDataRoot = Join-Path $testRoot 'heal-truncated-data'
+    $healInstallRoot = Join-Path $testRoot 'heal-truncated-install'
+    foreach ($relativePath in @('seed/backend/app/main.py', 'seed/backend/.env', 'seed/client/Xdisplay.exe', 'docker/env/runtime.defaults.env', 'metadata/bundle.json')) {
+        $path = Join-InstallRelativePath -Root $healInstallRoot -RelativePath $relativePath
+        New-Item -ItemType Directory -Path (Split-Path $path -Parent) -Force | Out-Null
+        if ($relativePath -eq 'seed/backend/.env') {
+            [System.IO.File]::WriteAllText($path, "XDISPLAY_AI_ENVIRONMENT=dev`nXDISPLAY_AI_PROMPT_VERSIONS=$(Get-S63fRegisteredPromptVersionTable)`n")
+        }
+        elseif ($relativePath -eq 'docker/env/runtime.defaults.env') {
+            [System.IO.File]::WriteAllText($path, "APP_HOST_PORT=18001`nBACKEND_WORKSPACE_PATH=placeholder`n")
+        }
+        elseif ($relativePath -eq 'metadata/bundle.json') {
+            [System.IO.File]::WriteAllText($path, (@{ bundle = @{ version = '0.1.4' }; runtime = @{ projectName = 'xdisplayai-test'; dataRoot = $healDataRoot } } | ConvertTo-Json -Depth 5))
+        }
+        else {
+            [System.IO.File]::WriteAllText($path, 'seed')
+        }
+    }
+    $healWorkspaceEnv = Join-InstallRelativePath -Root $healDataRoot -RelativePath 'workspace/backend/.env'
+    $healWorkspaceMain = Join-InstallRelativePath -Root $healDataRoot -RelativePath 'workspace/backend/app/main.py'
+    New-Item -ItemType Directory -Path (Split-Path $healWorkspaceEnv -Parent) -Force | Out-Null
+    New-Item -ItemType Directory -Path (Split-Path $healWorkspaceMain -Parent) -Force | Out-Null
+    [System.IO.File]::WriteAllText($healWorkspaceMain, 'seed')
+    [System.IO.File]::WriteAllText(
+        $healWorkspaceEnv,
+        "T014_UPGRADE_SENTINEL=keep-t014`nXDISPLAY_AI_PROMPT_VERSIONS=$(Get-S63fRejectedTruncatedPromptVersionPins)`nXDISPLAY_AI_LOG_LEVEL=DEBUG`n"
+    )
+    $healPreviousInstallRoot = $script:InstallRoot
+    $healPreviousBundleMetadataCache = $script:BundleMetadataCache
+    try {
+        $script:InstallRoot = $healInstallRoot
+        $script:BundleMetadataCache = $null
+        $healState = Initialize-RuntimeEnvironment
+        $healedBackend = Get-Content -Path (Join-InstallRelativePath -Root $healState.BackendWorkspace -RelativePath '.env') -Raw
+        Assert-True -Condition ($healedBackend -match 'T014_UPGRADE_SENTINEL=keep-t014') -Message 'Healing leftover truncated prompt_versions must preserve T014_UPGRADE_SENTINEL.'
+        Assert-True -Condition ($healedBackend -match 'XDISPLAY_AI_LOG_LEVEL=DEBUG') -Message 'Healing leftover truncated prompt_versions must preserve unrelated user keys.'
+        $healedTable = [regex]::Match($healedBackend, '(?m)^XDISPLAY_AI_PROMPT_VERSIONS=(?<value>[^\r\n]*)\s*$').Groups['value'].Value
+        $healProblems = @(Get-PromptVersionTableStartupProblems -EffectiveTable $healedTable -DefaultTable (Get-S63fRegisteredPromptVersionTable))
+        Assert-True -Condition ($healProblems.Count -eq 0) -Message ('Leftover a62 crash table must be healed before stack start: ' + ($healProblems -join '; '))
+        Assert-True -Condition ($healedTable -notmatch 'PAGE_HTML') -Message 'Healed leftover env must drop PAGE_HTML from prompt_versions.'
+        Assert-True -Condition ($healedBackend -match '(?m)^XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION=v19\s*$') -Message 'Healed leftover env must gain the PAGE_HTML Settings key when missing.'
+        Assert-True -Condition ($healedBackend -match '(?m)^XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION=v6\s*$') -Message 'Healed leftover env must gain the STYLESHEET Settings key when missing.'
+    }
+    finally {
+        $script:InstallRoot = $healPreviousInstallRoot
+        $script:BundleMetadataCache = $healPreviousBundleMetadataCache
+    }
+
     $hold = Test-WindowsAcceptanceEvidence -Evidence $null
     Assert-True -Condition (-not $hold.Ok) -Message 'Missing Windows evidence must fail closed and must not be treated as accepted.'
     $passEvidence = [pscustomobject]@{
@@ -407,6 +455,8 @@ try {
     $commonContent = Get-Content -Path (Join-Path $PackagingRoot 'src\scripts\common\Common.ps1') -Raw
     Assert-True -Condition ($commonContent -match 'Merge-EnvEntries') -Message 'Runtime env initialization must merge all existing keys.'
     Assert-True -Condition ($commonContent -match 'Get-WorkspaceSyncDecision') -Message 'Workspace initialization must be version/hash aware.'
+    Assert-True -Condition ($commonContent -match 'Update-BackendPromptVersionPins') -Message 'Runtime init must heal leftover truncated XDISPLAY_AI_PROMPT_VERSIONS against the full s63f registry table.'
+    Assert-True -Condition ($commonContent -match 'Ensure-BackendBrowserSolverPromptPins') -Message 'Runtime init must seed PAGE_HTML/STYLESHEET on their Settings keys, not as prompt_versions agents.'
 
     $healthContent = Get-Content -Path (Join-Path $PackagingRoot 'src\scripts\health\Test-Health.ps1') -Raw
     Assert-True -Condition ($healthContent -match '-TimeoutSec') -Message 'Health probes must pass TimeoutSec to Invoke-WebRequest.'

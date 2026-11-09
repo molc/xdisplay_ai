@@ -23,14 +23,29 @@ function Assert-True {
 $tmpl = Get-Content -LiteralPath (Join-Path $PackagingRoot 'src\templates\env\backend.env.tmpl') -Raw
 Assert-True -Condition ($tmpl -notmatch 'XDISPLAY_AI_STAGED_DRAFTER_ENABLED') -Message 'Seed backend.env must not ship retired XDISPLAY_AI_STAGED_DRAFTER_ENABLED.'
 Assert-True -Condition ($tmpl -match 'XDISPLAY_AI_PROMPT_VERSIONS=') -Message 'Seed backend.env must pin s63f prompt versions.'
-Assert-True -Condition ($tmpl -match 'intent_extractor:v2.24') -Message 's63f seed must pin intent_extractor v2.24.'
-Assert-True -Condition ($tmpl -match 'PAGE_HTML:v19') -Message 's63f seed must pin PAGE_HTML v19.'
-Assert-True -Condition ($tmpl -match 'read_display_declarer:v1.15') -Message 's63f seed must pin read_display_declarer v1.15.'
-Assert-True -Condition ($tmpl -match 'write_action_declarer:v1.10') -Message 's63f seed must pin write_action_declarer v1.10.'
-Assert-True -Condition ($tmpl -match 'write_action_declarer_link:v1.8') -Message 's63f seed must pin write_action_declarer_link v1.8.'
-Assert-True -Condition ($tmpl -match 'sketch_interpreter:v4.0') -Message 's63f seed must pin sketch_interpreter v4.0.'
-Assert-True -Condition ($tmpl -match 'STYLESHEET:v6') -Message 's63f seed must pin STYLESHEET v6.'
+$promptLineMatch = [regex]::Match($tmpl, '(?m)^XDISPLAY_AI_PROMPT_VERSIONS=(?<value>[^\r\n]*)\s*$')
+Assert-True -Condition $promptLineMatch.Success -Message 'Seed backend.env must have a single XDISPLAY_AI_PROMPT_VERSIONS assignment.'
+$generatedPromptTable = [string]$promptLineMatch.Groups['value'].Value
+Assert-True -Condition ($generatedPromptTable -eq (Get-S63fRegisteredPromptVersionTable)) -Message 'Seed XDISPLAY_AI_PROMPT_VERSIONS must be the full s63f registered-agent table with author version overlays.'
+Assert-True -Condition ($generatedPromptTable -ne (Get-S63fRejectedTruncatedPromptVersionPins)) -Message 'Seed must not ship the truncated seven-entry author-card table that crashed native a62.'
+$generatedPromptProblems = @(Get-PromptVersionTableStartupProblems -EffectiveTable $generatedPromptTable -DefaultTable (Get-S63fSettingsDefaultPromptVersionTable))
+Assert-True -Condition ($generatedPromptProblems.Count -eq 0) -Message ('Generated prompt table must pass registry-shape checks: ' + ($generatedPromptProblems -join '; '))
+Assert-True -Condition ($generatedPromptTable -match 'intent_extractor:v2.24') -Message 's63f seed must pin intent_extractor v2.24.'
+Assert-True -Condition ($generatedPromptTable -match 'read_display_declarer:v1.15') -Message 's63f seed must pin read_display_declarer v1.15.'
+Assert-True -Condition ($generatedPromptTable -match 'write_action_declarer:v1.10') -Message 's63f seed must pin write_action_declarer v1.10.'
+Assert-True -Condition ($generatedPromptTable -match 'write_action_declarer_link:v1.8') -Message 's63f seed must pin write_action_declarer_link v1.8.'
+Assert-True -Condition ($generatedPromptTable -match 'sketch_interpreter:v4.0') -Message 's63f seed must pin sketch_interpreter v4.0.'
+Assert-True -Condition ($generatedPromptTable -match 'planner:v1.2') -Message 's63f seed must keep planner in the registered-agent map.'
+Assert-True -Condition ($generatedPromptTable -match 'navigation_target_grouping_judge:v1.0') -Message 's63f seed must keep navigation_target_grouping_judge in the registered-agent map.'
+Assert-True -Condition ($generatedPromptTable -notmatch 'PAGE_HTML') -Message 'PAGE_HTML is not a prompt_versions agent; it must not appear in XDISPLAY_AI_PROMPT_VERSIONS.'
+Assert-True -Condition ($generatedPromptTable -notmatch 'STYLESHEET') -Message 'STYLESHEET is not a prompt_versions agent; it must not appear in XDISPLAY_AI_PROMPT_VERSIONS.'
+Assert-True -Condition ($tmpl -match '(?m)^XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION=v19\s*$') -Message 's63f seed must pin PAGE_HTML v19 on XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION.'
+Assert-True -Condition ($tmpl -match '(?m)^XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION=v6\s*$') -Message 's63f seed must pin STYLESHEET v6 on XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION.'
 Assert-True -Condition ($tmpl -match 'XDISPLAY_AI_SKETCH_VISION_TIMEOUT_SECONDS=90') -Message 's63f seed must keep 90s sketch vision timeout.'
+$truncatedProblems = @(Get-PromptVersionTableStartupProblems -EffectiveTable (Get-S63fRejectedTruncatedPromptVersionPins) -DefaultTable (Get-S63fSettingsDefaultPromptVersionTable))
+Assert-True -Condition ($truncatedProblems.Count -ge 28) -Message 'The a62 crash table must still fail registry-shape checks (missing 26 agents plus PAGE_HTML/STYLESHEET aliases).'
+Assert-True -Condition (($truncatedProblems -join ' ') -match 'PAGE_HTML') -Message 'Registry-shape checks must reject PAGE_HTML as a non-directory agent alias.'
+Assert-True -Condition (($truncatedProblems -join ' ') -match 'STYLESHEET') -Message 'Registry-shape checks must reject STYLESHEET as a non-directory agent alias.'
 
 Assert-True -Condition ((Get-ApprovedBackendRevisionPrefix) -eq 'dd6ab3d50') -Message 'Approved backend tip is dd6ab3d50 / prod/s63f, not HEAD.'
 Assert-True -Condition ((Get-ApprovedBackendRevisionFull) -eq 'dd6ab3d505827a94cbc9d59d7067fcce14db6fbe') -Message 'Approved backend full revision is dd6ab3d505827a94cbc9d59d7067fcce14db6fbe.'
@@ -82,6 +97,10 @@ Assert-True -Condition (Test-Path -LiteralPath $pinPath) -Message 's63f pin mani
 $pins = Get-Content -LiteralPath $pinPath -Raw | ConvertFrom-Json
 Assert-True -Condition ($pins.backend.requiredRevisionPrefix -eq 'dd6ab3d50') -Message 's63f pin manifest must require dd6ab3d50, not HEAD.'
 Assert-True -Condition ($pins.backend.forbiddenAppImageSha256 -eq 'F3EECC91AB386DE950F175329AB7CCF078435FF9E863E55708F60485BFFC2309') -Message 's63f pin manifest must forbid the previous app tar hash.'
+Assert-True -Condition ($pins.promptPins -eq (Get-S63fRegisteredPromptVersionTable)) -Message 's63f pin manifest promptPins must be the full registered-agent table, not the truncated author-card replacement.'
+Assert-True -Condition ($pins.rejectedTruncatedPromptPins -eq (Get-S63fRejectedTruncatedPromptVersionPins)) -Message 's63f pin manifest must record the a62 crash table as rejected.'
+Assert-True -Condition ($pins.browserSolverPageHtmlPromptVersion -eq 'v19') -Message 's63f pin manifest must pin PAGE_HTML on the browser-solver Settings field.'
+Assert-True -Condition ($pins.browserSolverEngineeringStylesheetContractVersion -eq 'v6') -Message 's63f pin manifest must pin STYLESHEET on the engineering stylesheet Settings field.'
 Assert-True -Condition ($pins.client.notAuthorC180MailBytes -eq $true) -Message 'Client pins must be recorded as Word-fix supersets, not literal c180 mail bytes.'
 Assert-True -Condition ($pins.client.sha256 -eq '2A80890DB988157371CF28D24CA23685D7933C4E59630E5A2DCD2363B7DB5600') -Message 'Word-fix catalogwrite client SHA must be retained.'
 Assert-True -Condition ($pins.converter.sha256 -eq 'F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36') -Message 'Word-fix Converter SHA must be retained.'

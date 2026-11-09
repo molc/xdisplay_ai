@@ -94,36 +94,53 @@ function Update-BackendPromptVersionPins {
 
     $content = [System.IO.File]::ReadAllText($EnvPath)
     $assignmentPattern = '(?m)^(?!\s*#)\s*XDISPLAY_AI_PROMPT_VERSIONS=(?<value>[^\r\n]*)\s*$'
-    $matches = [regex]::Matches($content, $assignmentPattern)
-    if ($matches.Count -eq 0) {
+    $assignmentMatches = [regex]::Matches($content, $assignmentPattern)
+    if ($assignmentMatches.Count -eq 0) {
         return [pscustomobject]@{
             Changed = $false
             Added = @()
+            Removed = @()
             BackupPath = ''
         }
     }
-    if ($matches.Count -ne 1) {
+    if ($assignmentMatches.Count -ne 1) {
         throw 'Backend .env must contain at most one active XDISPLAY_AI_PROMPT_VERSIONS assignment.'
     }
 
     $existingEntries = ConvertTo-PromptVersionEntries `
-        -Value $matches[0].Groups['value'].Value `
+        -Value $assignmentMatches[0].Groups['value'].Value `
         -Label 'Existing XDISPLAY_AI_PROMPT_VERSIONS'
     $defaultEntries = ConvertTo-PromptVersionEntries `
         -Value $DefaultPromptVersions `
         -Label 'Updated backend default prompt_versions'
+    $nonAgentNames = @('PAGE_HTML', 'STYLESHEET')
+    if (Get-Command Get-S63fNonAgentPromptPinNames -ErrorAction SilentlyContinue) {
+        $nonAgentNames = @(Get-S63fNonAgentPromptPinNames)
+    }
+    $removed = New-Object System.Collections.Generic.List[string]
+    foreach ($agent in @($existingEntries.Keys)) {
+        if ($nonAgentNames -contains $agent) {
+            $existingEntries.Remove($agent) | Out-Null
+            $removed.Add([string]$agent)
+        }
+    }
+
     $added = New-Object System.Collections.Generic.List[string]
     foreach ($agent in $defaultEntries.Keys) {
+        if ($nonAgentNames -contains $agent) {
+            continue
+        }
         if (-not $existingEntries.Contains($agent)) {
             $existingEntries[$agent] = $defaultEntries[$agent]
             $added.Add([string]$agent)
         }
     }
 
-    if ($added.Count -eq 0) {
+    if ($added.Count -eq 0 -and $removed.Count -eq 0) {
         return [pscustomobject]@{
             Changed = $false
             Added = @()
+            Removed = @()
             BackupPath = ''
         }
     }
@@ -136,7 +153,7 @@ function Update-BackendPromptVersionPins {
         }
     ) -join ','
     $replacement = "XDISPLAY_AI_PROMPT_VERSIONS=$mergedValue"
-    $match = $matches[0]
+    $match = $assignmentMatches[0]
     $updatedContent = $content.Remove($match.Index, $match.Length).Insert($match.Index, $replacement)
     [System.IO.File]::WriteAllText(
         $EnvPath,
@@ -147,6 +164,61 @@ function Update-BackendPromptVersionPins {
     return [pscustomobject]@{
         Changed = $true
         Added = @($added)
+        Removed = @($removed)
         BackupPath = $backupPath
+    }
+}
+
+function Ensure-BackendBrowserSolverPromptPins {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$EnvPath
+    )
+
+    if (-not (Test-Path -LiteralPath $EnvPath -PathType Leaf)) {
+        throw "Backend .env does not exist: $EnvPath"
+    }
+
+    $pageHtmlVersion = 'v19'
+    $stylesheetVersion = 'v6'
+    if (Get-Command Get-S63fBrowserSolverPageHtmlPromptVersion -ErrorAction SilentlyContinue) {
+        $pageHtmlVersion = [string](Get-S63fBrowserSolverPageHtmlPromptVersion)
+    }
+    if (Get-Command Get-S63fBrowserSolverEngineeringStylesheetContractVersion -ErrorAction SilentlyContinue) {
+        $stylesheetVersion = [string](Get-S63fBrowserSolverEngineeringStylesheetContractVersion)
+    }
+
+    $required = [ordered]@{
+        XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION = $pageHtmlVersion
+        XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION = $stylesheetVersion
+    }
+
+    $content = [System.IO.File]::ReadAllText($EnvPath)
+    $added = New-Object System.Collections.Generic.List[string]
+    foreach ($key in @($required.Keys)) {
+        $pattern = '(?m)^(?!\s*#)\s*' + [regex]::Escape($key) + '='
+        if ([regex]::IsMatch($content, $pattern)) {
+            continue
+        }
+
+        $newline = if ($content.Contains("`r`n")) { "`r`n" } else { "`n" }
+        if ($content.Length -gt 0 -and -not $content.EndsWith("`n")) {
+            $content += $newline
+        }
+        $content += "$key=$($required[$key])$newline"
+        $added.Add([string]$key)
+    }
+
+    if ($added.Count -eq 0) {
+        return [pscustomobject]@{
+            Changed = $false
+            Added = @()
+        }
+    }
+
+    [System.IO.File]::WriteAllText($EnvPath, $content, (New-Object System.Text.UTF8Encoding($false)))
+    return [pscustomobject]@{
+        Changed = $true
+        Added = @($added)
     }
 }

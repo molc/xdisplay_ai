@@ -82,7 +82,12 @@
     "builderPath": "P:\\converter-fix-10b7\\bin",
     "note": "c-181 converter white-window lineage retained as Word-fix superset; not c180 mail bytes."
   },
-  "promptPins": "intent_extractor:v2.24,PAGE_HTML:v19,read_display_declarer:v1.15,write_action_declarer:v1.10,write_action_declarer_link:v1.8,sketch_interpreter:v4.0,STYLESHEET:v6",
+  "promptPins": "planner:v1.2,clarifier:v1.0,diagnoser:v1.0,explainer:v1.0,drafter:v1.0,drafter_dsl:v2.4,sketch_interpreter:v4.0,sketch_interpretation_auditor:v1.0,sketch_layout_auditor:v1.0,auditor_dsl:v1.5,intent_extractor:v2.24,linker_dsl:v1.1,layout_planner:v1.1,component_planner:v1.4,composition_layout_planner:v2.5,component_slot_type_selector:v1.0,component_slot_props_planner:v2.0,page_scene_tweak_planner:v1.0,fixer:v2.2,write_action_declarer:v1.10,nav_declarer:v1.6,engineering_setting_declarer:v1.0,write_action_declarer_link:v1.8,page_set_skeleton_declarer:v1.5,placement_declarer:v1.0,read_display_declarer:v1.15,point_table_column_annotator:v1.1,repeated_series_declarer:v1.2,style_token_declarer:v1.2,strict_region_reader:v1.0,navigation_target_grouping_judge:v1.0",
+  "authorAgentPromptPins": "intent_extractor:v2.24,read_display_declarer:v1.15,write_action_declarer:v1.10,write_action_declarer_link:v1.8,sketch_interpreter:v4.0",
+  "browserSolverPageHtmlPromptVersion": "v19",
+  "browserSolverEngineeringStylesheetContractVersion": "v6",
+  "rejectedTruncatedPromptPins": "intent_extractor:v2.24,PAGE_HTML:v19,read_display_declarer:v1.15,write_action_declarer:v1.10,write_action_declarer_link:v1.8,sketch_interpreter:v4.0,STYLESHEET:v6",
+  "promptPinNote": "Author-card pins are version overlays on the full registered-agent map. PAGE_HTML/STYLESHEET are Settings fields, not prompt_versions agents. Seeding only the seven-entry card as XDISPLAY_AI_PROMPT_VERSIONS fails validate_prompt_version_pins.",
   "retiredEnvKeys": [
     "XDISPLAY_AI_STAGED_DRAFTER_ENABLED"
   ],
