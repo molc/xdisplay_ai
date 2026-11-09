@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$PackagingRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 )
 

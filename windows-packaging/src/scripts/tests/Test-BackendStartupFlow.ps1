@@ -1,4 +1,4 @@
-param(
+﻿param(
     [int]$TimeoutMinutes = 30,
     [int]$HealthProbeTimeoutSeconds = 10,
     [switch]$ResumeValidation,

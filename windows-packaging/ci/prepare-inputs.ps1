@@ -104,9 +104,7 @@ function Resolve-ClientReleaseDir {
     $stagedClientDir = Join-FromRoot 'inputs/client/xdisplay-win64'
     $stagedClientExecutable = Join-Path $stagedClientDir 'Xdisplay.exe'
     if (-not $sourceBuildRequested -and (Test-Path $stagedClientExecutable)) {
-        $resolvedPath = (Resolve-Path $stagedClientDir).Path
-        Write-Step "复用已存在的客户端输入：$resolvedPath"
-        return $resolvedPath
+        throw "Refusing to reuse $stagedClientDir without an explicit -ClientReleaseDir pin. The default staged client may be stale (not catalogwrite SHA 2A80890D...). Pass -SkipClientBuild -ClientReleaseDir <pinned-tree> or provide xdisplay source to rebuild."
     }
     return Build-ClientReleaseFromSource `
         -SourceRepoPath $SourceRepoPath `

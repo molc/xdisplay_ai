@@ -1,14 +1,28 @@
-param(
+﻿param(
     [string]$Channel = 'dev',
     [string]$BackendRepoPath = 'C:\work\backend',
     [string]$XdisplayRepoPath = 'C:\work\xdisplay',
     [string]$PrerequisitesSourceRoot = '',
+    [string]$ClientReleaseDir = '',
+    [string]$ConverterReleaseDir = '',
+    [string]$WorkRoot = '',
+    [string]$StagingRoot = '',
+    [string]$DistRoot = '',
+    [string]$CacheRoot = '',
+    [string]$TempRoot = '',
+    [string]$ExpectedClientSha256 = '2A80890DB988157371CF28D24CA23685D7933C4E59630E5A2DCD2363B7DB5600',
+    [string]$ExpectedConverterSha256 = 'F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36',
+    [long]$ExpectedClientBytes = 675539394,
+    [long]$ExpectedConverterBytes = 529920,
+    [string]$ExpectedInputPinsPath = '',
     [string]$QmakePath = '',
     [string]$MingwMakePath = '',
     [string]$WinDeployQtPath = '',
     [string]$QmakeSpec = 'win32-g++',
     [string]$ReportPath = '',
     [switch]$PreflightOnly,
+    [switch]$SkipClientBuild,
+    [switch]$UseExistingBackendInputs,
     [switch]$SkipClientProtoCompile,
     [switch]$SkipBackendImageBuild,
     [string]$AcceptanceEvidencePath = '',
@@ -23,6 +37,7 @@ $startedAtUtc = [DateTime]::UtcNow
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
 
 . (Join-Path $packagingRoot 'ci\Common.ps1')
+. (Join-Path $packagingRoot 'ci\CachedRelease.ps1')
 . (Join-Path $packagingRoot 'src\scripts\common\InstallerCorrectness.ps1')
 . (Join-Path $packagingRoot 'ci\InstallerPackagingGates.ps1')
 
@@ -361,80 +376,146 @@ try {
 
     Write-BuildStep 'Running source and environment preflight.'
 
-    $resolvedBackendRepoPath = Resolve-RequiredPath -Path $BackendRepoPath -DisplayName 'BackendRepoPath'
-    $resolvedXdisplayRepoPath = Resolve-RequiredPath -Path $XdisplayRepoPath -DisplayName 'XdisplayRepoPath'
-    $resolvedPrerequisitesRoot = Resolve-RequiredPath -Path $PrerequisitesSourceRoot -DisplayName 'PrerequisitesSourceRoot'
+    $workLayout = Set-PackagingWorkLayout `
+        -WorkRoot $WorkRoot `
+        -StagingRoot $StagingRoot `
+        -DistRoot $DistRoot `
+        -CacheRoot $CacheRoot `
+        -TempRoot $TempRoot `
+        -Channel $Channel
 
-    Assert-RequiredRelativePaths -Root $resolvedBackendRepoPath -DisplayName 'Backend source' -RelativePaths @(
-        'Dockerfile',
-        'Dockerfile.embedding',
-        'docker-compose.yml',
-        'db\migrations',
-        'data\chunks\component_capabilities_v1.jsonl',
-        'external\xdisplay\bin\xd_render_cli\xd_render_cli.pro'
-    )
-    Assert-RequiredRelativePaths -Root $resolvedXdisplayRepoPath -DisplayName 'Xdisplay source' -RelativePaths @(
-        'src\Xdisplay_V2.pro',
-        'src\Service_PB\compile_all_proto.bat',
-        'src\Service_Caesium\caesium\caesium.dll',
-        'src\Service_PackL\res\UpdateUnpack.exe'
-    )
-    Assert-RequiredRelativePaths -Root $resolvedPrerequisitesRoot -DisplayName 'Offline prerequisites' -RelativePaths @(
-        'docker-desktop\Docker Desktop Installer.exe',
-        'vcredist\VC_redist.x64.exe',
-        'wsl\wsl_update_x64.msi'
-    )
-
-    $buildPackageScriptPath = Join-Path $packagingRoot 'ci\build-package-from-source.ps1'
-    Assert-RequiredRelativePaths -Root $packagingRoot -DisplayName 'Packaging scripts' -RelativePaths @(
-        'ci\build-package-from-source.ps1',
-        'ci\prepare-inputs.ps1',
-        'ci\build-xdisplay-from-source.ps1',
-        'ci\build-installer.ps1',
-        'ci\publish.ps1',
-        'compat\xdisplay-windows-posix-compat.h',
-        "manifests\channels\$Channel.json"
-    )
-
-    $qmakeCandidates = @(
-        'C:\Qt\5.15.2\mingw81_64\bin\qmake.exe',
-        'C:\Qt\Qt5.15.2\5.15.2\mingw81_64\bin\qmake.exe'
-    )
-    if (-not [string]::IsNullOrWhiteSpace($env:QTDIR)) {
-        $qmakeCandidates = @((Join-Path $env:QTDIR 'bin\qmake.exe')) + $qmakeCandidates
+    Write-BuildStep 'Running native PowerShell 5.1 encoding checks and installer correctness tests (not Windows acceptance).'
+    $encodingTestPath = Join-Path $packagingRoot 'tests\Test-NativePowerShellEncoding.ps1'
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $encodingTestPath -PackagingRoot $packagingRoot
+    if ($LASTEXITCODE -ne 0) {
+        throw "Native PowerShell 5.1 encoding tests failed with exit code $LASTEXITCODE"
     }
-
-    $resolvedQmakePath = Resolve-ToolPath -ToolName 'qmake' -ExplicitPath $QmakePath -CandidatePaths $qmakeCandidates
-    $qmakeBinDirectory = Split-Path -Path $resolvedQmakePath -Parent
-    $resolvedWinDeployQtPath = Resolve-ToolPath -ToolName 'windeployqt' -ExplicitPath $WinDeployQtPath -CandidatePaths @(
-        (Join-Path $qmakeBinDirectory 'windeployqt.exe')
-    )
-    $resolvedMingwMakePath = Resolve-ToolPath -ToolName 'mingw32-make' -ExplicitPath $MingwMakePath -CandidatePaths @(
-        (Join-Path $qmakeBinDirectory 'mingw32-make.exe'),
-        'C:\Qt\Tools\mingw810_64\bin\mingw32-make.exe',
-        'C:\Qt\Qt5.15.2\Tools\mingw810_64\bin\mingw32-make.exe'
-    )
-    $resolvedDockerPath = Resolve-ToolPath -ToolName 'docker' -CandidatePaths @(
-        'C:\Program Files\Docker\Docker\resources\bin\docker.exe'
-    )
-    $resolvedWixPath = Resolve-ToolPath -ToolName 'wix'
-
-    $report.sources.backend.path = $resolvedBackendRepoPath
-    $report.sources.backend.revision = Get-SourceRevision -SourceRoot $resolvedBackendRepoPath
-    $report.sources.xdisplay.path = $resolvedXdisplayRepoPath
-    $report.sources.xdisplay.revision = Get-SourceRevision -SourceRoot $resolvedXdisplayRepoPath
-    $report.prerequisitesRoot = $resolvedPrerequisitesRoot
-    $report.tools.docker = $resolvedDockerPath
-    $report.tools.wix = $resolvedWixPath
-    $report.tools.qmake = $resolvedQmakePath
-    $report.tools.mingwMake = $resolvedMingwMakePath
-    $report.tools.winDeployQt = $resolvedWinDeployQtPath
-
-    Write-BuildStep 'Running source/unit installer correctness tests (not Windows acceptance).'
     $sourceTestPath = Join-Path $packagingRoot 'tests\Test-InstallerCorrectness.ps1'
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $sourceTestPath
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $sourceTestPath -PackagingRoot $packagingRoot
     if ($LASTEXITCODE -ne 0) {
         throw "Source/unit installer correctness tests failed with exit code $LASTEXITCODE"
+    }
+
+    $resolvedPrerequisitesRoot = Resolve-RequiredPath -Path $PrerequisitesSourceRoot -DisplayName 'PrerequisitesSourceRoot'
+    $report.prerequisitesRoot = $resolvedPrerequisitesRoot
+    $resolvedWixPath = Resolve-ToolPath -ToolName 'wix'
+    $report.tools.wix = $resolvedWixPath
+    $buildInstallerScriptPath = Join-Path $packagingRoot 'ci\build-installer.ps1'
+    $publishScriptPath = Join-Path $packagingRoot 'ci\publish.ps1'
+    $qualifiedRelease = $null
+
+    if ($SkipClientBuild) {
+        Assert-CachedReleaseArguments `
+            -SkipClientBuild $true `
+            -ClientReleaseDir $ClientReleaseDir `
+            -ConverterReleaseDir $ConverterReleaseDir
+        if ([string]::IsNullOrWhiteSpace($ConverterReleaseDir)) {
+            throw 'SkipClientBuild requires -ConverterReleaseDir so the pinned Converter.exe can be overlaid without rebuilding the client.'
+        }
+
+        Write-BuildStep 'Qualifying pinned cached client/Converter; Xdisplay.exe will not be recompiled.'
+        $qualifiedRelease = New-QualifiedCachedClientRelease `
+            -ClientReleaseDir $ClientReleaseDir `
+            -ConverterReleaseDir $ConverterReleaseDir `
+            -Destination $workLayout.QualifiedClientRoot `
+            -ExpectedClientSha256 $ExpectedClientSha256 `
+            -ExpectedClientBytes $ExpectedClientBytes `
+            -ExpectedConverterSha256 $ExpectedConverterSha256 `
+            -ExpectedConverterBytes $ExpectedConverterBytes
+        $env:XDISPLAYAI_CLIENT_RELEASE_DIR = $qualifiedRelease.destination
+        $report.sources.xdisplay.path = $ClientReleaseDir
+        $report.sources.xdisplay.revision = "pinned:$ExpectedClientSha256"
+
+        if ($UseExistingBackendInputs) {
+            if ([string]::IsNullOrWhiteSpace($ExpectedInputPinsPath)) {
+                $ExpectedInputPinsPath = Join-Path $packagingRoot 'manifests\pins\offline-inputs.0.1.4.json'
+            }
+            Write-BuildStep 'Using existing backend images/source inputs; no source clone and no image rebuild.'
+            Assert-ExistingBackendInputs `
+                -InputsRoot (Join-Path $packagingRoot 'inputs') `
+                -PinManifestPath $ExpectedInputPinsPath
+            $report.sources.backend.path = Join-Path $packagingRoot 'inputs\backend\source'
+            $report.sources.backend.revision = 'existing-inputs'
+        }
+        else {
+            $resolvedBackendRepoPath = Resolve-RequiredPath -Path $BackendRepoPath -DisplayName 'BackendRepoPath'
+            Assert-RequiredRelativePaths -Root $resolvedBackendRepoPath -DisplayName 'Backend source' -RelativePaths @(
+                'Dockerfile',
+                'Dockerfile.embedding',
+                'docker-compose.yml',
+                'db\migrations',
+                'data\chunks\component_capabilities_v1.jsonl',
+                'external\xdisplay\bin\xd_render_cli\xd_render_cli.pro'
+            )
+            $report.sources.backend.path = $resolvedBackendRepoPath
+            $report.sources.backend.revision = Get-SourceRevision -SourceRoot $resolvedBackendRepoPath
+        }
+    }
+    else {
+        $resolvedBackendRepoPath = Resolve-RequiredPath -Path $BackendRepoPath -DisplayName 'BackendRepoPath'
+        $resolvedXdisplayRepoPath = Resolve-RequiredPath -Path $XdisplayRepoPath -DisplayName 'XdisplayRepoPath'
+
+        Assert-RequiredRelativePaths -Root $resolvedBackendRepoPath -DisplayName 'Backend source' -RelativePaths @(
+            'Dockerfile',
+            'Dockerfile.embedding',
+            'docker-compose.yml',
+            'db\migrations',
+            'data\chunks\component_capabilities_v1.jsonl',
+            'external\xdisplay\bin\xd_render_cli\xd_render_cli.pro'
+        )
+        Assert-RequiredRelativePaths -Root $resolvedXdisplayRepoPath -DisplayName 'Xdisplay source' -RelativePaths @(
+            'src\Xdisplay_V2.pro',
+            'src\Service_PB\compile_all_proto.bat',
+            'src\Service_Caesium\caesium\caesium.dll',
+            'src\Service_PackL\res\UpdateUnpack.exe'
+        )
+        Assert-RequiredRelativePaths -Root $resolvedPrerequisitesRoot -DisplayName 'Offline prerequisites' -RelativePaths @(
+            'docker-desktop\Docker Desktop Installer.exe',
+            'vcredist\VC_redist.x64.exe',
+            'wsl\wsl_update_x64.msi'
+        )
+
+        $buildPackageScriptPath = Join-Path $packagingRoot 'ci\build-package-from-source.ps1'
+        Assert-RequiredRelativePaths -Root $packagingRoot -DisplayName 'Packaging scripts' -RelativePaths @(
+            'ci\build-package-from-source.ps1',
+            'ci\prepare-inputs.ps1',
+            'ci\build-xdisplay-from-source.ps1',
+            'ci\build-installer.ps1',
+            'ci\publish.ps1',
+            'compat\xdisplay-windows-posix-compat.h',
+            "manifests\channels\$Channel.json"
+        )
+
+        $qmakeCandidates = @(
+            'C:\Qt\5.15.2\mingw81_64\bin\qmake.exe',
+            'C:\Qt\Qt5.15.2\5.15.2\mingw81_64\bin\qmake.exe'
+        )
+        if (-not [string]::IsNullOrWhiteSpace($env:QTDIR)) {
+            $qmakeCandidates = @((Join-Path $env:QTDIR 'bin\qmake.exe')) + $qmakeCandidates
+        }
+
+        $resolvedQmakePath = Resolve-ToolPath -ToolName 'qmake' -ExplicitPath $QmakePath -CandidatePaths $qmakeCandidates
+        $qmakeBinDirectory = Split-Path -Path $resolvedQmakePath -Parent
+        $resolvedWinDeployQtPath = Resolve-ToolPath -ToolName 'windeployqt' -ExplicitPath $WinDeployQtPath -CandidatePaths @(
+            (Join-Path $qmakeBinDirectory 'windeployqt.exe')
+        )
+        $resolvedMingwMakePath = Resolve-ToolPath -ToolName 'mingw32-make' -ExplicitPath $MingwMakePath -CandidatePaths @(
+            (Join-Path $qmakeBinDirectory 'mingw32-make.exe'),
+            'C:\Qt\Tools\mingw810_64\bin\mingw32-make.exe',
+            'C:\Qt\Qt5.15.2\Tools\mingw810_64\bin\mingw32-make.exe'
+        )
+        $resolvedDockerPath = Resolve-ToolPath -ToolName 'docker' -CandidatePaths @(
+            'C:\Program Files\Docker\Docker\resources\bin\docker.exe'
+        )
+
+        $report.sources.backend.path = $resolvedBackendRepoPath
+        $report.sources.backend.revision = Get-SourceRevision -SourceRoot $resolvedBackendRepoPath
+        $report.sources.xdisplay.path = $resolvedXdisplayRepoPath
+        $report.sources.xdisplay.revision = Get-SourceRevision -SourceRoot $resolvedXdisplayRepoPath
+        $report.tools.docker = $resolvedDockerPath
+        $report.tools.qmake = $resolvedQmakePath
+        $report.tools.mingwMake = $resolvedMingwMakePath
+        $report.tools.winDeployQt = $resolvedWinDeployQtPath
     }
 
     if ($PreflightOnly) {
@@ -445,36 +526,61 @@ try {
         return
     }
 
-    Wait-ForDockerDaemon -DockerPath $resolvedDockerPath
-
     $report.status = 'building'
     Write-BuildReport -Report $report -Path $ReportPath
 
-    $buildArguments = @{
-        Channel = $Channel
-        BackendRepoPath = $resolvedBackendRepoPath
-        XdisplayRepoPath = $resolvedXdisplayRepoPath
-        QmakePath = $resolvedQmakePath
-        MingwMakePath = $resolvedMingwMakePath
-        WinDeployQtPath = $resolvedWinDeployQtPath
-        QmakeSpec = $QmakeSpec
-        PrerequisitesSourceRoot = $resolvedPrerequisitesRoot
-    }
-    if ($SkipClientProtoCompile) {
-        $buildArguments.SkipClientProtoCompile = $true
-    }
-    if ($SkipBackendImageBuild) {
-        $buildArguments.SkipBackendImageBuild = $true
-    }
+    if ($SkipClientBuild) {
+        if (-not $UseExistingBackendInputs) {
+            $resolvedDockerPath = Resolve-ToolPath -ToolName 'docker' -CandidatePaths @(
+                'C:\Program Files\Docker\Docker\resources\bin\docker.exe'
+            )
+            Wait-ForDockerDaemon -DockerPath $resolvedDockerPath
+            $prepareInputsScriptPath = Join-Path $packagingRoot 'ci\prepare-inputs.ps1'
+            $prepareArguments = @{
+                BackendRepoPath = $resolvedBackendRepoPath
+                ClientReleaseDir = $qualifiedRelease.destination
+                PrerequisitesSourceRoot = $resolvedPrerequisitesRoot
+            }
+            if ($SkipBackendImageBuild) {
+                $prepareArguments.SkipBackendImageBuild = $true
+            }
+            Write-BuildStep 'Preparing backend inputs from source while keeping the pinned cached client.'
+            & $prepareInputsScriptPath @prepareArguments
+        }
 
-    Write-BuildStep 'Building client, backend images, MSI, and offline bundle.'
-    & $buildPackageScriptPath @buildArguments
+        Write-BuildStep 'Building MSI and offline bundle from pinned cached client and existing images; not calling build-xdisplay-from-source.'
+        & $buildInstallerScriptPath -Channel $Channel
+        & $publishScriptPath -Channel $Channel
+    }
+    else {
+        Wait-ForDockerDaemon -DockerPath $resolvedDockerPath
+
+        $buildArguments = @{
+            Channel = $Channel
+            BackendRepoPath = $resolvedBackendRepoPath
+            XdisplayRepoPath = $resolvedXdisplayRepoPath
+            QmakePath = $resolvedQmakePath
+            MingwMakePath = $resolvedMingwMakePath
+            WinDeployQtPath = $resolvedWinDeployQtPath
+            QmakeSpec = $QmakeSpec
+            PrerequisitesSourceRoot = $resolvedPrerequisitesRoot
+        }
+        if ($SkipClientProtoCompile) {
+            $buildArguments.SkipClientProtoCompile = $true
+        }
+        if ($SkipBackendImageBuild) {
+            $buildArguments.SkipBackendImageBuild = $true
+        }
+
+        Write-BuildStep 'Building client, backend images, MSI, and offline bundle.'
+        & $buildPackageScriptPath @buildArguments
+    }
 
     $bundleManifest = Get-Content -Path (Join-Path $packagingRoot 'manifests\bundle.json') -Raw | ConvertFrom-Json
     $channelManifest = Get-Content -Path (Join-Path $packagingRoot "manifests\channels\$Channel.json") -Raw | ConvertFrom-Json
     $versionSuffix = if ([string]::IsNullOrWhiteSpace([string]$channelManifest.bundleVersionSuffix)) { '' } else { [string]$channelManifest.bundleVersionSuffix }
     $version = [string]$bundleManifest.bundle.version
-    $distDirectory = Join-Path $packagingRoot "dist\$Channel"
+    $distDirectory = (Get-StagingLayout -Channel $Channel).Dist
     $bundleName = "XDisplayAI-$version$versionSuffix.exe"
     $msiName = "XDisplayAI-$version$versionSuffix.msi"
     $artifactManifestName = "artifacts-$Channel.json"
@@ -488,6 +594,11 @@ try {
     $inputPinsPath = Join-Path $distDirectory 'input-pins.json'
     Write-BuildStep 'Exporting pinned input size/SHA256/SHA512 hashes.'
     Export-InputPins -InputsRoot (Join-Path $packagingRoot 'inputs') -OutputPath $inputPinsPath | Out-Null
+    $cachedPinsName = 'cached-release-pins.json'
+    if ($null -ne $qualifiedRelease) {
+        Write-BuildStep 'Exporting pinned catalogwrite client and Converter identities.'
+        Export-CachedReleasePins -QualifiedRelease $qualifiedRelease -OutputPath (Join-Path $distDirectory $cachedPinsName) | Out-Null
+    }
 
     Write-BuildStep 'Verifying Burn SHA512 bindings for adjacent payloads.'
     Assert-BurnExternalPayloadBindings `
@@ -507,18 +618,22 @@ try {
     & (Join-Path $packagingRoot 'ci\publish.ps1') -Channel $Channel
 
     Write-BuildStep 'Verifying the complete offline delivery directory and SHA256/SHA512 manifest.'
+    $requiredArtifactNames = @(
+        $bundleName,
+        $msiName,
+        'Docker Desktop Installer.exe',
+        'VC_redist.x64.exe',
+        'wsl_update_x64.msi',
+        'input-pins.json',
+        "artifacts-$Channel.json"
+    )
+    if ($null -ne $qualifiedRelease) {
+        $requiredArtifactNames += $cachedPinsName
+    }
     $deliverySummary = Test-DeliveryDirectory `
         -DistDirectory $distDirectory `
         -ArtifactManifestPath $artifactManifestPath `
-        -RequiredArtifactNames @(
-            $bundleName,
-            $msiName,
-            'Docker Desktop Installer.exe',
-            'VC_redist.x64.exe',
-            'wsl_update_x64.msi',
-            'input-pins.json',
-            "artifacts-$Channel.json"
-        )
+        -RequiredArtifactNames $requiredArtifactNames
 
     if (-not $acceptance.Ok) {
         $report.status = 'built_not_ready'

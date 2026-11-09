@@ -71,8 +71,14 @@ function Get-PortsManifest {
 
 function Get-InputLayout {
     $manifest = Get-BundleManifest
+    $clientReleaseDir = if (-not [string]::IsNullOrWhiteSpace([string]$env:XDISPLAYAI_CLIENT_RELEASE_DIR)) {
+        [string]$env:XDISPLAYAI_CLIENT_RELEASE_DIR
+    }
+    else {
+        Join-FromRoot $manifest.paths.clientReleaseDir
+    }
     return [pscustomobject]@{
-        ClientReleaseDir   = Join-FromRoot $manifest.paths.clientReleaseDir
+        ClientReleaseDir   = $clientReleaseDir
         BackendSourceDir   = Join-FromRoot $manifest.paths.backendSourceDir
         BackendComposeBase = Join-FromRoot $manifest.paths.backendComposeBase
         BackendMigrationDir = Join-FromRoot $manifest.paths.backendMigrationDir
@@ -113,13 +119,26 @@ function Get-StagingLayout {
         [string]$Channel
     )
 
-    $channelRoot = Join-FromRoot "staging/$Channel"
+    $stagingRootOverride = [string]$env:XDISPLAYAI_STAGING_ROOT
+    $distRootOverride = [string]$env:XDISPLAYAI_DIST_ROOT
+    $channelRoot = if (-not [string]::IsNullOrWhiteSpace($stagingRootOverride)) {
+        Join-Path $stagingRootOverride $Channel
+    }
+    else {
+        Join-FromRoot "staging/$Channel"
+    }
+    $distDirectory = if (-not [string]::IsNullOrWhiteSpace($distRootOverride)) {
+        Join-Path $distRootOverride $Channel
+    }
+    else {
+        Join-FromRoot "dist/$Channel"
+    }
     return [pscustomobject]@{
         Root               = $channelRoot
         Payload            = Join-Path $channelRoot 'payload'
         WxsGenerated       = Join-Path $channelRoot 'wix'
         GeneratedPayloadWxs = Join-Path $channelRoot 'wix/Payload.Generated.wxs'
-        Dist               = Join-FromRoot "dist/$Channel"
+        Dist               = $distDirectory
     }
 }
 

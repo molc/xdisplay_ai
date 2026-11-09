@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$MigrationScriptPath = (Join-Path $PSScriptRoot '..\src\scripts\update\PromptPinMigration.ps1')
 )
 
