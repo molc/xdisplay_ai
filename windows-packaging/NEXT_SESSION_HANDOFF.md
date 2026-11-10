@@ -248,3 +248,9 @@ docker run --rm orches/orchestration-app:latest python -c 'from app.page_dsl.lay
 下一个 session 最优先做的事是：
 
 **刷新 `orchestration-app` 的离线镜像输入，使其与当前可运行源码快照一致，然后在 builder VM 上重新导入镜像并重跑安装后验证。**
+
+## 2026-11-10 来自 ai_orchestration 总指挥的交接（资源来源更正 + 架构师裁决待定）
+- INVENTORY.md（packaging-resource-stage-20261106）里记为「到处找不到」的 `images/bartitle/*`（含 `titlelogo.png`）、`qrcode_about.jpg`、`Converter.exe`、`Simulator.exe`、`tools/ZeroBraneStudioEduPack-2.01-win32`、`doc/Xdisplay使用手册V2.4.4.pdf`、`res/pinyin-3500-single.bin` / `pinyin-7000-single.bin` / `pinyin.bin`、`res/ImageMagick-*`、`res/lvgl_img_converter.exe`、`res/subset_font.exe` **全部在官方 2.4.4 安装包的 payload 里**：`cursor-scratch/official-244-20261106/payload/`（由 `Downloads/Xdisplay_2.4.4_20261027.rar` 解出，1388 文件，`payload-inventory.tsv`）。
+- 官方包的 `data/keyboard_a..e` 合计只有 1.2 MB；`inputs/client/runtime-data` 里 34 MB×5 的版本是把字体复制进了每个模板，建议换成官方包的版本（内容同、体积 1/140）。
+- 归属建议已交架构师裁决（报告 `ai_orchestration/docs/superpowers/reports/2026-11-10-client-runtime-resources-ownership.md`）：代码按相对路径读、随版本走的（模板 / images / 字体 + pinyin / 手册 / qrcode / logo）→ 进 xdisplay 源码仓；有源码的 Converter / Simulator / Tool_Encrypt → 由 `build-xdisplay-from-source.ps1` 一并构建；第三方（Qt / ffmpeg / ImageMagick / lvgl_img_converter / subset_font / optipng / ZeroBrane）→ 留在 `inputs/prerequisites` 带校验和。裁决前打包工程不必改；裁决后第一组从源码仓取、第二组加构建步。
+- Mac UAT 包（`xdisplay-builds/2026-11-07-c180`）已手工补入 `data/keyboard_a..e`（UD-2026-11-10-A：缺模板时 `func_project_new` 不清旧页，新工程继承上一个工程的页）。
