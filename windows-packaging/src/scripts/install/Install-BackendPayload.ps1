@@ -267,18 +267,21 @@ function Update-PublishedHostPorts {
     return $runtime
 }
 
-function Get-ComposeServiceContainerId {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$ServiceName
-    )
-
-    $layout = Get-DockerLayout
-    $containerId = & $dockerCommand compose --project-name $layout.ProjectName --env-file $layout.EnvFile -f $layout.BaseCompose -f $layout.OverlayCompose ps -q $ServiceName
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace([string]$containerId)) {
-        return ''
+function Sync-StaleAppContainersToLoadedImages {
+    $package = Test-InstalledBackendMatchesPackage
+    if ($package.Image.Ok) {
+        return
     }
-    return ([string]$containerId).Trim()
+
+    Write-Step ('运行中的 orchestration-app 不是本包 s63f 镜像（' + ($package.Image.Reasons -join '；') + '）。强制重建 app/embedding-worker，保留 postgres/redis 数据卷。')
+    Invoke-Compose -Arguments @('up', '-d', '--no-deps', '--force-recreate', 'orchestration-app')
+    if ($LASTEXITCODE -ne 0) {
+        throw "强制重建 orchestration-app 失败，退出码：$LASTEXITCODE"
+    }
+    Invoke-Compose -Arguments @('up', '-d', '--no-deps', '--force-recreate', 'embedding-worker')
+    if ($LASTEXITCODE -ne 0) {
+        throw "强制重建 embedding-worker 失败，退出码：$LASTEXITCODE"
+    }
 }
 
 function Invoke-PostgresSql {
@@ -453,6 +456,7 @@ Invoke-Compose -Arguments @('up', '-d')
 if ($LASTEXITCODE -ne 0) {
     throw "启动离线后端服务栈失败，退出码：$LASTEXITCODE"
 }
+Sync-StaleAppContainersToLoadedImages
 
 $postgresContainerId = Wait-For-PostgresReady
 

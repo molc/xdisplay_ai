@@ -354,6 +354,226 @@ function Get-ApprovedBackendTag {
     return 'prod/s63f'
 }
 
+function Get-S63fPackagingGitShaLabelName {
+    return 'xdisplayai.packaging.git-sha'
+}
+
+function Get-S63fPackagingTagLabelName {
+    return 'xdisplayai.packaging.tag'
+}
+
+function Get-S63fPackagingRuntimeFingerprintLabelName {
+    return 'xdisplayai.packaging.runtime-fingerprint'
+}
+
+function Get-OrchestrationAppRuntimeFingerprintPaths {
+    return @(
+        'Dockerfile',
+        'pyproject.toml',
+        '.dockerignore',
+        'external\xdisplay\bin\xd_render_cli\main.cpp',
+        'external\xdisplay\bin\xd_render_cli\render_runner.cpp',
+        'external\xdisplay\bin\xd_render_cli\render_runner.h',
+        'external\xdisplay\bin\xd_render_cli\xd_render_cli.pro',
+        'external\xdisplay\bin\xd_render_cli\Makefile'
+    )
+}
+
+function Get-ObjectPropertyText {
+    param(
+        $Object,
+        [Parameter(Mandatory = $true)]
+        [string]$Name
+    )
+
+    if ($null -eq $Object) {
+        return ''
+    }
+    if ($Object -is [System.Collections.IDictionary]) {
+        if ($Object.Contains($Name)) {
+            return [string]$Object[$Name]
+        }
+        return ''
+    }
+    if ($Object.PSObject.Properties.Name -contains $Name) {
+        return [string]$Object.$Name
+    }
+    return ''
+}
+
+function Test-BackendImageMatchesS63fContract {
+    param(
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$GitSha = '',
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$Tag = '',
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$RuntimeFingerprint = '',
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$ExpectedFingerprint = '',
+        [AllowNull()]
+        [AllowEmptyString()]
+        [string]$ImageId = ''
+    )
+
+    $reasons = New-Object System.Collections.Generic.List[string]
+    $gitShaText = [string]$GitSha
+    $tagText = [string]$Tag
+    $fingerprintText = [string]$RuntimeFingerprint
+    $expectedText = [string]$ExpectedFingerprint
+    $requiredPrefix = Get-ApprovedBackendRevisionPrefix
+    $requiredTag = Get-ApprovedBackendTag
+
+    if ([string]::IsNullOrWhiteSpace($gitShaText) -or -not $gitShaText.StartsWith($requiredPrefix, [StringComparison]::OrdinalIgnoreCase)) {
+        $shown = if ([string]::IsNullOrWhiteSpace($gitShaText)) { 'missing' } else { $gitShaText }
+        $imageShown = if ([string]::IsNullOrWhiteSpace($ImageId)) { '' } else { " image=$ImageId" }
+        $reasons.Add("orchestration-app git-sha $shown is not s63f $requiredPrefix$imageShown")
+    }
+    if (-not [string]::Equals($tagText, $requiredTag, [StringComparison]::OrdinalIgnoreCase)) {
+        $shown = if ([string]::IsNullOrWhiteSpace($tagText)) { 'missing' } else { $tagText }
+        $reasons.Add("orchestration-app tag $shown is not $requiredTag")
+    }
+    if (-not [string]::IsNullOrWhiteSpace($expectedText)) {
+        if (-not [string]::Equals($fingerprintText, $expectedText, [StringComparison]::OrdinalIgnoreCase)) {
+            $shown = if ([string]::IsNullOrWhiteSpace($fingerprintText)) { 'missing' } else { $fingerprintText }
+            $reasons.Add("orchestration-app runtime-fingerprint $shown does not match package fingerprint")
+        }
+    }
+    elseif ([string]::IsNullOrWhiteSpace($fingerprintText) -and [string]::IsNullOrWhiteSpace($gitShaText)) {
+        $reasons.Add('running orchestration-app has no s63f packaging labels')
+    }
+
+    return [pscustomobject]@{
+        Ok = ($reasons.Count -eq 0)
+        Reasons = @($reasons)
+    }
+}
+
+function Test-BackendPromptContractFromEnvEntries {
+    param(
+        [AllowNull()]
+        [System.Collections.IDictionary]$Entries = $null
+    )
+
+    $reasons = New-Object System.Collections.Generic.List[string]
+    if ($null -eq $Entries) {
+        $reasons.Add('backend .env is missing')
+        return [pscustomobject]@{
+            Ok = $false
+            Reasons = @($reasons)
+            AgentCount = 0
+        }
+    }
+
+    foreach ($retired in @(Get-RetiredBackendEnvKeys)) {
+        if ($Entries.Contains($retired)) {
+            $reasons.Add("retired env key $retired is still present")
+        }
+    }
+
+    $table = ''
+    if ($Entries.Contains('XDISPLAY_AI_PROMPT_VERSIONS')) {
+        $table = [string]$Entries['XDISPLAY_AI_PROMPT_VERSIONS']
+    }
+    $agentCount = 0
+    if ([string]::IsNullOrWhiteSpace($table)) {
+        $reasons.Add('XDISPLAY_AI_PROMPT_VERSIONS is missing; HTTP 200 does not waive the 31-agent prompt contract')
+    }
+    else {
+        $map = ConvertTo-PromptVersionMap -Value $table
+        $agentCount = @($map.Keys).Count
+        $problems = @(Get-PromptVersionTableStartupProblems -EffectiveTable $table -DefaultTable (Get-S63fRegisteredPromptVersionTable))
+        foreach ($problem in $problems) {
+            $reasons.Add([string]$problem)
+        }
+        $authorPins = ConvertTo-PromptVersionMap -Value (Get-S63fAuthorAgentPromptPins)
+        foreach ($agent in @($authorPins.Keys)) {
+            if (-not $map.Contains($agent) -or -not [string]::Equals([string]$map[$agent], [string]$authorPins[$agent], [StringComparison]::Ordinal)) {
+                $reasons.Add("author pin ${agent}:$($authorPins[$agent]) is missing from the effective prompt table")
+            }
+        }
+        foreach ($alias in @(Get-S63fNonAgentPromptPinNames)) {
+            if ($map.Contains($alias)) {
+                $reasons.Add("$alias must not appear in XDISPLAY_AI_PROMPT_VERSIONS")
+            }
+        }
+    }
+
+    $pageHtmlKey = 'XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION'
+    $stylesheetKey = 'XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION'
+    $pageHtml = if ($Entries.Contains($pageHtmlKey)) { [string]$Entries[$pageHtmlKey] } else { '' }
+    $stylesheet = if ($Entries.Contains($stylesheetKey)) { [string]$Entries[$stylesheetKey] } else { '' }
+    if ($pageHtml -ne (Get-S63fBrowserSolverPageHtmlPromptVersion)) {
+        $reasons.Add("$pageHtmlKey must be $(Get-S63fBrowserSolverPageHtmlPromptVersion) on its own Settings key")
+    }
+    if ($stylesheet -ne (Get-S63fBrowserSolverEngineeringStylesheetContractVersion)) {
+        $reasons.Add("$stylesheetKey must be $(Get-S63fBrowserSolverEngineeringStylesheetContractVersion) on its own Settings key")
+    }
+
+    return [pscustomobject]@{
+        Ok = ($reasons.Count -eq 0)
+        Reasons = @($reasons)
+        AgentCount = $agentCount
+    }
+}
+
+function Test-LocalBackendSkipAllowed {
+    param(
+        [Parameter(Mandatory = $true)]
+        [bool]$HealthReady,
+        [AllowNull()]
+        $ImageContract = $null,
+        [AllowNull()]
+        $PromptContract = $null
+    )
+
+    $reasons = New-Object System.Collections.Generic.List[string]
+    if (-not $HealthReady) {
+        $reasons.Add('local 127.0.0.1:18001 health/origin is not ready')
+    }
+    $imageOk = $false
+    if ($null -ne $ImageContract -and $ImageContract.PSObject.Properties.Name -contains 'Ok') {
+        $imageOk = [bool]$ImageContract.Ok
+        if (-not $imageOk) {
+            foreach ($reason in @($ImageContract.Reasons)) {
+                $reasons.Add([string]$reason)
+            }
+        }
+    }
+    else {
+        $reasons.Add('running app image contract was not evaluated')
+    }
+
+    $promptOk = $false
+    if ($null -ne $PromptContract -and $PromptContract.PSObject.Properties.Name -contains 'Ok') {
+        $promptOk = [bool]$PromptContract.Ok
+        if (-not $promptOk) {
+            foreach ($reason in @($PromptContract.Reasons)) {
+                $reasons.Add([string]$reason)
+            }
+        }
+    }
+    else {
+        $reasons.Add('prompt contract was not evaluated')
+    }
+
+    if ($HealthReady -and -not $imageOk) {
+        $reasons.Add('HTTP 200 must not skip offline image load when the running app image is not this package s63f')
+    }
+    if ($HealthReady -and -not $promptOk) {
+        $reasons.Add('HTTP 200 must not skip prompt/config initialization when the s63f prompt contract is stale')
+    }
+
+    return [pscustomobject]@{
+        Ok = ($HealthReady -and $imageOk -and $promptOk)
+        Reasons = @($reasons)
+    }
+}
+
 function Get-ApprovedXdisplaySubmoduleCommit {
     return '0c657ad3eac7ece814206bd40fea807ec6568f81'
 }

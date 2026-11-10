@@ -156,17 +156,29 @@ try {
     if ($Resume) {
         Write-Step '继续执行重启后的离线安装流程。'
     }
-    if (-not $Resume -and (Test-LocalBackendFullyReady)) {
+    $healthReady = Test-LocalBackendFullyReady
+    $packageReady = $null
+    if ($healthReady) {
+        $packageReady = Test-InstalledBackendMatchesPackage
+    }
+    $skipAllowed = Test-LocalBackendSkipAllowed `
+        -HealthReady $healthReady `
+        -ImageContract $(if ($null -ne $packageReady) { $packageReady.Image } else { $null }) `
+        -PromptContract $(if ($null -ne $packageReady) { $packageReady.Prompt } else { $null })
+    if (-not $Resume -and $skipAllowed.Ok) {
         Unregister-ResumeTask
         Clear-BootstrapState
         if ($LaunchClient) {
-            Write-Step '本机后端已在 127.0.0.1:18001 就绪，直接启动客户端。'
+            Write-Step '本机后端已在 127.0.0.1:18001 就绪，且为本包 s63f 镜像与 prompt 合同，直接启动客户端。'
             Start-XDisplayClient
         }
         else {
-            Write-Step '本机后端已在 127.0.0.1:18001 就绪，无需重复初始化。'
+            Write-Step '本机后端已在 127.0.0.1:18001 就绪，且为本包 s63f 镜像与 prompt 合同，无需重复初始化。'
         }
         return
+    }
+    if (-not $Resume -and $healthReady -and -not $skipAllowed.Ok) {
+        Write-Step ('本机 127.0.0.1:18001 健康，但不是本包 s63f 合同：' + ($skipAllowed.Reasons -join '；') + '。继续导入离线镜像并刷新配置。')
     }
 
     $prerequisiteResult = & (Join-Path $PSScriptRoot 'Install-OfflinePrerequisites.ps1')

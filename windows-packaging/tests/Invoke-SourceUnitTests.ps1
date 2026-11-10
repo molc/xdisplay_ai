@@ -53,6 +53,12 @@ if ($LASTEXITCODE -ne 0) {
     throw "Test-ColdPostgresMigrationResume.ps1 failed (exit $LASTEXITCODE)"
 }
 
+Write-Host 'RUN Test-UpgradeFromHealthyOlderBackend.ps1'
+& (Join-Path $PSScriptRoot 'Test-UpgradeFromHealthyOlderBackend.ps1') -PackagingRoot $PackagingRoot
+if ($LASTEXITCODE -ne 0) {
+    throw "Test-UpgradeFromHealthyOlderBackend.ps1 failed (exit $LASTEXITCODE)"
+}
+
 Write-Host 'RUN Test-PublishedPortFallback.ps1'
 & (Join-Path $PSScriptRoot 'Test-PublishedPortFallback.ps1') -PackagingRoot $PackagingRoot
 if ($LASTEXITCODE -ne 0) {

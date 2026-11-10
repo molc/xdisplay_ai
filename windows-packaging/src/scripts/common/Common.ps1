@@ -403,6 +403,144 @@ function Invoke-Compose {
     & $dockerCommand compose --project-name $layout.ProjectName --env-file $layout.EnvFile -f $layout.BaseCompose -f $layout.OverlayCompose @Arguments
 }
 
+function Get-ComposeServiceContainerId {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ServiceName
+    )
+
+    $dockerCommand = Get-DockerCommand
+    $layout = Get-DockerLayout
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        $containerId = & $dockerCommand compose --project-name $layout.ProjectName --env-file $layout.EnvFile -f $layout.BaseCompose -f $layout.OverlayCompose ps -q $ServiceName 2>&1
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+    if ($exitCode -ne 0 -or [string]::IsNullOrWhiteSpace([string]$containerId)) {
+        return ''
+    }
+    return ([string]$containerId).Trim()
+}
+
+function Get-ExpectedS63fRuntimeFingerprintFromSeed {
+    $layout = Get-InstallStateLayout
+    $seed = [string]$layout.BackendSeed
+    if ([string]::IsNullOrWhiteSpace($seed) -or -not (Test-Path -LiteralPath $seed)) {
+        return ''
+    }
+
+    $relativePaths = @(Get-OrchestrationAppRuntimeFingerprintPaths)
+    foreach ($relativePath in $relativePaths) {
+        $path = Join-InstallRelativePath -Root $seed -RelativePath $relativePath
+        if (-not (Test-Path -LiteralPath $path -PathType Leaf)) {
+            return ''
+        }
+    }
+
+    return Get-PathContentFingerprint -Root $seed -RelativePaths $relativePaths
+}
+
+function Get-RunningOrchestrationAppImageFacts {
+    $facts = [pscustomobject]@{
+        ContainerId = ''
+        ImageId = ''
+        GitSha = ''
+        Tag = ''
+        RuntimeFingerprint = ''
+    }
+
+    try {
+        $containerId = Get-ComposeServiceContainerId -ServiceName 'orchestration-app'
+        if ([string]::IsNullOrWhiteSpace($containerId)) {
+            return $facts
+        }
+        $facts.ContainerId = $containerId
+        $dockerCommand = Get-DockerCommand
+        $previousErrorActionPreference = $ErrorActionPreference
+        try {
+            $ErrorActionPreference = 'Continue'
+            $inspectJson = & $dockerCommand inspect $containerId 2>&1
+            if ($LASTEXITCODE -ne 0) {
+                return $facts
+            }
+        }
+        finally {
+            $ErrorActionPreference = $previousErrorActionPreference
+        }
+
+        $inspected = $inspectJson | ConvertFrom-Json
+        if ($inspected -is [System.Array]) {
+            $inspected = $inspected[0]
+        }
+        $facts.ImageId = Get-ObjectPropertyText -Object $inspected -Name 'Image'
+        $config = $null
+        if ($inspected.PSObject.Properties.Name -contains 'Config') {
+            $config = $inspected.Config
+        }
+        $labels = $null
+        if ($null -ne $config -and $config.PSObject.Properties.Name -contains 'Labels') {
+            $labels = $config.Labels
+        }
+        $facts.GitSha = Get-ObjectPropertyText -Object $labels -Name (Get-S63fPackagingGitShaLabelName)
+        $facts.Tag = Get-ObjectPropertyText -Object $labels -Name (Get-S63fPackagingTagLabelName)
+        $facts.RuntimeFingerprint = Get-ObjectPropertyText -Object $labels -Name (Get-S63fPackagingRuntimeFingerprintLabelName)
+        return $facts
+    }
+    catch {
+        return $facts
+    }
+}
+
+function Test-InstalledBackendMatchesPackage {
+    try {
+        $imageFacts = Get-RunningOrchestrationAppImageFacts
+        $imageContract = Test-BackendImageMatchesS63fContract `
+            -GitSha $imageFacts.GitSha `
+            -Tag $imageFacts.Tag `
+            -RuntimeFingerprint $imageFacts.RuntimeFingerprint `
+            -ExpectedFingerprint (Get-ExpectedS63fRuntimeFingerprintFromSeed) `
+            -ImageId $imageFacts.ImageId
+
+        $layout = Get-InstallStateLayout
+        $envEntries = $null
+        if (Test-Path -LiteralPath $layout.BackendEnvFile -PathType Leaf) {
+            $envEntries = Read-EnvFile -Path $layout.BackendEnvFile
+        }
+        $promptContract = Test-BackendPromptContractFromEnvEntries -Entries $envEntries
+
+        $reasons = New-Object System.Collections.Generic.List[string]
+        foreach ($reason in @($imageContract.Reasons)) {
+            $reasons.Add([string]$reason)
+        }
+        foreach ($reason in @($promptContract.Reasons)) {
+            $reasons.Add([string]$reason)
+        }
+
+        return [pscustomobject]@{
+            Ok = ([bool]$imageContract.Ok -and [bool]$promptContract.Ok)
+            Reasons = @($reasons)
+            Image = $imageContract
+            Prompt = $promptContract
+            ImageFacts = $imageFacts
+        }
+    }
+    catch {
+        $failedImage = [pscustomobject]@{ Ok = $false; Reasons = @('running app image contract could not be evaluated') }
+        $failedPrompt = [pscustomobject]@{ Ok = $false; Reasons = @('prompt contract could not be evaluated'); AgentCount = 0 }
+        return [pscustomobject]@{
+            Ok = $false
+            Reasons = @('package contract could not be evaluated; offline payload will be applied')
+            Image = $failedImage
+            Prompt = $failedPrompt
+            ImageFacts = $null
+        }
+    }
+}
+
 function Read-EnvFile {
     param(
         [Parameter(Mandatory = $true)]

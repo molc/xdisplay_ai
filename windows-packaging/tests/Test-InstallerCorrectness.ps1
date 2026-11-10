@@ -451,6 +451,8 @@ try {
     Assert-True -Condition ($bootstrapContent -match 'Get-BootstrapRebootAction') -Message 'Bootstrap must use the durable reboot decision helper.'
     Assert-True -Condition ($bootstrapContent -notmatch 'Enable-RemoteDesktopAccess') -Message 'Release bootstrap must not enable RDP/firewall as a side effect.'
     Assert-True -Condition ($bootstrapContent -match 'Test-LocalBackendOrigin|Test-LocalBackendFullyReady') -Message 'Healthy-backend skip must require local origin, not HTTP 200 alone.'
+    Assert-True -Condition ($bootstrapContent -match 'Test-LocalBackendSkipAllowed') -Message 'Healthy-backend skip must also require this package s63f image and prompt contract.'
+    Assert-True -Condition ($bootstrapContent -match 'Test-InstalledBackendMatchesPackage') -Message 'Upgrade from a healthy older backend must inspect running image labels and prompt env before skipping payload apply.'
 
     $commonContent = Get-Content -Path (Join-Path $PackagingRoot 'src\scripts\common\Common.ps1') -Raw
     Assert-True -Condition ($commonContent -match 'Merge-EnvEntries') -Message 'Runtime env initialization must merge all existing keys.'
