@@ -106,7 +106,8 @@ try {
         'images/launch/logo_tricolor.png',
         'res/pinyin.bin',
         'doc/Xdisplay使用手册V2.4.4.pdf',
-        'qrcode_about.jpg'
+        'qrcode_about.jpg',
+        'Simulator.exe'
     )) {
         Write-FixtureBytes -Path (Join-Path $sourceClient $relative) -Bytes ([byte[]](1, 2, 3))
         Write-FixtureBytes -Path (Join-Path $oldInputsClient $relative) -Bytes ([byte[]](9, 9, 9))

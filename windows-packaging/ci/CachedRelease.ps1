@@ -44,7 +44,8 @@ function Get-RequiredCachedClientReleaseRelativePaths {
         'images/launch/logo_tricolor.png',
         'res/pinyin.bin',
         'doc/Xdisplay使用手册V2.4.4.pdf',
-        'qrcode_about.jpg'
+        'qrcode_about.jpg',
+        'Simulator.exe'
     )
 }
 

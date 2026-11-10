@@ -139,7 +139,8 @@ if ($RequirePayloads) {
         'images/launch/logo_tricolor.png',
         'res/pinyin.bin',
         'doc/Xdisplay使用手册V2.4.4.pdf',
-        'qrcode_about.jpg'
+        'qrcode_about.jpg',
+        'Simulator.exe'
     )) {
         if (-not (Test-ClientReleaseRelativePath -ClientReleaseDir $inputLayout.ClientReleaseDir -RelativePath $requiredClientRelativePath)) {
             throw "客户端发布目录缺少必需文件：$requiredClientRelativePath"
