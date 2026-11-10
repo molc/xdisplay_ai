@@ -500,6 +500,27 @@ try {
     Assert-True -Condition ($buildScript -match 'VerifyExistingOutputsOnly') -Message 'One-command packaging must support re-verifying an already generated dist tree without rebuilding MSI/CAB/Burn.'
     Assert-True -Condition ($buildScript -match 'Test-WindowsAcceptanceEvidence|Assert-WindowsAcceptanceEvidence') -Message 'One-command packaging must fail closed without Windows acceptance evidence.'
     Assert-True -Condition ($buildScript -match 'NOT_READY|built_not_ready') -Message 'Downloads publish must stay blocked with an unmistakable NOT_READY result until Windows gates pass.'
+
+    # The app image label is computed at image build time by ci/Common.ps1 Get-SourceContentFingerprint. The installer's
+    # expected value must be byte-identical, otherwise the health-only skip is refused on every client launch (r10 regression:
+    # installSide 0826653f... vs image label 5f1b3896... over the very same eight files).
+    $fpRoot = Join-Path $testRoot 'fp-seed'
+    $fpPaths = @(Get-OrchestrationAppRuntimeFingerprintPaths)
+    foreach ($rel in $fpPaths) {
+        $full = Join-Path $fpRoot ($rel -replace '/', '\')
+        New-Item -ItemType Directory -Path (Split-Path $full -Parent) -Force | Out-Null
+        [IO.File]::WriteAllText($full, "content of $rel`n")
+    }
+    $ciCommonText = Get-Content -Path (Join-Path $PackagingRoot 'ci\Common.ps1') -Raw
+    $ciMatch = [regex]::Match($ciCommonText, '(?s)function Get-SourceContentFingerprint \{.*?\r?\n\}\r?\n')
+    Assert-True -Condition $ciMatch.Success -Message 'ci/Common.ps1 must still define Get-SourceContentFingerprint.'
+    $ciScope = [scriptblock]::Create($ciMatch.Value + "`nGet-SourceContentFingerprint -Root '$fpRoot' -RelativePaths `$args[0]")
+    $ciFingerprint = & $ciScope $fpPaths
+    $installFingerprint = Get-PathContentFingerprint -Root $fpRoot -RelativePaths $fpPaths -IncludeInputRows
+    Assert-Equal -Expected $ciFingerprint -Actual $installFingerprint -Message 'Installer runtime fingerprint must equal the ci fingerprint that labels the app image.'
+    Assert-True -Condition ((Get-PathContentFingerprint -Root $fpRoot -RelativePaths $fpPaths) -ne $ciFingerprint) -Message 'The legacy row set (no input rows) must stay distinct; it documents the r10 regression.'
+    $imageContract = Test-BackendImageMatchesS63fContract -GitSha (Get-ApprovedBackendRevisionPrefix) -Tag (Get-ApprovedBackendTag) -RuntimeFingerprint $ciFingerprint -ExpectedFingerprint $installFingerprint -ImageId 'sha256:test'
+    Assert-True -Condition $imageContract.Ok -Message "A running image labelled with the ci fingerprint must satisfy the package contract: $($imageContract.Reasons -join '; ')"
 }
 finally {
     if (Test-Path $testRoot) {

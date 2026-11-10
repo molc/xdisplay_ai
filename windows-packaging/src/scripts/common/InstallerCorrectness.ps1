@@ -324,7 +324,13 @@ function Get-PathContentFingerprint {
         [Parameter(Mandatory = $true)]
         [string]$Root,
         [Parameter(Mandatory = $true)]
-        [string[]]$RelativePaths
+        [string[]]$RelativePaths,
+        # ci/Common.ps1 Get-SourceContentFingerprint (which labels the app image at build time) adds an
+        # "input\0<path>" row per requested path in addition to the "file\0<path>\0<sha256>" rows. The installer's
+        # expected s63f runtime fingerprint must be byte-identical to that payload, otherwise the running image never
+        # "matches the package" and every bootstrap run re-imports the offline images instead of taking the
+        # health-only skip. Workspace seed fingerprints keep the legacy row set (they are compared against themselves).
+        [switch]$IncludeInputRows
     )
 
     $rows = New-Object System.Collections.Generic.List[string]
@@ -335,6 +341,9 @@ function Get-PathContentFingerprint {
             continue
         }
 
+        if ($IncludeInputRows) {
+            $rows.Add("input`0$($relativePath.Replace('\', '/').TrimStart('/'))")
+        }
         $fileHash = Get-FileSha256Lower -Path $targetPath
         $rows.Add("file`0$($relativePath.Replace('\', '/'))`0$fileHash")
     }

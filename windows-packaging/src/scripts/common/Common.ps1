@@ -441,7 +441,8 @@ function Get-ExpectedS63fRuntimeFingerprintFromSeed {
         }
     }
 
-    return Get-PathContentFingerprint -Root $seed -RelativePaths $relativePaths
+    # -IncludeInputRows: must equal the ci fingerprint that labels the app image (see Get-PathContentFingerprint).
+    return Get-PathContentFingerprint -Root $seed -RelativePaths $relativePaths -IncludeInputRows
 }
 
 function Get-RunningOrchestrationAppImageFacts {
