@@ -45,6 +45,13 @@ Assert-True -Condition ((Select-ComposeContainerId -Output @('time="x" level=war
 Assert-True -Condition ((Select-ComposeContainerId -Output @()) -eq '') -Message 'No container id must stay an empty string so the wait loop keeps polling.'
 Assert-True -Condition ((Select-ComposeContainerId -Output $null) -eq '') -Message 'Null compose output must stay an empty string.'
 
+$tempRenames = @('\??\C:\Users\admin\AppData\Local\Temp\DEL22B5.tmp', '', '\??\C:\Program Files (x86)\Microsoft\Edge\Application\142.0.3595.65\old_chrome.exe', '!\??\C:\Users\admin\AppData\Local\Temp\DELFD32.tmp')
+Assert-True -Condition (-not (Test-PendingFileRenameRequiresReboot -Entries $tempRenames)) -Message 'Temp-file / Edge PendingFileRenameOperations must not force a reboot (dot29: every upgrade demanded a reboot because of %TEMP%\DEL*.tmp left by the previous uninstall).'
+Assert-True -Condition (-not (Test-PendingFileRenameRequiresReboot -Entries $null)) -Message 'Null PendingFileRenameOperations must not force a reboot.'
+Assert-True -Condition (Test-PendingFileRenameRequiresReboot -Entries @('\??\C:\Windows\System32\drivers\vmbus.sys')) -Message 'Driver replacement pending must still force a reboot.'
+Assert-True -Condition (Test-PendingFileRenameRequiresReboot -Entries @('\??\C:\Users\admin\AppData\Local\Temp\DEL1.tmp', '\??\C:\Program Files\Docker\Docker\resources\bin\docker.exe')) -Message 'A pending Docker Desktop file replacement must force a reboot even when mixed with temp entries.'
+Assert-True -Condition (Test-PendingFileRenameRequiresReboot -Entries @('\??\C:\Program Files\WSL\wsl.exe')) -Message 'A pending WSL file replacement must force a reboot.'
+
 $absentHistory = ConvertTo-PostgresHistoryTablePresenceResult -ExitCode 0 -Output ''
 Assert-True -Condition (-not $absentHistory.Present) -Message 'Empty to_regclass result is the measured f09 SELECT-only failure: table absent.'
 $presentHistory = ConvertTo-PostgresHistoryTablePresenceResult -ExitCode 0 -Output "offline_migration_history`n"

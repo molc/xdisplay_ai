@@ -42,7 +42,17 @@ function Test-PendingReboot {
     }
 
     $pendingRenameProperty = $sessionManager.PSObject.Properties['PendingFileRenameOperations']
-    return ($null -ne $pendingRenameProperty) -and ($null -ne $pendingRenameProperty.Value)
+    if ($null -eq $pendingRenameProperty -or $null -eq $pendingRenameProperty.Value) {
+        return $false
+    }
+    $entries = @($pendingRenameProperty.Value | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
+    if (Test-PendingFileRenameRequiresReboot -Entries $entries) {
+        return $true
+    }
+    if ($entries.Count -gt 0) {
+        Write-Step "忽略 $($entries.Count) 条与 WSL/Docker/驱动无关的 PendingFileRenameOperations（临时文件/浏览器更新等），不要求重启。"
+    }
+    return $false
 }
 
 $restartRequired = $false

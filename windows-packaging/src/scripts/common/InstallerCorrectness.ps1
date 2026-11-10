@@ -249,6 +249,31 @@ function Select-ComposeContainerId {
     return ''
 }
 
+function Test-PendingFileRenameRequiresReboot {
+    param(
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [string[]]$Entries = @()
+    )
+
+    # Windows keeps PendingFileRenameOperations for anything scheduled with MOVEFILE_DELAY_UNTIL_REBOOT:
+    # Burn/MSI temp extraction (%TEMP%\DEL*.tmp), Edge updates, profile junk. Treating every entry as
+    # "reboot required" forced a reboot on practically every upgrade (dot29: 36 Edge/temp entries, then
+    # 8 DEL*.tmp left by the previous uninstall). Only renames touching the virtualization / Docker stack
+    # the offline backend depends on are a real reason to reboot before loading images.
+    # ponytail: path heuristic; extend the pattern if a prerequisite ever stages files elsewhere.
+    $relevant = '(?i)\\(lxss|wsl|vmcompute|vmwp|hvsocket|drivers)\\|\\Program Files\\Docker\\|\\Program Files\\WSL\\|WindowsSubsystemForLinux|VirtualMachinePlatform|\\Hyper-V\\'
+    foreach ($entry in @($Entries)) {
+        if ([string]::IsNullOrWhiteSpace([string]$entry)) {
+            continue
+        }
+        if ([string]$entry -match $relevant) {
+            return $true
+        }
+    }
+    return $false
+}
+
 function Get-WorkspacePreserveRelativePaths {
     return @('.env', '.env.local', 'secret.env')
 }
