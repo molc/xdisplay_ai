@@ -278,7 +278,7 @@ function Initialize-WorkspaceDirectory {
     }
 
     $slotName = Get-WorkspaceSyncSlotName -RequiredRelativePath $RequiredRelativePath
-    $currentSeedFingerprint = Get-PathContentFingerprint -Root $Seed -RelativePaths @($RequiredRelativePath)
+    $currentSeedFingerprint = Get-PathContentFingerprint -Root $Seed -RelativePaths @(Get-WorkspaceFingerprintRelativePaths -RequiredRelativePath $RequiredRelativePath)
     $lastSeedFingerprint = Read-WorkspaceSyncFingerprint -SlotName $slotName
     $decision = Get-WorkspaceSyncDecision `
         -Seed $Seed `

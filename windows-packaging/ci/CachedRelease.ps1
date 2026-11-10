@@ -39,7 +39,12 @@ function Get-RequiredCachedClientReleaseRelativePaths {
         'data/keyboard_d/image/data_image.json',
         'data/keyboard_d/font/data_font.json',
         'data/keyboard_d/text/data_text.json',
-        'data/keyboard_d/var/data_var.json'
+        'data/keyboard_d/var/data_var.json',
+        'images/bartitle/titlelogo.png',
+        'images/launch/logo_tricolor.png',
+        'res/pinyin.bin',
+        'doc/Xdisplay使用手册V2.4.4.pdf',
+        'qrcode_about.jpg'
     )
 }
 

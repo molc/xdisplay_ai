@@ -134,7 +134,12 @@ if ($RequirePayloads) {
         'data/keyboard_d/image/data_image.json',
         'data/keyboard_d/font/data_font.json',
         'data/keyboard_d/text/data_text.json',
-        'data/keyboard_d/var/data_var.json'
+        'data/keyboard_d/var/data_var.json',
+        'images/bartitle/titlelogo.png',
+        'images/launch/logo_tricolor.png',
+        'res/pinyin.bin',
+        'doc/Xdisplay使用手册V2.4.4.pdf',
+        'qrcode_about.jpg'
     )) {
         if (-not (Test-ClientReleaseRelativePath -ClientReleaseDir $inputLayout.ClientReleaseDir -RelativePath $requiredClientRelativePath)) {
             throw "客户端发布目录缺少必需文件：$requiredClientRelativePath"

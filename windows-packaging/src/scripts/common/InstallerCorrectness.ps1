@@ -284,7 +284,21 @@ function Get-WorkspaceFingerprintRelativePaths {
         [string]$RequiredRelativePath
     )
 
-    return @($RequiredRelativePath)
+    $paths = @($RequiredRelativePath)
+    if ([string]::Equals($RequiredRelativePath, 'Xdisplay.exe', [System.StringComparison]::OrdinalIgnoreCase)) {
+        # The same Xdisplay.exe can ship different runtime data (0.1.4 replaced the font-bloated keyboard
+        # templates with the official 2.4.4 ones). Fingerprint the templates too, otherwise an upgrade
+        # from a package with the same exe decides 'keep' and customers never receive the new templates.
+        $paths += @(
+            'data/keyboard_a/keypage.json',
+            'data/keyboard_b/keypage.json',
+            'data/keyboard_c/keypage.json',
+            'data/keyboard_d/keypage.json',
+            'data/keyboard_e/keypage.json',
+            'images/launch/logo_tricolor.png'
+        )
+    }
+    return @($paths)
 }
 
 function Get-FileSha256Lower {
@@ -365,7 +379,8 @@ function Get-WorkspaceSyncDecision {
         return 'keep'
     }
 
-    $destinationFingerprint = Get-PathContentFingerprint -Root $Destination -RelativePaths @($RequiredRelativePath)
+    $fingerprintPaths = @(Get-WorkspaceFingerprintRelativePaths -RequiredRelativePath $RequiredRelativePath)
+    $destinationFingerprint = Get-PathContentFingerprint -Root $Destination -RelativePaths $fingerprintPaths
     if (
         -not [string]::IsNullOrWhiteSpace($CurrentSeedFingerprint) -and
         [string]::Equals($destinationFingerprint, $CurrentSeedFingerprint, [System.StringComparison]::OrdinalIgnoreCase)
@@ -377,7 +392,7 @@ function Get-WorkspaceSyncDecision {
         return 'update'
     }
 
-    $seedFingerprint = Get-PathContentFingerprint -Root $Seed -RelativePaths @($RequiredRelativePath)
+    $seedFingerprint = Get-PathContentFingerprint -Root $Seed -RelativePaths $fingerprintPaths
     if ([string]::Equals($destinationFingerprint, $seedFingerprint, [System.StringComparison]::OrdinalIgnoreCase)) {
         return 'keep'
     }

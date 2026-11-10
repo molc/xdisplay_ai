@@ -161,6 +161,23 @@ try {
     Assert-Equal -Expected 'seed-v2' -Actual ([System.IO.File]::ReadAllText($destExe)) -Message 'Update must replace stale shipped Xdisplay.exe from seed.'
     Assert-Equal -Expected 'user-bytes' -Actual ([System.IO.File]::ReadAllText($userProject)) -Message 'Update must preserve extra user project files.'
 
+    # Same Xdisplay.exe, different keyboard template: the seed fingerprint must change so the upgrade syncs the templates.
+    $seedTemplate = Join-InstallRelativePath -Root $seedRoot -RelativePath 'data/keyboard_a/keypage.json'
+    $destTemplate = Join-InstallRelativePath -Root $destRoot -RelativePath 'data/keyboard_a/keypage.json'
+    New-Item -ItemType Directory -Path (Split-Path $seedTemplate -Parent) -Force | Out-Null
+    New-Item -ItemType Directory -Path (Split-Path $destTemplate -Parent) -Force | Out-Null
+    [System.IO.File]::WriteAllText($seedTemplate, 'official-2.4.4-template')
+    [System.IO.File]::WriteAllText($destTemplate, 'font-bloated-template')
+    $fingerprintPaths = @(Get-WorkspaceFingerprintRelativePaths -RequiredRelativePath 'Xdisplay.exe')
+    Assert-True -Condition ($fingerprintPaths -contains 'data/keyboard_a/keypage.json') -Message 'Client seed fingerprint must cover the keyboard templates, not only Xdisplay.exe.'
+    $templateSeedFp = Get-PathContentFingerprint -Root $seedRoot -RelativePaths $fingerprintPaths
+    $templateDecision = Get-WorkspaceSyncDecision -Seed $seedRoot -Destination $destRoot -RequiredRelativePath 'Xdisplay.exe' -CurrentSeedFingerprint $templateSeedFp
+    Assert-Equal -Expected 'update' -Actual $templateDecision -Message 'Identical Xdisplay.exe but a different keyboard template must still update the workspace (dot29: 0.1.3 shipped the font-bloated templates).'
+    Sync-WorkspaceTreeFromSeed -Seed $seedRoot -Destination $destRoot -PreserveRelativePaths @(Get-WorkspacePreserveRelativePaths)
+    Assert-Equal -Expected 'official-2.4.4-template' -Actual ([System.IO.File]::ReadAllText($destTemplate)) -Message 'Update must replace the stale keyboard template from seed.'
+    $sameDecision = Get-WorkspaceSyncDecision -Seed $seedRoot -Destination $destRoot -RequiredRelativePath 'Xdisplay.exe' -CurrentSeedFingerprint $templateSeedFp
+    Assert-Equal -Expected 'keep' -Actual $sameDecision -Message 'After the templates are synced the same seed fingerprint must keep the workspace.'
+
     $backendSeed = Join-Path $testRoot 'seed-backend'
     $backendDest = Join-Path $testRoot 'workspace-backend'
     $seedMain = Join-InstallRelativePath -Root $backendSeed -RelativePath 'app/main.py'
