@@ -5,22 +5,45 @@
 
 ## 先说结论
 
-是的，builder 环境已经准备好以后，下一次打包的日常流程就是：
-
-1. 把最新后端源码**副本**放到 `C:\work\backend`。
-2. 把最新 XDisplay 源码**副本**放到 `C:\work\xdisplay`。
-3. 在 Windows 中打开管理员 PowerShell。
-4. 先执行预检命令。
-5. 再执行正式打包命令。
-6. 从 `C:\xdisplay_ai\windows-packaging\dist\dev` 取走**整个目录**。
-
-正式打包只需要复制下面这一行命令并按回车：
+当前正确性修复后的包版本是 **0.1.4**。在现有 Windows builder 上重建安装器时，**不要重编客户端**：使用已钉死的 catalogwrite 客户端与 Converter。s63f 后端必须先由父流程 Docker builder 按批准源树重建 app 镜像，再喂进 `inputs`；不要把旧 app tar F3EECC91 改名。把暂存/输出放到父流程准备好的 scratch（`-WorkRoot`），避免写满 C:/P:。
 
 ```powershell
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\xdisplay_ai\windows-packaging\build-offline-package.ps1"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\xdisplay_ai\windows-packaging\build-offline-package.ps1" -Channel dev `
+  -SkipClientBuild `
+  -UseExistingBackendInputs `
+  -ClientReleaseDir "P:\catalogwrite-9aa152b7\client" `
+  -ConverterReleaseDir "P:\converter-fix-10b7\bin" `
+  -ExpectedClientSha256 "2A80890DB988157371CF28D24CA23685D7933C4E59630E5A2DCD2363B7DB5600" `
+  -ExpectedConverterSha256 "F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36" `
+  -ExpectedInputPinsPath "C:\xdisplay_ai\windows-packaging\manifests\pins\offline-inputs.s63f.json" `
+  -WorkRoot "<SCRATCH_ROOT>"
 ```
 
-但是不要跳过前面的源码准备和预检。下面是从头到尾的完整步骤。
+`-SkipBackendImageBuild` is **invalid** for s63f from-source packaging: `docker/export_runtime_requirements.py` and `docker/strict-ocr` do not exist, and F3EECC91 is not s63f. Parent Docker builder must run the sanctioned `rebuild-orches-app-image.sh` (see `manifests/pins/s63f-app-image-build-recipe.md`) so `inputs/backend/images/orches_orchestration-app_latest.tar` has companion `*.inspect.json` labels for `dd6ab3d50` / `prod/s63f`. Do not require a cached Linux `xd_render_cli` ELF; Dockerfile `qt_builder` deletes the Mach-O leftover and rebuilds it. Do not use `C:\xdisplay_ai\windows-packaging\inputs\client\xdisplay-win64` (old client).
+
+`<SCRATCH_ROOT>` 由父流程在非破坏性新盘上提供后再填。预检加 `-PreflightOnly`。不要使用未钉死的 `inputs\client\xdisplay-win64`（旧客户端 `D3EEC1B4`）。不要用未安装的 pwsh 7，也不要改系统代码页；脚本带 UTF-8 BOM，供原生 `powershell.exe` 5.1 / CP936 解析。
+
+若 MSI/11 CAB/Burn EXE 已经生成、只是 Burn SHA512 门需要用官方 `wix burn extract` 的 `manifest.xml` 再验，加 `-VerifyExistingOutputsOnly` 指向现有 `-WorkRoot`（不要重编 ~69 分钟 payload）。这仍会跑 secretscan、pins、Burn 绑定、NOT_READY。没有隔离 Windows PASS 不得发 Downloads。
+
+这条命令会：校验并导出 Docker Desktop / VC / WSL 以及四个镜像 tar 的确切文件名与 SHA256/SHA512、扫描密钥、组装 Burn、核对相邻 payload 的 SHA512 绑定、跑源码/单元测试。它**不会**把候选目录复制到 Downloads，除非你同时提供隔离 Windows 验收证据且结果为 PASS：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\xdisplay_ai\windows-packaging\build-offline-package.ps1" -Channel dev -AcceptanceEvidencePath "C:\xdisplay_ai\windows-packaging\acceptance\windows-pass.json" -DownloadsDirectory "$env:USERPROFILE\Downloads\XDisplayAI-0.1.4"
+```
+
+没有该证据时，`dist\dev` 仍会留下候选安装包，但会带 `NOT_READY.txt` / `built_not_ready`，**不得**当作已接受的安装器。源码测试通过 ≠ Windows 验收通过。
+
+日常准备步骤不变：
+
+1. 0.1.4 安装器重建：**不要**准备 `C:\work\xdisplay`，**不要**重编客户端。使用 `P:\catalogwrite-9aa152b7\client` 与 `P:\converter-fix-10b7\bin`。
+2. 使用现有 `windows-packaging\inputs` 中的 Docker Desktop / VC / WSL。s63f **app** 镜像 tar 必须来自父流程 `rebuild-orches-app-image.sh`（带 inspect companion），不得使用 F3EECC91。embedding/pg/redis 仅在 inspect 证明后可沿用历史 tar。源码快照必须是 `dd6ab3d50` / `prod/s63f`。不要为了打包去 clone 后端。
+3. 仅在有意从源码重编客户端时才使用 `C:\work\backend` / `C:\work\xdisplay`（会改变 catalogwrite/Converter 哈希，本任务不允许）。
+4. 在 Windows 中打开管理员 PowerShell，先预检再打包。
+5. 从 `C:\xdisplay_ai\windows-packaging\dist\dev` 取走**整个目录**做隔离 Windows 验收；只有 PASS 后才发布 Downloads。
+
+不要在文件资源管理器中双击 `.ps1` 文件。双击后窗口可能立即关闭，你看不到进度和错误。正确方法
+是先打开 PowerShell，再把本文给出的完整命令粘贴进去。命令中的 `-ExecutionPolicy Bypass` 只对
+这一次启动的 PowerShell 进程生效，不会永久修改 Windows 的执行策略。
 
 不要在文件资源管理器中双击 `.ps1` 文件。双击后窗口可能立即关闭，你看不到进度和错误。正确方法
 是先打开 PowerShell，再把本文给出的完整命令粘贴进去。命令中的 `-ExecutionPolicy Bypass` 只对

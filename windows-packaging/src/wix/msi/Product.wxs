@@ -15,8 +15,13 @@
         MaximumUncompressedMediaSize="200"
         MaximumCabinetSizeForLargeFileSplitting="200" />
     <SetProperty
+        Id="WixQuietExecCmdTimeout"
+        Value="3600000"
+        Before="RunBootstrapAfterInstall"
+        Sequence="execute" />
+    <SetProperty
         Id="WixQuietExecCmdLine"
-        Value="&quot;[%SystemRoot]\System32\WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLROOTDIR]scripts\install\Bootstrap-InstalledPayload.ps1&quot; -LaunchClient"
+        Value="&quot;[%SystemRoot]\System32\WindowsPowerShell\v1.0\powershell.exe&quot; -NoProfile -ExecutionPolicy Bypass -File &quot;[INSTALLROOTDIR]scripts\install\Bootstrap-InstalledPayload.ps1&quot; -LaunchClient -NoAutoReboot"
         Before="RunBootstrapAfterInstall"
         Sequence="execute" />
     <CustomAction
@@ -27,7 +32,7 @@
         Return="check"
         Impersonate="yes" />
     <InstallExecuteSequence>
-      <Custom Action="RunBootstrapAfterInstall" After="InstallFinalize" Condition="NOT Installed" />
+      <Custom Action="RunBootstrapAfterInstall" After="InstallFinalize" Condition="NOT REMOVE=&quot;ALL&quot;" />
     </InstallExecuteSequence>
     <Feature Id="MainFeature" Title="$(var.ProductName)" Level="1">
       <ComponentGroupRef Id="PayloadComponents" />

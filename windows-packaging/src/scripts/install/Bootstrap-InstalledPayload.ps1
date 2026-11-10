@@ -1,6 +1,7 @@
 ﻿param(
     [switch]$LaunchClient,
-    [switch]$Resume
+    [switch]$Resume,
+    [switch]$NoAutoReboot
 )
 
 Set-StrictMode -Version Latest
@@ -23,6 +24,9 @@ function Invoke-ElevatedSelf {
     if ($Resume) {
         $argumentList += '-Resume'
     }
+    if ($NoAutoReboot) {
+        $argumentList += '-NoAutoReboot'
+    }
 
     $process = Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList $argumentList -Wait -PassThru
     exit $process.ExitCode
@@ -41,6 +45,9 @@ function Register-ResumeTask {
 
     if ($LaunchClient) {
         $argumentList += '-LaunchClient'
+    }
+    if ($NoAutoReboot) {
+        $argumentList += '-NoAutoReboot'
     }
 
     try {
@@ -63,43 +70,8 @@ function Unregister-ResumeTask {
     catch {
     }
 }
-function Enable-RemoteDesktopAccess {
-    Write-Step '启用 Windows 远程桌面访问。'
 
-    $terminalServerRegistryPath = 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server'
-    Set-ItemProperty -Path $terminalServerRegistryPath -Name 'fDenyTSConnections' -Value 0
-
-    $rdpTcpRegistryPath = 'HKLM:\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp'
-    if (Test-Path $rdpTcpRegistryPath) {
-        Set-ItemProperty -Path $rdpTcpRegistryPath -Name 'UserAuthentication' -Value 1
-    }
-
-    $remoteDesktopRules = @(Get-NetFirewallRule -Name 'RemoteDesktop*' -ErrorAction SilentlyContinue)
-    if ($remoteDesktopRules.Count -gt 0) {
-        $remoteDesktopRules | Enable-NetFirewallRule | Out-Null
-    }
-    else {
-        & netsh advfirewall firewall set rule group='remote desktop' new enable=Yes | Out-Null
-    }
-
-    try {
-        Set-Service -Name 'TermService' -StartupType Manual -ErrorAction Stop
-    }
-    catch {
-    }
-
-    try {
-        $remoteDesktopService = Get-Service -Name 'TermService' -ErrorAction Stop
-        if ($remoteDesktopService.Status -ne 'Running') {
-            Start-Service -Name 'TermService' -ErrorAction Stop
-        }
-    }
-    catch {
-        Write-Warning '远程桌面服务未能立即启动，但配置已写入系统。'
-    }
-}
-
-function Test-BackendHealthy {
+function Test-LocalBackendFullyReady {
     try {
         & (Join-Path $PSScriptRoot '..\\health\\Test-Health.ps1') -TimeoutSeconds 5 | Out-Null
         return $true
@@ -129,7 +101,7 @@ function Start-XDisplayClient {
     }
 
     $runtimeSettings = Get-RuntimeSettings
-    $appPort = if ($runtimeSettings.Contains('APP_HOST_PORT')) { [string]$runtimeSettings['APP_HOST_PORT'] } else { '18001' }
+    $appPort = if ($runtimeSettings.Contains('APP_HOST_PORT')) { [string]$runtimeSettings['APP_HOST_PORT'] } else { [string](Get-RequiredAppHostPort) }
     $baseUrl = "http://127.0.0.1:$appPort"
 
     Write-Step '启动 XDisplay 客户端。'
@@ -181,40 +153,70 @@ $maximumAutomaticReboots = 2
 Start-Transcript -Path $stateLayout.BootstrapLog -Append | Out-Null
 
 try {
-    Enable-RemoteDesktopAccess
     if ($Resume) {
         Write-Step '继续执行重启后的离线安装流程。'
     }
-    if (-not $Resume -and (Test-BackendHealthy)) {
+    $healthReady = Test-LocalBackendFullyReady
+    $packageReady = $null
+    if ($healthReady) {
+        $packageReady = Test-InstalledBackendMatchesPackage
+    }
+    $skipAllowed = Test-LocalBackendSkipAllowed `
+        -HealthReady $healthReady `
+        -ImageContract $(if ($null -ne $packageReady) { $packageReady.Image } else { $null }) `
+        -PromptContract $(if ($null -ne $packageReady) { $packageReady.Prompt } else { $null })
+    if (-not $Resume -and $skipAllowed.Ok) {
         Unregister-ResumeTask
         Clear-BootstrapState
         if ($LaunchClient) {
-            Write-Step '后端服务已健康，直接启动客户端。'
+            Write-Step '本机后端已在 127.0.0.1:18001 就绪，且为本包 s63f 镜像与 prompt 合同，直接启动客户端。'
             Start-XDisplayClient
         }
         else {
-            Write-Step '后端服务已健康，无需重复初始化。'
+            Write-Step '本机后端已在 127.0.0.1:18001 就绪，且为本包 s63f 镜像与 prompt 合同，无需重复初始化。'
         }
         return
     }
+    if (-not $Resume -and $healthReady -and -not $skipAllowed.Ok) {
+        Write-Step ('本机 127.0.0.1:18001 健康，但不是本包 s63f 合同：' + ($skipAllowed.Reasons -join '；') + '。继续导入离线镜像并刷新配置。')
+    }
 
     $prerequisiteResult = & (Join-Path $PSScriptRoot 'Install-OfflinePrerequisites.ps1')
-    if ($prerequisiteResult.RebootRequired) {
-        $bootstrapState = Get-BootstrapState
-        $nextAutomaticRebootCount = [int]$bootstrapState.AutomaticRebootCount + 1
+    $bootstrapState = Get-BootstrapState
+    $rebootAction = Get-BootstrapRebootAction `
+        -RebootRequired ([bool]$prerequisiteResult.RebootRequired) `
+        -NoAutoReboot:$NoAutoReboot `
+        -AutomaticRebootCount ([int]$bootstrapState.AutomaticRebootCount) `
+        -MaximumAutomaticReboots $maximumAutomaticReboots `
+        -InstallerCustomAction:$NoAutoReboot
+
+    if ($rebootAction.Name -ne 'continue') {
         $rebootReasons = @($prerequisiteResult.RebootReasons | ForEach-Object { [string]$_ } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-        if ($nextAutomaticRebootCount -gt $maximumAutomaticReboots) {
-            Unregister-ResumeTask
-            Clear-BootstrapState
-            $reasonText = if ($rebootReasons.Count -gt 0) { $rebootReasons -join '；' } else { '未提供具体原因' }
-            throw "前置依赖连续请求重启，已阻止继续自动重启以避免循环：$reasonText"
+        $reasonText = if ($rebootReasons.Count -gt 0) { $rebootReasons -join '；' } else { 'Windows 可选功能或前置依赖仍待重启' }
+
+        if ($rebootAction.Persist) {
+            Save-BootstrapState `
+                -AutomaticRebootCount ([int]$rebootAction.NextAutomaticRebootCount) `
+                -LastRebootReasons $rebootReasons `
+                -Phase 'reboot-pending' `
+                -LaunchClientRequested:([bool]$LaunchClient)
+        }
+        if ($rebootAction.RegisterResumeTask) {
+            Register-ResumeTask
+            Write-Step "已注册登录后继续任务：$($stateLayout.ResumeTaskName)。状态已写入 $($stateLayout.BootstrapStateFile)"
         }
 
-        Save-BootstrapState -AutomaticRebootCount $nextAutomaticRebootCount -LastRebootReasons $rebootReasons
-        Register-ResumeTask
-        $reasonSuffix = if ($rebootReasons.Count -gt 0) { '；原因：' + ($rebootReasons -join '；') } else { '' }
-        Write-Step "5 秒后自动重启（第 $nextAutomaticRebootCount/$maximumAutomaticReboots 次），重启后继续离线安装流程$reasonSuffix"
-        & shutdown.exe /r /t 5 /c "XDisplayAI installer will continue after reboot." | Out-Null
+        if ($rebootAction.Throw) {
+            throw "前置依赖连续请求重启，已阻止继续自动重启以避免循环：$reasonText。已保留恢复状态，请手动重启后由 Resume 任务继续，或运行 Complete Offline Setup。"
+        }
+
+        if ($rebootAction.AutoReboot) {
+            Write-Step "5 秒后自动重启（第 $($rebootAction.NextAutomaticRebootCount)/$maximumAutomaticReboots 次），重启后在交互用户会话继续离线安装直到本机 18001 就绪。原因：$reasonText"
+            & shutdown.exe /r /t 5 /c "XDisplayAI installer will continue after reboot." | Out-Null
+            return
+        }
+
+        Write-Step "安装文件已提交。需要重启才能完成 WSL/VirtualMachinePlatform。当前指定了 -NoAutoReboot，不会自动关机。请手动重启；重启后任务 $($stateLayout.ResumeTaskName) 会在交互会话继续，直到四个本机容器和 127.0.0.1:18001 就绪。原因：$reasonText"
         return
     }
 

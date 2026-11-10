@@ -82,10 +82,15 @@ C:\work\backend\external\xdisplay\bin\xd_render_cli\xd_render_cli.pro
 服务的 `/app`。日常只改 `app`、`data`、prompt、配置或其他 Python 源码时，直接同步 workspace
 并重启服务，不再重新打包。
 
-镜像构建从 `pyproject.toml` 安装全部运行依赖。指纹覆盖 `Dockerfile`、`pyproject.toml`、
-`docker/export_runtime_requirements.py`、`docker/strict-ocr`、`external/xdisplay/bin/xd_render_cli`
-和 `Dockerfile.embedding`。这些输入变化才刷新 runtime cache。只改 `app`、`data`、prompt
-或其他已挂载源码时，指纹不变，安装机用 `Update-BackendSource.ps1` 替换代码并重启即可。
+s63f 镜像由 Dockerfile 在 `python:3.11-slim-bookworm` 上用 Qt6 `qmake6` 重建 Linux
+`xd_render_cli`，再用 pip 安装依赖并钉死 playwright 1.56.0 / Chromium 1194。`uv.lock`
+被 `.dockerignore` 忽略。指纹覆盖 `Dockerfile`、`pyproject.toml`、`.dockerignore`、
+以及 `external/xdisplay/bin/xd_render_cli` 的源码（`main.cpp` / `render_runner.*` /
+`.pro` / `Makefile`）。**不要**要求 `docker/export_runtime_requirements.py` 或
+`docker/strict-ocr`（s63f 树里不存在）。**不要**把源码包里的 Mach-O
+`xd_render_cli` 当成缺失的 Linux ELF，也不要要求缓存 ELF。Compose 把 `app/`、
+`data/`、`.env` bind-mount 到 `/app`；SQL 迁移仍是独立的 `0001`/`0002`/`0003`。
+本次 s63f 仍必须同时更新镜像和源码快照。只改已挂载的 `app`/`data`/prompt 时指纹不变。
 当前缓存标签是：
 
 - `orches/orchestration-app:xdisplayai-runtime-cache`

@@ -21,7 +21,8 @@ function Start-DockerDesktopIfNeeded {
     }
 
     $currentUser = [Security.Principal.WindowsIdentity]::GetCurrent().Name
-    if ($currentUser -eq 'NT AUTHORITY\\SYSTEM') {
+    if (Test-IsSystemIdentity -IdentityName $currentUser) {
+        Write-Warning '当前是 NT AUTHORITY\SYSTEM，不会启动 Docker Desktop GUI。需要交互用户会话才能完成 Docker Desktop 就绪。'
         return
     }
 
@@ -78,7 +79,7 @@ function Wait-For-DockerReady {
             return
         }
 
-        Write-Step "等待 Docker Desktop 就绪（$attempt/$MaxAttempts）"
+        Write-Step (New-BoundedWaitStatus -Stage '等待 Docker Desktop 就绪' -Attempt $attempt -MaxAttempts $MaxAttempts -LastError 'docker info 未成功' -TimeoutSeconds ($MaxAttempts * $SleepSeconds))
 
         if (($attempt % 6) -eq 0) {
             Start-DockerDesktopIfNeeded
@@ -86,7 +87,7 @@ function Wait-For-DockerReady {
         Start-Sleep -Seconds $SleepSeconds
     }
 
-    throw 'Docker daemon 未就绪。'
+    throw "Docker daemon 未在 $($MaxAttempts * $SleepSeconds) 秒内就绪。请在交互用户会话确认 Docker Desktop 已启动，并检查 WSL2/虚拟化，而不是改用其他端口或外部转发。"
 }
 
 function ConvertTo-TcpExcludedPortRanges {
@@ -193,17 +194,61 @@ function Find-NextPublishedPort {
     throw "从端口 $StartPort 起没有可用的本机端口。"
 }
 
+function Test-AppPortOwnedByLocalCompose {
+    param(
+        [Parameter(Mandatory = $true)]
+        [int]$Port
+    )
+
+    try {
+        $containerId = Get-ComposeServiceContainerId -ServiceName 'orchestration-app'
+        if ([string]::IsNullOrWhiteSpace($containerId)) {
+            return $false
+        }
+
+        $published = (& $dockerCommand port $containerId '8000' | Out-String)
+        return [bool]($published -match "127\.0\.0\.1:$Port")
+    }
+    catch {
+        return $false
+    }
+}
+
 function Update-PublishedHostPorts {
     $layout = Get-DockerLayout
     $defaults = Read-EnvFile -Path $layout.EnvDefaultsFile
     $runtime = Read-EnvFile -Path $layout.EnvFile
     $ranges = @(Get-TcpExcludedPortRanges)
-    $chosen = @()
-    foreach ($key in @('APP_HOST_PORT', 'POSTGRES_HOST_PORT', 'REDIS_HOST_PORT', 'EMBEDDING_HOST_PORT')) {
+    $requiredAppPort = Get-RequiredAppHostPort
+    if (Test-PublishedPortExcluded -Port $requiredAppPort -Ranges $ranges) {
+        $ownedDuringExclusion = Test-AppPortOwnedByLocalCompose -Port $requiredAppPort
+        if (-not $ownedDuringExclusion) {
+            throw "127.0.0.1:$requiredAppPort 位于 Windows 排除端口范围。安装器不会改用 18002。请释放该排除范围后重试。"
+        }
+    }
+
+    $proxyEntries = @()
+    try {
+        $proxyEntries = @(ConvertTo-PortProxyListenEntries -Lines @(& netsh.exe interface portproxy show all 2>$null))
+    }
+    catch {
+        $proxyEntries = @()
+    }
+
+    $appPort = Resolve-AppHostPortContract `
+        -RequiredPort $requiredAppPort `
+        -LoopbackFree (Test-LoopbackTcpPortFree -Port $requiredAppPort) `
+        -OwnedByLocalCompose (Test-AppPortOwnedByLocalCompose -Port $requiredAppPort) `
+        -PortProxyPresent (Test-AppPortProxyPresent -Entries $proxyEntries -Port $requiredAppPort) `
+        -ListenerProcess (Get-LoopbackListenerProcessName -Port $requiredAppPort)
+    $runtime['APP_HOST_PORT'] = [string]$appPort
+    $chosen = @($appPort)
+
+    foreach ($key in @('POSTGRES_HOST_PORT', 'REDIS_HOST_PORT', 'EMBEDDING_HOST_PORT')) {
         $start = [int]$defaults[$key]
         $port = Find-NextPublishedPort -StartPort $start -ExcludedRanges $ranges -ReservedPorts $chosen
         if ($port -ne $start) {
-            Write-Step "$key 端口 $start 不可用，改用 $port。"
+            Write-Step "$key 端口 $start 不可用，改用 $port。APP_HOST_PORT 仍固定为 $requiredAppPort。"
         }
         $runtime[$key] = [string]$port
         $chosen += $port
@@ -222,18 +267,46 @@ function Update-PublishedHostPorts {
     return $runtime
 }
 
-function Get-ComposeServiceContainerId {
+function Sync-StaleAppContainersToLoadedImages {
+    $package = Test-InstalledBackendMatchesPackage
+    if ($package.Image.Ok) {
+        return
+    }
+
+    Write-Step ('运行中的 orchestration-app 不是本包 s63f 镜像（' + ($package.Image.Reasons -join '；') + '）。强制重建 app/embedding-worker，保留 postgres/redis 数据卷。')
+    Invoke-Compose -Arguments @('up', '-d', '--no-deps', '--force-recreate', 'orchestration-app')
+    if ($LASTEXITCODE -ne 0) {
+        throw "强制重建 orchestration-app 失败，退出码：$LASTEXITCODE"
+    }
+    Invoke-Compose -Arguments @('up', '-d', '--no-deps', '--force-recreate', 'embedding-worker')
+    if ($LASTEXITCODE -ne 0) {
+        throw "强制重建 embedding-worker 失败，退出码：$LASTEXITCODE"
+    }
+}
+
+function Invoke-PostgresSql {
     param(
         [Parameter(Mandatory = $true)]
-        [string]$ServiceName
+        [string]$PostgresContainerId,
+        [Parameter(Mandatory = $true)]
+        [string]$Sql,
+        [string]$Database = 'ai_orchestration'
     )
 
-    $layout = Get-DockerLayout
-    $containerId = & $dockerCommand compose --project-name $layout.ProjectName --env-file $layout.EnvFile -f $layout.BaseCompose -f $layout.OverlayCompose ps -q $ServiceName
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace([string]$containerId)) {
-        return ''
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        $ErrorActionPreference = 'Continue'
+        $output = @(& $dockerCommand exec $PostgresContainerId psql -U postgres -d $Database -t -A -v ON_ERROR_STOP=1 -c $Sql 2>&1)
+        $exitCode = $LASTEXITCODE
     }
-    return ([string]$containerId).Trim()
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+
+    return [pscustomobject]@{
+        ExitCode = [int]$exitCode
+        Output = ((@($output) | ForEach-Object { [string]$_ }) -join [Environment]::NewLine)
+    }
 }
 
 function Wait-For-PostgresReady {
@@ -242,33 +315,78 @@ function Wait-For-PostgresReady {
         [int]$SleepSeconds = 3
     )
 
+    $consecutive = 0
+    $lastError = 'postgres 容器尚未接受 ai_orchestration 查询'
+    $stabilityDelaySeconds = Get-PostgresReadyStabilityDelaySeconds
     for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
         $postgresContainerId = Get-ComposeServiceContainerId -ServiceName 'postgres'
         if ($postgresContainerId) {
-            & $dockerCommand exec $postgresContainerId pg_isready -U postgres 2> $null | Out-Null
-            if ($LASTEXITCODE -eq 0) {
+            $query = Invoke-PostgresSql -PostgresContainerId $postgresContainerId -Sql 'SELECT 1;'
+            $probe = ConvertTo-PostgresQueryProbeResult -ExitCode $query.ExitCode -Output $query.Output
+            if (-not [string]::IsNullOrWhiteSpace([string]$probe.Detail)) {
+                $lastError = [string]$probe.Detail
+            }
+            $consecutive = Update-PostgresReadyConsecutiveCount -CurrentCount $consecutive -ProbeReady ([bool]$probe.Ready)
+            if (Test-PostgresReadyConsecutiveCountMet -ConsecutiveCount $consecutive) {
                 return $postgresContainerId
             }
+            if ($probe.Ready) {
+                Write-Step (New-BoundedWaitStatus -Stage '确认 PostgreSQL 已越过 docker-entrypoint 临时进程' -Attempt $consecutive -MaxAttempts (Get-PostgresReadyConsecutiveSuccessTarget) -LastError 'SELECT 1 成功，但冷启动需要连续两次查询成功' -TimeoutSeconds ($MaxAttempts * $SleepSeconds))
+                Start-Sleep -Seconds $stabilityDelaySeconds
+                continue
+            }
+        }
+        else {
+            $consecutive = 0
+            $lastError = 'postgres 容器尚未出现'
         }
 
-        Write-Step "等待 PostgreSQL 就绪（$attempt/$MaxAttempts）"
+        Write-Step (New-BoundedWaitStatus -Stage '等待 PostgreSQL 接受迁移查询' -Attempt $attempt -MaxAttempts $MaxAttempts -LastError $lastError -TimeoutSeconds ($MaxAttempts * $SleepSeconds))
         Start-Sleep -Seconds $SleepSeconds
     }
 
-    throw 'PostgreSQL 容器未就绪。'
+    throw "PostgreSQL 未在 $($MaxAttempts * $SleepSeconds) 秒内稳定接受 ai_orchestration 查询（docker-entrypoint 冷启动临时进程会在 shutdown 窗口误报监听就绪）。最后错误：$lastError"
 }
 
 function Ensure-MigrationHistoryTable {
     param(
         [Parameter(Mandatory = $true)]
-        [string]$PostgresContainerId
+        [string]$PostgresContainerId,
+        [int]$MaxAttempts = 30,
+        [int]$SleepSeconds = 2
     )
 
-    $sql = 'CREATE TABLE IF NOT EXISTS offline_migration_history (migration_name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW());'
-    & $dockerCommand exec $PostgresContainerId psql -U postgres -d ai_orchestration -v ON_ERROR_STOP=1 -c $sql | Out-Null
-    if ($LASTEXITCODE -ne 0) {
-        throw '初始化 offline_migration_history 失败。'
+    $createSql = 'CREATE TABLE IF NOT EXISTS offline_migration_history (migration_name TEXT PRIMARY KEY, applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW());'
+    $presenceSql = "SELECT COALESCE(to_regclass('public.offline_migration_history')::text, '');"
+    $lastError = 'offline_migration_history 尚未创建'
+    for ($attempt = 1; $attempt -le $MaxAttempts; $attempt++) {
+        $create = Invoke-PostgresSql -PostgresContainerId $PostgresContainerId -Sql $createSql
+        if ($create.ExitCode -ne 0) {
+            $lastError = [string]$create.Output
+            if (-not (Test-IsPostgresTransientUnavailableMessage -Message $create.Output)) {
+                throw "初始化 offline_migration_history 失败。$lastError"
+            }
+            Write-Step (New-BoundedWaitStatus -Stage '初始化 offline_migration_history' -Attempt $attempt -MaxAttempts $MaxAttempts -LastError $lastError -TimeoutSeconds ($MaxAttempts * $SleepSeconds))
+            Start-Sleep -Seconds $SleepSeconds
+            continue
+        }
+
+        $presence = Invoke-PostgresSql -PostgresContainerId $PostgresContainerId -Sql $presenceSql
+        $presenceResult = ConvertTo-PostgresHistoryTablePresenceResult -ExitCode $presence.ExitCode -Output $presence.Output
+        if ($presenceResult.Present) {
+            return
+        }
+
+        $lastError = [string]$presence.Output
+        if (($presence.ExitCode -ne 0) -and -not $presenceResult.Transient) {
+            throw "初始化 offline_migration_history 失败：CREATE 返回成功但无法确认表存在。$lastError"
+        }
+
+        Write-Step (New-BoundedWaitStatus -Stage '确认 offline_migration_history 已存在' -Attempt $attempt -MaxAttempts $MaxAttempts -LastError $lastError -TimeoutSeconds ($MaxAttempts * $SleepSeconds))
+        Start-Sleep -Seconds $SleepSeconds
     }
+
+    throw "初始化 offline_migration_history 失败。$lastError"
 }
 
 function Test-MigrationApplied {
@@ -338,6 +456,7 @@ Invoke-Compose -Arguments @('up', '-d')
 if ($LASTEXITCODE -ne 0) {
     throw "启动离线后端服务栈失败，退出码：$LASTEXITCODE"
 }
+Sync-StaleAppContainersToLoadedImages
 
 $postgresContainerId = Wait-For-PostgresReady
 

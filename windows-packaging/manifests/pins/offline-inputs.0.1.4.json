@@ -1,0 +1,53 @@
+{
+  "packageVersion": "0.1.4",
+  "note": "Measured on win11-wsl2-builder 2026-11-09. Client/Converter live on P: and are verified separately; do not use C:\\xdisplay_ai\\windows-packaging\\inputs\\client\\xdisplay-win64.",
+  "files": [
+    {
+      "relativePath": "prerequisites/docker-desktop/Docker Desktop Installer.exe",
+      "sizeBytes": 628979632,
+      "sha256": "820438E75C16E44B393079154BEA7D27958A15845C23A635B1A1F6F586B2ED44"
+    },
+    {
+      "relativePath": "prerequisites/vcredist/VC_redist.x64.exe",
+      "sizeBytes": 18731856,
+      "sha256": "843068991DAAA1F73AD9F6239BCE4D0F6A07A51F18C37EA2A867E9BECA71295C"
+    },
+    {
+      "relativePath": "prerequisites/wsl/wsl_update_x64.msi",
+      "sizeBytes": 258990080,
+      "sha256": "A611DDACEE689D2FB1FB5319E58AF7F3998864D86CDCE632EADD8E61614A0F9D"
+    },
+    {
+      "relativePath": "backend/images/orches_embedding-http_latest.tar",
+      "sizeBytes": 177215488,
+      "sha256": "E0619999C03EBF1D1EC78B5D2CB28438EC9C16D15151BF12D796F5DF835ADE9E"
+    },
+    {
+      "relativePath": "backend/images/orches_orchestration-app_latest.tar",
+      "sizeBytes": 1898128384,
+      "sha256": "F3EECC91AB386DE950F175329AB7CCF078435FF9E863E55708F60485BFFC2309"
+    },
+    {
+      "relativePath": "backend/images/pgvector_pgvector_pg15.tar",
+      "sizeBytes": 439424512,
+      "sha256": "D9C6F2F1AE5A7B320676553213163D813459FC7E232CD5C5CCE85376FEABF9F6"
+    },
+    {
+      "relativePath": "backend/images/redis_7.tar",
+      "sizeBytes": 120237056,
+      "sha256": "1E7BE24D93E435854DB82113E45D9F68DD12540C82E975AB382C7D3ABBB54CF7"
+    }
+  ],
+  "client": {
+    "displayName": "Xdisplay.exe",
+    "sizeBytes": 675539394,
+    "sha256": "2A80890DB988157371CF28D24CA23685D7933C4E59630E5A2DCD2363B7DB5600",
+    "builderPath": "P:\\catalogwrite-9aa152b7\\client"
+  },
+  "converter": {
+    "displayName": "Converter.exe",
+    "sizeBytes": 529920,
+    "sha256": "F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36",
+    "builderPath": "P:\\converter-fix-10b7\\bin"
+  }
+}

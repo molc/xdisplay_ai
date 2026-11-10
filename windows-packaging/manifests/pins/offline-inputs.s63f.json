@@ -1,0 +1,96 @@
+{
+  "packageVersion": "0.1.4",
+  "authorCard": "s63f",
+  "backend": {
+    "repo": "https://github.com/molc/ai_orchestration",
+    "branch": "codex/page-engineering-redesign",
+    "requiredRevisionPrefix": "dd6ab3d50",
+    "requiredRevisionFull": "dd6ab3d505827a94cbc9d59d7067fcce14db6fbe",
+    "requiredTag": "prod/s63f",
+    "sourceArchiveSha256": "767E9305A7C9C6B57CE9220A971C9F1BE0F8102E46F9A8C67444203253B76A84",
+    "appTree": "audit/int-s63f 0d70b22b3 -> app 9b8cf8208",
+    "noDataMigrations": true,
+    "migrations": [
+      "0001_init.sql",
+      "0002_rag.sql",
+      "0003_orch_runtime.sql"
+    ],
+    "xdisplaySubmodule": "0c657ad3eac7ece814206bd40fea807ec6568f81",
+    "forbiddenAppImageSha256": "F3EECC91AB386DE950F175329AB7CCF078435FF9E863E55708F60485BFFC2309",
+    "forbiddenAppImageNote": "Previous 0.1.4 orches_orchestration-app_latest.tar is not proven s63f. Do not rename that tar.",
+    "skipBackendImageBuild": "invalid from-source; UseExistingBackendInputs only after parent Docker rebuild-orches-app-image.sh plus companion inspect JSON",
+    "runtimeImage": {
+      "base": "python:3.11-slim-bookworm",
+      "qtBuilder": "qmake6 xd_render_cli.pro && make after rm -f leftover binary; apt qt6-base-dev qmake6 libgl-dev",
+      "pip": true,
+      "playwright": "1.56.0",
+      "chromiumRevision": "1194",
+      "uvLockIgnored": true,
+      "dockerfileCopies": [
+        "external/xdisplay/bin/xd_render_cli",
+        "app",
+        "pyproject.toml"
+      ]
+    },
+    "bindMount": "compose bind-mounts app/ data/ .env at /app; migrations 0001-0003 are separate SQL inputs",
+    "linuxRenderCli": {
+      "exportBinary": {
+        "path": "external/xdisplay/bin/xd_render_cli/xd_render_cli",
+        "bytes": 50200,
+        "sha256": "58618EC212229AC900E48304922AFD50EDFFD0F54CB325DCFA60F34382A606EA",
+        "format": "Mach-O 64-bit x86_64 leftover in sanctioned source archive",
+        "required": false,
+        "note": "Dockerfile qt_builder deletes this file and rebuilds Linux ELF. Do not treat as missing-binary block. Do not require a cached Linux ELF."
+      }
+    },
+    "runtimeFingerprintInputs": [
+      "Dockerfile",
+      "pyproject.toml",
+      ".dockerignore",
+      "external/xdisplay/bin/xd_render_cli/main.cpp",
+      "external/xdisplay/bin/xd_render_cli/render_runner.cpp",
+      "external/xdisplay/bin/xd_render_cli/render_runner.h",
+      "external/xdisplay/bin/xd_render_cli/xd_render_cli.pro",
+      "external/xdisplay/bin/xd_render_cli/Makefile"
+    ],
+    "forbiddenLegacyFingerprintInputs": [
+      "docker/export_runtime_requirements.py",
+      "docker/strict-ocr"
+    ],
+    "companionTags": [
+      "orches/orchestration-app:s63f-dd6ab3d50",
+      "orches/orchestration-app:latest"
+    ],
+    "embeddingPgRedis": "unproven for s63f until inspect of Dockerfile.embedding + scripts/embedding_http_service.py / compose image ids; historical tars in offline-inputs.0.1.4.json are not proof"
+  },
+  "client": {
+    "policy": "retain-word-fix-superset",
+    "notAuthorC180MailBytes": true,
+    "authorClientCard": "2026-11-07-c180",
+    "authorClientSha1Prefix": "a1690e359e3be5df",
+    "displayName": "Xdisplay.exe",
+    "bytes": 675539394,
+    "sha256": "2A80890DB988157371CF28D24CA23685D7933C4E59630E5A2DCD2363B7DB5600",
+    "builderPath": "P:\\catalogwrite-9aa152b7\\client",
+    "gitTip": "9aa152b717f1caa8b70bb5fe8886e9d7eb290cd5",
+    "note": "Word16/Word-fix superset already used in 0.1.3/0.1.4. Not literal author c180 mail bytes. Do not downgrade to D3EEC1B4 or rebuild from HEAD."
+  },
+  "converter": {
+    "displayName": "Converter.exe",
+    "bytes": 529920,
+    "sha256": "F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36",
+    "builderPath": "P:\\converter-fix-10b7\\bin",
+    "note": "c-181 converter white-window lineage retained as Word-fix superset; not c180 mail bytes."
+  },
+  "promptPins": "planner:v1.2,clarifier:v1.0,diagnoser:v1.0,explainer:v1.0,drafter:v1.0,drafter_dsl:v2.4,sketch_interpreter:v4.0,sketch_interpretation_auditor:v1.0,sketch_layout_auditor:v1.0,auditor_dsl:v1.5,intent_extractor:v2.24,linker_dsl:v1.1,layout_planner:v1.1,component_planner:v1.4,composition_layout_planner:v2.5,component_slot_type_selector:v1.0,component_slot_props_planner:v2.0,page_scene_tweak_planner:v1.0,fixer:v2.2,write_action_declarer:v1.10,nav_declarer:v1.6,engineering_setting_declarer:v1.0,write_action_declarer_link:v1.8,page_set_skeleton_declarer:v1.5,placement_declarer:v1.0,read_display_declarer:v1.15,point_table_column_annotator:v1.1,repeated_series_declarer:v1.2,style_token_declarer:v1.2,strict_region_reader:v1.0,navigation_target_grouping_judge:v1.0",
+  "authorAgentPromptPins": "intent_extractor:v2.24,read_display_declarer:v1.15,write_action_declarer:v1.10,write_action_declarer_link:v1.8,sketch_interpreter:v4.0",
+  "browserSolverPageHtmlPromptVersion": "v19",
+  "browserSolverEngineeringStylesheetContractVersion": "v6",
+  "rejectedTruncatedPromptPins": "intent_extractor:v2.24,PAGE_HTML:v19,read_display_declarer:v1.15,write_action_declarer:v1.10,write_action_declarer_link:v1.8,sketch_interpreter:v4.0,STYLESHEET:v6",
+  "promptPinNote": "Author-card pins are version overlays on the full registered-agent map. PAGE_HTML/STYLESHEET are Settings fields, not prompt_versions agents. Seeding only the seven-entry card as XDISPLAY_AI_PROMPT_VERSIONS fails validate_prompt_version_pins.",
+  "retiredEnvKeys": [
+    "XDISPLAY_AI_STAGED_DRAFTER_ENABLED"
+  ],
+  "files": [],
+  "historicalPrereqPinsFile": "offline-inputs.0.1.4.json"
+}

@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$PackagingRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 )
 
@@ -227,26 +227,50 @@ try {
 
     $runtimeFingerprintFixture = Join-Path $testRoot 'runtime-fingerprint'
     $runtimeFingerprintPaths = @(Get-OrchestrationAppRuntimeFingerprintPaths)
+    foreach ($legacyPath in @(Get-ForbiddenLegacyOrchestrationRuntimeFingerprintPaths)) {
+        Assert-True `
+            -Condition ($runtimeFingerprintPaths -notcontains $legacyPath) `
+            -Message "s63f fingerprint must not require missing $legacyPath"
+    }
     foreach ($runtimeFingerprintPath in @(
         'Dockerfile',
         'pyproject.toml',
-        'docker\export_runtime_requirements.py',
-        'docker\strict-ocr\model-manifest.json',
-        'external\xdisplay\bin\xd_render_cli\renderer.cpp',
-        'app\main.py'
+        '.dockerignore',
+        'external\xdisplay\bin\xd_render_cli\main.cpp',
+        'external\xdisplay\bin\xd_render_cli\render_runner.cpp',
+        'external\xdisplay\bin\xd_render_cli\render_runner.h',
+        'external\xdisplay\bin\xd_render_cli\xd_render_cli.pro',
+        'external\xdisplay\bin\xd_render_cli\Makefile',
+        'app\main.py',
+        'uv.lock'
     )) {
         Write-EmptyFile -Path (Join-Path $runtimeFingerprintFixture $runtimeFingerprintPath)
     }
+    [System.IO.File]::WriteAllBytes(
+        (Join-Path $runtimeFingerprintFixture 'external\xdisplay\bin\xd_render_cli\xd_render_cli'),
+        [byte[]](0xFE, 0xED, 0xFA, 0xCF)
+    )
     $runtimeFingerprintBefore = Get-SourceContentFingerprint `
         -Root $runtimeFingerprintFixture `
         -RelativePaths $runtimeFingerprintPaths
     [System.IO.File]::WriteAllText((Join-Path $runtimeFingerprintFixture 'app\main.py'), 'source-only change')
+    [System.IO.File]::WriteAllText((Join-Path $runtimeFingerprintFixture 'uv.lock'), 'ignored-by-dockerignore')
     $runtimeFingerprintAfterAppChange = Get-SourceContentFingerprint `
         -Root $runtimeFingerprintFixture `
         -RelativePaths $runtimeFingerprintPaths
     Assert-True `
         -Condition ($runtimeFingerprintBefore -eq $runtimeFingerprintAfterAppChange) `
-        -Message 'Application-only changes must not invalidate the backend runtime dependency cache.'
+        -Message 'Application-only and uv.lock changes must not invalidate the backend runtime dependency cache.'
+    [System.IO.File]::WriteAllBytes(
+        (Join-Path $runtimeFingerprintFixture 'external\xdisplay\bin\xd_render_cli\xd_render_cli'),
+        [byte[]](1, 2, 3, 4, 5)
+    )
+    $runtimeFingerprintAfterMachOChange = Get-SourceContentFingerprint `
+        -Root $runtimeFingerprintFixture `
+        -RelativePaths $runtimeFingerprintPaths
+    Assert-True `
+        -Condition ($runtimeFingerprintBefore -eq $runtimeFingerprintAfterMachOChange) `
+        -Message 'The export Mach-O xd_render_cli leftover must not be part of the runtime fingerprint; Dockerfile rm -f rebuilds Linux ELF in qt_builder.'
     [System.IO.File]::WriteAllText((Join-Path $runtimeFingerprintFixture 'pyproject.toml'), 'numpy==9.9.9')
     $runtimeFingerprintAfterDependencyChange = Get-SourceContentFingerprint `
         -Root $runtimeFingerprintFixture `
@@ -255,7 +279,7 @@ try {
         -Condition ($runtimeFingerprintBefore -ne $runtimeFingerprintAfterDependencyChange) `
         -Message 'A new Python dependency must invalidate the backend runtime dependency cache.'
     [System.IO.File]::WriteAllText(
-        (Join-Path $runtimeFingerprintFixture 'external\xdisplay\bin\xd_render_cli\renderer.cpp'),
+        (Join-Path $runtimeFingerprintFixture 'external\xdisplay\bin\xd_render_cli\main.cpp'),
         'runtime dependency change'
     )
     $runtimeFingerprintAfterRuntimeChange = Get-SourceContentFingerprint `
@@ -263,7 +287,7 @@ try {
         -RelativePaths $runtimeFingerprintPaths
     Assert-True `
         -Condition ($runtimeFingerprintAfterDependencyChange -ne $runtimeFingerprintAfterRuntimeChange) `
-        -Message 'Native renderer changes must invalidate the backend runtime dependency cache.'
+        -Message 'Native renderer source changes must invalidate the backend runtime dependency cache.'
 
     $matchingCacheDecision = Get-BackendRuntimeCacheDecision `
         -ImageExists $true `
@@ -531,8 +555,8 @@ try {
         -Condition ($backendInstallScriptContent -notmatch 'HasApiKey|ApiKeySource|未发现可用的 LLM API key') `
         -Message 'The installer must not warn about a missing server-side LLM key because the key is configured by the client.'
     Assert-True `
-        -Condition ($backendInstallScriptContent -match 'Find-NextPublishedPort' -and $backendInstallScriptContent -match 'Update-PublishedHostPorts') `
-        -Message 'The installer must move a published host port to the next available port when the preferred port is reserved or in use.'
+        -Condition ($backendInstallScriptContent -match 'Find-NextPublishedPort' -and $backendInstallScriptContent -match 'Update-PublishedHostPorts' -and $backendInstallScriptContent -match 'Resolve-AppHostPortContract') `
+        -Message 'Auxiliary published ports may move when reserved; APP_HOST_PORT must stay on the 18001 contract.'
     Assert-True `
         -Condition ($backendInstallScriptContent -notmatch '暂时停止 WinNAT') `
         -Message 'The installer must not stop WinNAT when a published port is unavailable.'
@@ -593,10 +617,20 @@ try {
         Assert-True -Condition ($runtimeEnvContent -notmatch 'LLM_API_KEY') -Message 'Compose runtime env unexpectedly contains a server-side LLM key setting.'
 
         $workspaceMainPath = Join-Path $runtimeState.BackendWorkspace 'app\main.py'
+        $userProjectPath = Join-Path $runtimeState.BackendWorkspace 'user-projects\keep-me.txt'
+        New-Item -ItemType Directory -Path (Split-Path $userProjectPath -Parent) -Force | Out-Null
+        [System.IO.File]::WriteAllText($userProjectPath, 'user-bytes')
         [System.IO.File]::WriteAllText($workspaceMainPath, 'developer-update')
-        [System.IO.File]::WriteAllText((Join-Path $installedFixtureRoot 'seed\backend\app\main.py'), 'new-seed')
         Initialize-DevelopmentWorkspace | Out-Null
-        Assert-True -Condition ((Get-Content $workspaceMainPath -Raw) -eq 'developer-update') -Message 'Repeated bootstrap overwrote the mutable backend workspace.'
+        Assert-True -Condition ((Get-Content $workspaceMainPath -Raw) -eq 'developer-update') -Message 'Same-seed relaunch must keep developer workspace edits.'
+        Assert-True -Condition ((Get-Content $userProjectPath -Raw) -eq 'user-bytes') -Message 'Same-seed relaunch must keep extra user project files.'
+
+        [System.IO.File]::WriteAllText((Join-Path $installedFixtureRoot 'seed\backend\app\main.py'), 'new-seed')
+        [System.IO.File]::WriteAllText((Join-Path $runtimeState.RuntimeEnvFile), ((Get-Content $runtimeState.RuntimeEnvFile -Raw).TrimEnd() + "`r`nT203_UPGRADE_SENTINEL=t203-offline-upgrade-20261109`r`n"))
+        Initialize-RuntimeEnvironment | Out-Null
+        Assert-True -Condition ((Get-Content $workspaceMainPath -Raw) -eq 'new-seed') -Message 'A newer seed fingerprint must update shipped backend files.'
+        Assert-True -Condition ((Get-Content $userProjectPath -Raw) -eq 'user-bytes') -Message 'Seed update must preserve extra user project files.'
+        Assert-True -Condition ((Get-Content $runtimeState.RuntimeEnvFile -Raw) -match 'T203_UPGRADE_SENTINEL=t203-offline-upgrade-20261109') -Message 'Runtime env rebuild must preserve nonsecret upgrade sentinels.'
     }
     finally {
         $script:InstallRoot = $originalInstallRoot

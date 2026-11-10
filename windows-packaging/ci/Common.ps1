@@ -71,8 +71,14 @@ function Get-PortsManifest {
 
 function Get-InputLayout {
     $manifest = Get-BundleManifest
+    $clientReleaseDir = if (-not [string]::IsNullOrWhiteSpace([string]$env:XDISPLAYAI_CLIENT_RELEASE_DIR)) {
+        [string]$env:XDISPLAYAI_CLIENT_RELEASE_DIR
+    }
+    else {
+        Join-FromRoot $manifest.paths.clientReleaseDir
+    }
     return [pscustomobject]@{
-        ClientReleaseDir   = Join-FromRoot $manifest.paths.clientReleaseDir
+        ClientReleaseDir   = $clientReleaseDir
         BackendSourceDir   = Join-FromRoot $manifest.paths.backendSourceDir
         BackendComposeBase = Join-FromRoot $manifest.paths.backendComposeBase
         BackendMigrationDir = Join-FromRoot $manifest.paths.backendMigrationDir
@@ -113,13 +119,26 @@ function Get-StagingLayout {
         [string]$Channel
     )
 
-    $channelRoot = Join-FromRoot "staging/$Channel"
+    $stagingRootOverride = [string]$env:XDISPLAYAI_STAGING_ROOT
+    $distRootOverride = [string]$env:XDISPLAYAI_DIST_ROOT
+    $channelRoot = if (-not [string]::IsNullOrWhiteSpace($stagingRootOverride)) {
+        Join-Path $stagingRootOverride $Channel
+    }
+    else {
+        Join-FromRoot "staging/$Channel"
+    }
+    $distDirectory = if (-not [string]::IsNullOrWhiteSpace($distRootOverride)) {
+        Join-Path $distRootOverride $Channel
+    }
+    else {
+        Join-FromRoot "dist/$Channel"
+    }
     return [pscustomobject]@{
         Root               = $channelRoot
         Payload            = Join-Path $channelRoot 'payload'
         WxsGenerated       = Join-Path $channelRoot 'wix'
         GeneratedPayloadWxs = Join-Path $channelRoot 'wix/Payload.Generated.wxs'
-        Dist               = Join-FromRoot "dist/$Channel"
+        Dist               = $distDirectory
     }
 }
 
@@ -349,21 +368,48 @@ function Get-SourceContentFingerprint {
     }
 }
 
+function Get-ForbiddenLegacyOrchestrationRuntimeFingerprintPaths {
+    # These paths were an older packaging fingerprint. They do not exist at
+    # prod/s63f / dd6ab3d50 and must not be required to compute or reuse a cache.
+    return @(
+        'docker\export_runtime_requirements.py',
+        'docker\strict-ocr'
+    )
+}
+
 function Get-OrchestrationAppRuntimeFingerprintPaths {
-    # Application source is intentionally absent. Changing app, data, or prompts
-    # must keep this fingerprint stable so an installed machine can update code
-    # without rebuilding the image. A new installable package changes one of these.
+    # Actual s63f Dockerfile COPYs xd_render_cli sources, app/, and pyproject.toml,
+    # then pip-installs inline deps and playwright==1.56.0 / Chromium 1194.
+    # uv.lock is listed in .dockerignore and is not used by the image build.
+    # app/data/prompts stay out of this fingerprint because compose bind-mounts
+    # /app from the source snapshot; s63f still requires a new image because these
+    # Dockerfile/renderer inputs changed versus F3EECC91.
+    # Do not hash the export's Mach-O xd_render_cli binary; Dockerfile rm -f's it
+    # and rebuilds a Linux CLI with qmake6. Do not invent a Linux CLI here.
     return @(
         'Dockerfile',
         'pyproject.toml',
-        'docker\export_runtime_requirements.py',
-        'docker\strict-ocr',
-        'external\xdisplay\bin\xd_render_cli'
+        '.dockerignore',
+        'external\xdisplay\bin\xd_render_cli\main.cpp',
+        'external\xdisplay\bin\xd_render_cli\render_runner.cpp',
+        'external\xdisplay\bin\xd_render_cli\render_runner.h',
+        'external\xdisplay\bin\xd_render_cli\xd_render_cli.pro',
+        'external\xdisplay\bin\xd_render_cli\Makefile'
     )
 }
 
 function Get-EmbeddingRuntimeFingerprintPaths {
-    return @('Dockerfile.embedding')
+    return @(
+        'Dockerfile.embedding',
+        'scripts\embedding_http_service.py'
+    )
+}
+
+function Get-S63fAppImageCompanionTags {
+    return @(
+        'orches/orchestration-app:s63f-dd6ab3d50',
+        'orches/orchestration-app:latest'
+    )
 }
 
 function Get-BackendRuntimeCacheDecision {
