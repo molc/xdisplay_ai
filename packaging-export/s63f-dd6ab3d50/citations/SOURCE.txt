@@ -1,0 +1,3 @@
+source: github.com/molc/xdisplay_ai
+ref: 04e713f22c5498143180315c632c039b125a0bff
+path: windows-packaging/src/templates/compose/compose.windows.yml.tmpl

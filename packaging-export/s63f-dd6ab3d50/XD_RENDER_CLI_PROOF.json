@@ -1,0 +1,82 @@
+{
+  "sourceArchive": {
+    "path": "ai_orchestration-s63f-dd6ab3d50.tar.gz",
+    "sha256": "767E9305A7C9C6B57CE9220A971C9F1BE0F8102E46F9A8C67444203253B76A84",
+    "sizeBytes": 2890098
+  },
+  "gitlink": {
+    "path": "external/xdisplay",
+    "commit": "0c657ad3eac7ece814206bd40fea807ec6568f81",
+    "url": "https://github.com/molc/xdisplay.git",
+    "headless": true
+  },
+  "membersInsideArchive": [
+    {
+      "name": "external/xdisplay/bin/xd_render_cli/xd_render_cli.pro",
+      "size": 753,
+      "sha256": "ba5d4c89240f56f64fa517cd999f496bd0c3f6138ac82c174c5c717833ccb0c5"
+    },
+    {
+      "name": "external/xdisplay/bin/xd_render_cli/Makefile",
+      "size": 49022,
+      "sha256": "636146d4cedaeb7e4ad5e0e294d210508760d84da7795acaced747104dee33d5"
+    },
+    {
+      "name": "external/xdisplay/bin/xd_render_cli/main.cpp",
+      "size": 5998,
+      "sha256": "20fa95dcba8810d59904663e4099424fdabba6e32aba8919504a16edcba10847"
+    },
+    {
+      "name": "external/xdisplay/bin/xd_render_cli/render_runner.cpp",
+      "size": 4285,
+      "sha256": "7f9201b4e0503f592aaaedca97244088cf45736c589f33218278c14b2ef828f5"
+    },
+    {
+      "name": "external/xdisplay/bin/xd_render_cli/render_runner.h",
+      "size": 1446,
+      "sha256": "49f5cb0ecf14857826caa96f33436e39ff68014a97478fdc116b706ec3b3f44e"
+    },
+    {
+      "name": "external/xdisplay/bin/xd_render_cli/README.md",
+      "size": 6519,
+      "sha256": "0787d10c6fd770fd2f1e13fe4926e5d01ee954fcd3253e73e7a045eec22df990"
+    },
+    {
+      "name": "external/xdisplay/bin/xd_render_cli/xd_render_cli",
+      "size": 50200,
+      "sha256": "58618ec212229ac900e48304922afd50edffd0f54cb325dcfa60f34382a606ea",
+      "file(1)": "Mach-O 64-bit x86_64 executable",
+      "magic": "cffaedfe07000001",
+      "usedByDockerfile": false,
+      "note": "Dockerfile RUN rm -f xd_render_cli then qmake6 rebuilds a Linux ELF inside qt_builder"
+    }
+  ],
+  "authenticLinuxBuild": {
+    "where": "Dockerfile stage qt_builder",
+    "base": "python:3.11-slim-bookworm",
+    "apt": [
+      "build-essential",
+      "g++",
+      "make",
+      "pkg-config",
+      "qt6-base-dev",
+      "qmake6",
+      "libgl-dev"
+    ],
+    "commands": [
+      "qmake6 xd_render_cli.pro",
+      "make -j\"$(nproc)\"",
+      "make install INSTALL_ROOT=/opt/stage"
+    ],
+    "installsTo": "/usr/local/bin/xd_render_cli"
+  },
+  "thisExportHost": {
+    "docker": false,
+    "qmake6": false,
+    "g++": true,
+    "make": true,
+    "linuxElfProduced": false,
+    "oldImageCliQualified": false,
+    "reasonOldImageNotQualified": "F3EECC91 tar not present; docker not present; no ELF hash from that image to compare against 0c657ad3 sources"
+  }
+}

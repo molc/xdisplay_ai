@@ -1,0 +1,79 @@
+{
+  "kind": "s63f-orchestration-app-docker-save",
+  "builtAtUtc": "2026-11-09T13:26:38Z",
+  "builderHost": {
+    "uname": "Linux cursor 6.12.113+ x86_64",
+    "os": "Ubuntu 24.04.5 LTS",
+    "docker": "29.1.3-0ubuntu3~24.04.2 from Ubuntu apt docker.io",
+    "installRoute": "sudo apt-get update && sudo apt-get install -y docker.io",
+    "daemon": "manual dockerd --host=unix:///var/run/docker.sock (PID1 is tini, not systemd)",
+    "storageDriver": "overlay2",
+    "architecture": "linux/amd64"
+  },
+  "source": {
+    "tag": "prod/s63f",
+    "fullCommit": "dd6ab3d505827a94cbc9d59d7067fcce14db6fbe",
+    "sourceArchiveSha256": "767E9305A7C9C6B57CE9220A971C9F1BE0F8102E46F9A8C67444203253B76A84",
+    "dockerfileSha256": "bdd86198bea1f87ac04e996613d8addbc02cc65cfaf9eba1b02c30478f56e5a0",
+    "dockerfileEdited": false
+  },
+  "baseImage": {
+    "ref": "python:3.11-slim-bookworm",
+    "osArch": "linux/amd64",
+    "id": "sha256:cf2dad23925ed51a00735f57606b2998aedf4705a1634cb9ae1053b5c145d5ba",
+    "digest": "sha256:a83ba18aef0f865b1a4a611c2cf460fe446f2795673bbb9fe43be570439e3b39",
+    "pullLog": "https://registry-1.docker.io (TLS public)"
+  },
+  "image": {
+    "id": "sha256:d820003319943337a16430b0ea094b81087f8290ec06e81c18d2ce48cb377175",
+    "osArch": "linux/amd64",
+    "sizeBytes": 1893439343,
+    "repoTags": [
+      "orches/orchestration-app:latest",
+      "orches/orchestration-app:s63f-dd6ab3d50",
+      "orches/orchestration-app:s63f-dd6ab3d505827a94cbc9d59d7067fcce14db6fbe"
+    ],
+    "labels": {
+      "xdisplayai.packaging.git-sha": "dd6ab3d505827a94cbc9d59d7067fcce14db6fbe",
+      "xdisplayai.packaging.tag": "prod/s63f",
+      "xdisplayai.packaging.source-archive-sha256": "767E9305A7C9C6B57CE9220A971C9F1BE0F8102E46F9A8C67444203253B76A84"
+    },
+    "playwright": "1.56.0",
+    "chromium": "141.0.7390.37 playwright build v1194",
+    "numpy": "1.26.4",
+    "python": "3.11.18",
+    "xd_render_cliHelpExit": 0
+  },
+  "dockerSave": {
+    "file": "orches_orchestration-app_latest.tar",
+    "sha256": "35E5F27EEB4623B816120020116995216CBF2E601CD357ACC676A4384BE9E638",
+    "sizeBytes": 1910100992,
+    "forbiddenOldSha256": "F3EECC91AB386DE950F175329AB7CCF078435FF9E863E55708F60485BFFC2309",
+    "matchesForbidden": false,
+    "note": "This is the cloud VM recipe-built docker-save. It is NOT the final Windows-packaged app image. See README.md."
+  },
+  "artifactTransfer": {
+    "fullTarToCursorStore": {
+      "attempted": true,
+      "result": "FAILED",
+      "error": "cp: failed to close '/cursor/stores/self/artifacts/orches_orchestration-app_latest.tar': Invalid argument",
+      "leftover": "0-byte stub (removed)"
+    },
+    "split24MiBParts": {
+      "count": 76,
+      "partSize": 25165824,
+      "lastPartSize": 22664192,
+      "storePath": "/cursor/stores/self/artifacts/s63f-app-image/",
+      "copyResult": "OK",
+      "reassemble": "cat orches_orchestration-app_latest.tar.part??? > orches_orchestration-app_latest.tar && sha256sum -c orches_orchestration-app_latest.tar.sha256",
+      "note": "24MiB parts and the 1.91GB tar are NOT included in this xdisplay_ai export."
+    }
+  },
+  "notDone": [
+    "no .21 deploy",
+    "no merge into ai_orchestration",
+    "no companion embedding/pg/redis rebuild",
+    "no secrets in image labels or tar name",
+    "no multi-GB docker-save committed"
+  ]
+}
