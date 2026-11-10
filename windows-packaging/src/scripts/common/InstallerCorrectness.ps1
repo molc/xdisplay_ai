@@ -227,6 +227,28 @@ function Test-PostgresReadyProbeSequence {
     return $false
 }
 
+function Select-ComposeContainerId {
+    param(
+        [AllowNull()]
+        [AllowEmptyCollection()]
+        [object[]]$Output = @()
+    )
+
+    # docker compose prints warnings (obsolete `version` attribute, unset variables) on stderr.
+    # Under 2>&1 they arrive as ErrorRecords mixed with the id line; joining them into one
+    # string produced "time=... level=warning ... <id>" and docker exec failed with No such container.
+    foreach ($item in @($Output)) {
+        if ($null -eq $item -or $item -is [System.Management.Automation.ErrorRecord]) {
+            continue
+        }
+        $line = ([string]$item).Trim()
+        if ($line -match '^[0-9a-f]{12,64}$') {
+            return $line
+        }
+    }
+    return ''
+}
+
 function Get-WorkspacePreserveRelativePaths {
     return @('.env', '.env.local', 'secret.env')
 }

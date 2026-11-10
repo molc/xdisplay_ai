@@ -414,16 +414,16 @@ function Get-ComposeServiceContainerId {
     $previousErrorActionPreference = $ErrorActionPreference
     try {
         $ErrorActionPreference = 'Continue'
-        $containerId = & $dockerCommand compose --project-name $layout.ProjectName --env-file $layout.EnvFile -f $layout.BaseCompose -f $layout.OverlayCompose ps -q $ServiceName 2>&1
+        $composeOutput = @(& $dockerCommand compose --project-name $layout.ProjectName --env-file $layout.EnvFile -f $layout.BaseCompose -f $layout.OverlayCompose ps -q $ServiceName 2>&1)
         $exitCode = $LASTEXITCODE
     }
     finally {
         $ErrorActionPreference = $previousErrorActionPreference
     }
-    if ($exitCode -ne 0 -or [string]::IsNullOrWhiteSpace([string]$containerId)) {
+    if ($exitCode -ne 0) {
         return ''
     }
-    return ([string]$containerId).Trim()
+    return (Select-ComposeContainerId -Output $composeOutput)
 }
 
 function Get-ExpectedS63fRuntimeFingerprintFromSeed {

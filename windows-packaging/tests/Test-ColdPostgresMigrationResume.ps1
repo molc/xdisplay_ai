@@ -38,6 +38,13 @@ $permanent = ConvertTo-PostgresQueryProbeResult -ExitCode 2 -Output 'ERROR:  per
 Assert-True -Condition (-not $permanent.Ready) -Message 'Non-transient SQL errors must not look ready.'
 Assert-True -Condition (-not $permanent.Transient) -Message 'Permission errors must fail closed instead of being retried as cold-start noise.'
 
+$composeWarning = New-Object System.Management.Automation.ErrorRecord (New-Object System.Exception 'time="2026-11-10T12:06:46+08:00" level=warning msg="C:\\Program Files\\XDisplayAI\\docker\\compose\\docker-compose.yml: the attribute `version` is obsolete, it will be ignored, please remove it to avoid potential confusion"'), 'NativeCommandError', 'FromStdErr', $null
+$composeId = '28966287ed3b2efc4d975de4107b3de3e74b8ba10fad3a33500db26bbf683f55'
+Assert-True -Condition ((Select-ComposeContainerId -Output @($composeWarning, $composeWarning, $composeId)) -eq $composeId) -Message 'compose stderr warnings merged by 2>&1 must not pollute the container id (dot29 reboot-resume regression: docker exec "time=... level=warning ..." -> No such container).'
+Assert-True -Condition ((Select-ComposeContainerId -Output @('time="x" level=warning msg="The FOO variable is not set"', "$composeId`r`n")) -eq $composeId) -Message 'String-form warning lines and trailing CRLF must be ignored too.'
+Assert-True -Condition ((Select-ComposeContainerId -Output @()) -eq '') -Message 'No container id must stay an empty string so the wait loop keeps polling.'
+Assert-True -Condition ((Select-ComposeContainerId -Output $null) -eq '') -Message 'Null compose output must stay an empty string.'
+
 $absentHistory = ConvertTo-PostgresHistoryTablePresenceResult -ExitCode 0 -Output ''
 Assert-True -Condition (-not $absentHistory.Present) -Message 'Empty to_regclass result is the measured f09 SELECT-only failure: table absent.'
 $presentHistory = ConvertTo-PostgresHistoryTablePresenceResult -ExitCode 0 -Output "offline_migration_history`n"
