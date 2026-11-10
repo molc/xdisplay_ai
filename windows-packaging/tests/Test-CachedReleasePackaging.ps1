@@ -101,7 +101,12 @@ try {
         'data/keyboard_d/image/data_image.json',
         'data/keyboard_d/font/data_font.json',
         'data/keyboard_d/text/data_text.json',
-        'data/keyboard_d/var/data_var.json'
+        'data/keyboard_d/var/data_var.json',
+        'images/bartitle/titlelogo.png',
+        'images/launch/logo_tricolor.png',
+        'res/pinyin.bin',
+        'doc/Xdisplay使用手册V2.4.4.pdf',
+        'qrcode_about.jpg'
     )) {
         Write-FixtureBytes -Path (Join-Path $sourceClient $relative) -Bytes ([byte[]](1, 2, 3))
         Write-FixtureBytes -Path (Join-Path $oldInputsClient $relative) -Bytes ([byte[]](9, 9, 9))
