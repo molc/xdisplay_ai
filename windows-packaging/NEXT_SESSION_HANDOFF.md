@@ -254,3 +254,8 @@ docker run --rm orches/orchestration-app:latest python -c 'from app.page_dsl.lay
 - 官方包的 `data/keyboard_a..e` 合计只有 1.2 MB；`inputs/client/runtime-data` 里 34 MB×5 的版本是把字体复制进了每个模板，建议换成官方包的版本（内容同、体积 1/140）。
 - 归属建议已交架构师裁决（报告 `ai_orchestration/docs/superpowers/reports/2026-11-10-client-runtime-resources-ownership.md`）：代码按相对路径读、随版本走的（模板 / images / 字体 + pinyin / 手册 / qrcode / logo）→ 进 xdisplay 源码仓；有源码的 Converter / Simulator / Tool_Encrypt → 由 `build-xdisplay-from-source.ps1` 一并构建；第三方（Qt / ffmpeg / ImageMagick / lvgl_img_converter / subset_font / optipng / ZeroBrane）→ 留在 `inputs/prerequisites` 带校验和。裁决前打包工程不必改；裁决后第一组从源码仓取、第二组加构建步。
 - Mac UAT 包（`xdisplay-builds/2026-11-07-c180`）已手工补入 `data/keyboard_a..e`（UD-2026-11-10-A：缺模板时 `func_project_new` 不清旧页，新工程继承上一个工程的页）。
+
+## 2026-11-10（续）架构师已裁决「按建议做」——运行时资源的唯一来源改为客户端源码仓
+- 客户端仓 `codex/int-6001`（tag `client/c-181`）现在**跟踪**：`data/keyboard_a..e` + `data/config_res`（官方 1.2 MB 版）、`images/{bartitle,barmenu,launch,panelpage,base}`、`res/` 三字体 + `pinyin*.bin`、`doc/Xdisplay使用手册V2.4.4.pdf`、根目录 `qrcode_about.jpg` / `logo.png` / `logo_about.png`；规则文件 `RUNTIME_RESOURCES.md`。
+- 打包脚本应改为：运行时 data 只从 `<ClientRepo>\data` 取（`build-xdisplay-from-source.ps1` 的候选列表里 `inputs\client\runtime-data` 可退役，`_stub` 门保留）；字体 / pinyin 从 `<ClientRepo>\res`，`images`、`doc`、根目录三个文件同样从仓拷到发布树；`Converter.exe` / `Simulator.exe` / `Tool_Encrypt` 由 `Tool_Converter/`、`simulator/`、`Tool_Encrypt/` 源码构建（仓内有）；第三方（Qt / ffmpeg / ImageMagick / lvgl_img_converter / subset_font / optipng / ZeroBrane）仍走 `inputs/prerequisites`。
+- `validate.ps1` / `CachedRelease.ps1` / `Update-XDisplayClient.ps1` 的必备文件清单可补上 `images/bartitle/titlelogo.png`、`res/pinyin.bin`、`doc/Xdisplay使用手册V2.4.4.pdf`、`qrcode_about.jpg`（docx 2/3/9/13/14 项）。
