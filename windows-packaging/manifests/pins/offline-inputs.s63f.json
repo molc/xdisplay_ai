@@ -61,7 +61,17 @@
       "orches/orchestration-app:s63f-dd6ab3d50",
       "orches/orchestration-app:latest"
     ],
-    "embeddingPgRedis": "unproven for s63f until inspect of Dockerfile.embedding + scripts/embedding_http_service.py / compose image ids; historical tars in offline-inputs.0.1.4.json are not proof"
+    "embeddingPgRedis": "unproven for s63f until inspect of Dockerfile.embedding + scripts/embedding_http_service.py / compose image ids; historical tars in offline-inputs.0.1.4.json are not proof",
+    "appImage": {
+      "builtOn": "win11-wsl2-builder Docker Desktop 29.7.2 (linux/amd64), 2026-11-09",
+      "imageId": "sha256:050efd063552087d4cad4dd6d24408e2d8d114face233e6a2f44a2a65b59d71b",
+      "created": "2026-11-09T15:24:53.990467068Z",
+      "tarSha256": "514ACD60DF0D7D6FAB00684116F9F863A6A58F161A4C9BAF73CFAD76E0B83A24",
+      "tarBytes": 1910111744,
+      "runtimeFingerprint": "5f1b3896315250c1a62ee3cba769909ffbf6c5f3984f6479cccf6d0e6e168233",
+      "inspectJson": "backend-export/s63f-dd6ab3d50/builder-image/orches_orchestration-app_latest.inspect.json",
+      "note": "Cloud-built tar 35E5F27E (ai_orchestration PR #13) was never transferred; the installer uses this builder-built image. Rebuilding changes layer timestamps and this tar SHA; update files[] after any sanctioned rebuild."
+    }
   },
   "client": {
     "policy": "retain-word-fix-superset",
@@ -91,6 +101,42 @@
   "retiredEnvKeys": [
     "XDISPLAY_AI_STAGED_DRAFTER_ENABLED"
   ],
-  "files": [],
+  "files": [
+    {
+      "relativePath": "prerequisites/docker-desktop/Docker Desktop Installer.exe",
+      "sizeBytes": 628979632,
+      "sha256": "820438E75C16E44B393079154BEA7D27958A15845C23A635B1A1F6F586B2ED44"
+    },
+    {
+      "relativePath": "prerequisites/vcredist/VC_redist.x64.exe",
+      "sizeBytes": 18731856,
+      "sha256": "843068991DAAA1F73AD9F6239BCE4D0F6A07A51F18C37EA2A867E9BECA71295C"
+    },
+    {
+      "relativePath": "prerequisites/wsl/wsl_update_x64.msi",
+      "sizeBytes": 258990080,
+      "sha256": "A611DDACEE689D2FB1FB5319E58AF7F3998864D86CDCE632EADD8E61614A0F9D"
+    },
+    {
+      "relativePath": "backend/images/orches_orchestration-app_latest.tar",
+      "sizeBytes": 1910111744,
+      "sha256": "514ACD60DF0D7D6FAB00684116F9F863A6A58F161A4C9BAF73CFAD76E0B83A24"
+    },
+    {
+      "relativePath": "backend/images/orches_embedding-http_latest.tar",
+      "sizeBytes": 177215488,
+      "sha256": "E0619999C03EBF1D1EC78B5D2CB28438EC9C16D15151BF12D796F5DF835ADE9E"
+    },
+    {
+      "relativePath": "backend/images/pgvector_pgvector_pg15.tar",
+      "sizeBytes": 439424512,
+      "sha256": "D9C6F2F1AE5A7B320676553213163D813459FC7E232CD5C5CCE85376FEABF9F6"
+    },
+    {
+      "relativePath": "backend/images/redis_7.tar",
+      "sizeBytes": 120237056,
+      "sha256": "1E7BE24D93E435854DB82113E45D9F68DD12540C82E975AB382C7D3ABBB54CF7"
+    }
+  ],
   "historicalPrereqPinsFile": "offline-inputs.0.1.4.json"
 }

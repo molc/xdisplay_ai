@@ -1,0 +1,141 @@
+[
+  {
+    "Id": "sha256:050efd063552087d4cad4dd6d24408e2d8d114face233e6a2f44a2a65b59d71b",
+    "RepoTags": [
+      "orches/orchestration-app:latest",
+      "orches/orchestration-app:s63f-dd6ab3d50",
+      "orches/orchestration-app:s63f-dd6ab3d50-runtime5f1b3896",
+      "orches/orchestration-app:s63f-dd6ab3d505827a94cbc9d59d7067fcce14db6fbe"
+    ],
+    "RepoDigests": [],
+    "Parent": "sha256:d820003319943337a16430b0ea094b81087f8290ec06e81c18d2ce48cb377175",
+    "Comment": "",
+    "Created": "2026-11-09T15:24:53.990467068Z",
+    "Container": "d07f82e967bdb4c7510446ae00e9879a9cd0a23d7f874c27ac2587bc7d2eb8bd",
+    "ContainerConfig": {
+      "Hostname": "d07f82e967bd",
+      "Domainname": "",
+      "User": "",
+      "AttachStdin": false,
+      "AttachStdout": false,
+      "AttachStderr": false,
+      "ExposedPorts": {
+        "8000/tcp": {}
+      },
+      "Tty": false,
+      "OpenStdin": false,
+      "StdinOnce": false,
+      "Env": [
+        "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "LANG=C.UTF-8",
+        "GPG_KEY=A035C8C19219BA821ECEA86B64E628F8D684696D",
+        "PYTHON_VERSION=3.11.18",
+        "PYTHON_SHA256=9120e0a653868f6e3698d36cdd99e5a58903ec9469e448f21d98f7b16d8fa290",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "PYTHONUNBUFFERED=1",
+        "QT_QPA_PLATFORM=offscreen",
+        "PIP_INDEX_URL=https://pypi.org/simple",
+        "PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright",
+        "PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT=1800000"
+      ],
+      "Cmd": [
+        "/bin/sh",
+        "-c",
+        "#(nop) ",
+        "LABEL xdisplayai.packaging.runtime-fingerprint=5f1b3896315250c1a62ee3cba769909ffbf6c5f3984f6479cccf6d0e6e168233"
+      ],
+      "Image": "sha256:d820003319943337a16430b0ea094b81087f8290ec06e81c18d2ce48cb377175",
+      "Volumes": null,
+      "WorkingDir": "/app",
+      "Entrypoint": null,
+      "OnBuild": null,
+      "Labels": {
+        "xdisplayai.packaging.git-sha": "dd6ab3d505827a94cbc9d59d7067fcce14db6fbe",
+        "xdisplayai.packaging.runtime-fingerprint": "5f1b3896315250c1a62ee3cba769909ffbf6c5f3984f6479cccf6d0e6e168233",
+        "xdisplayai.packaging.source-archive-sha256": "767E9305A7C9C6B57CE9220A971C9F1BE0F8102E46F9A8C67444203253B76A84",
+        "xdisplayai.packaging.tag": "prod/s63f"
+      }
+    },
+    "DockerVersion": "20.10.23",
+    "Author": "",
+    "Config": {
+      "Hostname": "",
+      "Domainname": "",
+      "User": "",
+      "AttachStdin": false,
+      "AttachStdout": false,
+      "AttachStderr": false,
+      "ExposedPorts": {
+        "8000/tcp": {}
+      },
+      "Tty": false,
+      "OpenStdin": false,
+      "StdinOnce": false,
+      "Env": [
+        "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "LANG=C.UTF-8",
+        "GPG_KEY=A035C8C19219BA821ECEA86B64E628F8D684696D",
+        "PYTHON_VERSION=3.11.18",
+        "PYTHON_SHA256=9120e0a653868f6e3698d36cdd99e5a58903ec9469e448f21d98f7b16d8fa290",
+        "PYTHONDONTWRITEBYTECODE=1",
+        "PYTHONUNBUFFERED=1",
+        "QT_QPA_PLATFORM=offscreen",
+        "PIP_INDEX_URL=https://pypi.org/simple",
+        "PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright",
+        "PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT=1800000"
+      ],
+      "Cmd": [
+        "uvicorn",
+        "app.main:app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000"
+      ],
+      "Image": "sha256:d820003319943337a16430b0ea094b81087f8290ec06e81c18d2ce48cb377175",
+      "Volumes": null,
+      "WorkingDir": "/app",
+      "Entrypoint": null,
+      "OnBuild": null,
+      "Labels": {
+        "xdisplayai.packaging.git-sha": "dd6ab3d505827a94cbc9d59d7067fcce14db6fbe",
+        "xdisplayai.packaging.runtime-fingerprint": "5f1b3896315250c1a62ee3cba769909ffbf6c5f3984f6479cccf6d0e6e168233",
+        "xdisplayai.packaging.source-archive-sha256": "767E9305A7C9C6B57CE9220A971C9F1BE0F8102E46F9A8C67444203253B76A84",
+        "xdisplayai.packaging.tag": "prod/s63f"
+      }
+    },
+    "Architecture": "amd64",
+    "Os": "linux",
+    "Size": 1893439343,
+    "VirtualSize": 1893439343,
+    "GraphDriver": {
+      "Data": {
+        "LowerDir": "/mnt/xdisplay-installer-014-storage/xdisplay-installer-014-t206/docker-build-data/overlay2/9541fe6a5bf40ca5771340b78e1c5e6d05384e8b582bd2a5eda877b61b8ddf77/diff:/mnt/xdisplay-installer-014-storage/xdisplay-installer-014-t206/docker-build-data/overlay2/80e25099e9c20934870a34e23652bfb07acfa13f5a80db8289d61cb9e156cd29/diff:/mnt/xdisplay-installer-014-storage/xdisplay-installer-014-t206/docker-build-data/overlay2/335b126153a1d556d1ca9454c65db18fc566ed2122c4a2344d95d36811b6fdc7/diff:/mnt/xdisplay-installer-014-storage/xdisplay-installer-014-t206/docker-build-data/overlay2/85bcf9d8fcd8bec5c7089719e6a533e1d4847bbcef7e4586055c6bbe1bf6ba92/diff:/mnt/xdisplay-installer-014-storage/xdisplay-installer-014-t206/docker-build-data/overlay2/0d16e8ac15611f83b97fe566b3652fd26e73429f82cc562e4bf2226f00e89c17/diff:/mnt/xdisplay-installer-014-storage/xdisplay-installer-014-t206/docker-build-data/overlay2/60999d482ebee8292e54ec3c882ab7a0fe0bc5a128c083e1e97ba4ea1017b366/diff:/mnt/xdisplay-installer-014-storage/xdisplay-installer-014-t206/docker-build-data/overlay2/d41c442509698b4179318c1285c22132d5a0c3f9efc80f90e84d5353605cd2de/diff:/mnt/xdisplay-installer-014-storage/xdisplay-installer-014-t206/docker-build-data/overlay2/fd04197a8f26d46b168815e49dbde05ed129498cb5afd8b48511231f32aa7597/diff:/mnt/xdisplay-installer-014-storage/xdisplay-installer-014-t206/docker-build-data/overlay2/6083b43ff5d008357825b22600c870c78f04dfa6463794833c65823cb1091b9f/diff:/mnt/xdisplay-installer-014-storage/xdisplay-installer-014-t206/docker-build-data/overlay2/c3513d75b3a32d45411c7948197212f6ba1ac3072c103469f237bc6cc7d59c11/diff:/mnt/xdisplay-installer-014-storage/xdisplay-installer-014-t206/docker-build-data/overlay2/ef5fd0fae01f019b626adbd13d3ea3a3bdd44abe3ce3dec3e1e558eef6eb505e/diff",
+        "MergedDir": "/mnt/xdisplay-installer-014-storage/xdisplay-installer-014-t206/docker-build-data/overlay2/d9b71daa254b0aa981124ef0e3cd58b4f9d08a066905c3569c93294c63c869cd/merged",
+        "UpperDir": "/mnt/xdisplay-installer-014-storage/xdisplay-installer-014-t206/docker-build-data/overlay2/d9b71daa254b0aa981124ef0e3cd58b4f9d08a066905c3569c93294c63c869cd/diff",
+        "WorkDir": "/mnt/xdisplay-installer-014-storage/xdisplay-installer-014-t206/docker-build-data/overlay2/d9b71daa254b0aa981124ef0e3cd58b4f9d08a066905c3569c93294c63c869cd/work"
+      },
+      "Name": "overlay2"
+    },
+    "RootFS": {
+      "Type": "layers",
+      "Layers": [
+        "sha256:1d7b9dd8778ebc4d9bf2f64436dd358640718cb349f5640b33bebaea4ffd62c2",
+        "sha256:9ae7def604682355f0b9a3468566bbb06aaae177e47a961444995169178590d2",
+        "sha256:bd3e172fa0bc2e7382210f6ffe9292e1ce66a4962721cc583787fe726d705f53",
+        "sha256:3306b96cb7baf10267980832b85ae4056efdc2b3dd659fa42d77af2f850e778d",
+        "sha256:c5562f0fc266f6834283daf6c55ff93746d820d2829d2a0311a558446d1e2e61",
+        "sha256:7c376bfabc096e399074c79d2a822079ccc48ba191d80179e88a5bf525a82f69",
+        "sha256:22fbb27cf972f9114ab1dc5059377fcbdadbd22d3ef43b6154abf61fcc67e71f",
+        "sha256:2a8015eddb45fe7774d83017fd4860e7a87e3da294e261090c7edc0e880c5edb",
+        "sha256:a74632a62e80491114c2db237f93b0d2c154e4043320221704d397b064912c0a",
+        "sha256:3734890e912ca42e2112fd17faa77aca531e2af2783247da88f92a1fab84bd5e",
+        "sha256:b38a26b08192e410cc389fe54c1e2e2adad040313b25b31909f08d812c72ebf4",
+        "sha256:0a86af0e7be3ab5571cfc2b1898e1e7f967a467d4eebc4cdbaaeaa5c206fca79"
+      ]
+    },
+    "Metadata": {
+      "LastTagTime": "2026-11-09T15:24:54.577470304Z"
+    }
+  }
+]

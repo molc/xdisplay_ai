@@ -1,0 +1,77 @@
+[
+    {
+        "Architecture": "amd64",
+        "Config": {
+            "Cmd": [
+                "uvicorn",
+                "app.main:app",
+                "--host",
+                "0.0.0.0",
+                "--port",
+                "8000"
+            ],
+            "Env": [
+                "PATH=/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "LANG=C.UTF-8",
+                "GPG_KEY=A035C8C19219BA821ECEA86B64E628F8D684696D",
+                "PYTHON_VERSION=3.11.18",
+                "PYTHON_SHA256=9120e0a653868f6e3698d36cdd99e5a58903ec9469e448f21d98f7b16d8fa290",
+                "PYTHONDONTWRITEBYTECODE=1",
+                "PYTHONUNBUFFERED=1",
+                "QT_QPA_PLATFORM=offscreen",
+                "PIP_INDEX_URL=https://pypi.org/simple",
+                "PLAYWRIGHT_BROWSERS_PATH=/opt/ms-playwright",
+                "PLAYWRIGHT_DOWNLOAD_CONNECTION_TIMEOUT=1800000"
+            ],
+            "ExposedPorts": {
+                "8000/tcp": {}
+            },
+            "Labels": {
+                "xdisplayai.packaging.git-sha": "dd6ab3d505827a94cbc9d59d7067fcce14db6fbe",
+                "xdisplayai.packaging.source-archive-sha256": "767E9305A7C9C6B57CE9220A971C9F1BE0F8102E46F9A8C67444203253B76A84",
+                "xdisplayai.packaging.tag": "prod/s63f"
+            },
+            "WorkingDir": "/app"
+        },
+        "Created": "2026-11-09T13:26:38.965568798Z",
+        "GraphDriver": {
+            "Data": {
+                "LowerDir": "/var/lib/docker/overlay2/7c1e5584e72ba829dcf12480151ee3db5605087a8c9bcbc8ded2daf05fce370c/diff:/var/lib/docker/overlay2/9fefa45016be7b956ce450d2f2aca59c0943fe9188d63636b689d7a13cde8a64/diff:/var/lib/docker/overlay2/1a573b586b6c7922b250b096c7b0b2d5149c52c5164a7131d6d83df30b4c800d/diff:/var/lib/docker/overlay2/525d299690b4054bbf532bb45814a3fcccd03a1c9d07811b07b2432b14e59209/diff:/var/lib/docker/overlay2/ce122aabc2766db0525879c68ed58d1a36d3edbf4f137698b4adb9add593bf15/diff:/var/lib/docker/overlay2/b0a28557706153f8af1b85e6a558c0327ab93dec40ac726ae8cbf3a95ffc7581/diff:/var/lib/docker/overlay2/8b15a077286749380834c97bfb1c36872c907055bc8634b539138cfca3b8632b/diff:/var/lib/docker/overlay2/873f1e761d950c87f6a82182a05ecb08526d0d92fc3eec5cf72c8ae700db4e82/diff:/var/lib/docker/overlay2/93a723fdb28388a31edb541ab3a0170543a8ac41dc3e0be2abdfe716f0ce2bfe/diff:/var/lib/docker/overlay2/5334f3808c55be268742b653981ad523a58f2567dcfc6c4cb13c02171442b92c/diff:/var/lib/docker/overlay2/3ef7750a44e9be04047e5dd241feed16de16b567d52db7f2d623e70306fa7bc8/diff",
+                "MergedDir": "/var/lib/docker/overlay2/4036177545fc59a4e22cb849103546c243b9d9e8e16bf512823e727e1778be79/merged",
+                "UpperDir": "/var/lib/docker/overlay2/4036177545fc59a4e22cb849103546c243b9d9e8e16bf512823e727e1778be79/diff",
+                "WorkDir": "/var/lib/docker/overlay2/4036177545fc59a4e22cb849103546c243b9d9e8e16bf512823e727e1778be79/work"
+            },
+            "Name": "overlay2"
+        },
+        "Id": "sha256:d820003319943337a16430b0ea094b81087f8290ec06e81c18d2ce48cb377175",
+        "Metadata": {
+            "LastTagTime": "2026-11-09T13:26:38.986099753Z"
+        },
+        "Os": "linux",
+        "Parent": "sha256:a7cf5d8fecb9e6c48c69ce6e17dadf5ad16156b7988d8c9c3b30c4372bda1e48",
+        "RepoDigests": [],
+        "RepoTags": [
+            "orches/orchestration-app:latest",
+            "orches/orchestration-app:s63f-dd6ab3d50",
+            "orches/orchestration-app:s63f-dd6ab3d505827a94cbc9d59d7067fcce14db6fbe"
+        ],
+        "RootFS": {
+            "Layers": [
+                "sha256:1d7b9dd8778ebc4d9bf2f64436dd358640718cb349f5640b33bebaea4ffd62c2",
+                "sha256:9ae7def604682355f0b9a3468566bbb06aaae177e47a961444995169178590d2",
+                "sha256:bd3e172fa0bc2e7382210f6ffe9292e1ce66a4962721cc583787fe726d705f53",
+                "sha256:3306b96cb7baf10267980832b85ae4056efdc2b3dd659fa42d77af2f850e778d",
+                "sha256:c5562f0fc266f6834283daf6c55ff93746d820d2829d2a0311a558446d1e2e61",
+                "sha256:7c376bfabc096e399074c79d2a822079ccc48ba191d80179e88a5bf525a82f69",
+                "sha256:22fbb27cf972f9114ab1dc5059377fcbdadbd22d3ef43b6154abf61fcc67e71f",
+                "sha256:2a8015eddb45fe7774d83017fd4860e7a87e3da294e261090c7edc0e880c5edb",
+                "sha256:a74632a62e80491114c2db237f93b0d2c154e4043320221704d397b064912c0a",
+                "sha256:3734890e912ca42e2112fd17faa77aca531e2af2783247da88f92a1fab84bd5e",
+                "sha256:b38a26b08192e410cc389fe54c1e2e2adad040313b25b31909f08d812c72ebf4",
+                "sha256:0a86af0e7be3ab5571cfc2b1898e1e7f967a467d4eebc4cdbaaeaa5c206fca79"
+            ],
+            "Type": "layers"
+        },
+        "Size": 1893439343
+    }
+]
