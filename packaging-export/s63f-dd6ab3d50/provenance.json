@@ -1,0 +1,74 @@
+{
+  "kind": "s63f-offline-backend-export",
+  "notACodeChange": true,
+  "notADeploy": true,
+  "dockerAvailableInExportEnv": false,
+  "qmake6AvailableInExportEnv": false,
+  "linuxXdRenderCliProduced": false,
+  "appImageTarProduced": false,
+  "xdRenderCliInSourceArchive": {
+    "present": true,
+    "format": "Mach-O 64-bit x86_64",
+    "sha256": "58618ec212229ac900e48304922afd50edffd0f54cb325dcfa60f34382a606ea",
+    "sizeBytes": 50200,
+    "usedByDockerfile": false
+  },
+  "forbiddenAppImageSha256": "F3EECC91AB386DE950F175329AB7CCF078435FF9E863E55708F60485BFFC2309",
+  "source": {
+    "repo": "https://github.com/molc/ai_orchestration",
+    "tag": "prod/s63f",
+    "tagType": "lightweight-commit",
+    "fullCommit": "dd6ab3d505827a94cbc9d59d7067fcce14db6fbe",
+    "authorCardPrefix": "dd6ab3d50",
+    "submodule": {
+      "path": "external/xdisplay",
+      "url": "https://github.com/molc/xdisplay.git",
+      "commit": "0c657ad3eac7ece814206bd40fea807ec6568f81"
+    }
+  },
+  "archive": {
+    "relativePath": "ai_orchestration-s63f-dd6ab3d50.tar.gz",
+    "sha256": "767E9305A7C9C6B57CE9220A971C9F1BE0F8102E46F9A8C67444203253B76A84",
+    "sizeBytes": 2890098,
+    "unpacksTo": "ai_orchestration-s63f-dd6ab3d50/",
+    "fileCountInside": 1206,
+    "includesSha256SumsInside": true
+  },
+  "runtimeContract": {
+    "image": "orches/orchestration-app:latest",
+    "dockerfile": "Dockerfile",
+    "buildContext": ".",
+    "bindMount": "/app",
+    "composeCopies": ["docker-compose.yml"],
+    "migrations": [
+      "db/migrations/0001_init.sql",
+      "db/migrations/0002_rag.sql",
+      "db/migrations/0003_orch_runtime.sql"
+    ],
+    "s63fHasNewDataMigrations": false
+  },
+  "promptPinsFromAuthorCard": {
+    "intent_extractor": "v2.24",
+    "PAGE_HTML": "v19",
+    "read_display_declarer": "v1.15",
+    "write_action_declarer": "v1.10",
+    "write_action_declarer_link": "v1.8",
+    "sketch_interpreter": "v4.0",
+    "STYLESHEET": "v6",
+    "sketchVisionTimeoutSeconds": 90
+  },
+  "retiredEnvKeys": ["XDISPLAY_AI_STAGED_DRAFTER_ENABLED"],
+  "clientPolicy": {
+    "doNotTouchClient": true,
+    "retainWordFixSuperset": true,
+    "notLiteralAuthorC180MailBytes": true,
+    "catalogWriteSha256": "2A80890DB988157371CF28D24CA23685D7933C4E59630E5A2DCD2363B7DB5600",
+    "converterSha256": "F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36"
+  },
+  "packagingRepo": {
+    "repo": "https://github.com/molc/xdisplay_ai",
+    "pr": "https://github.com/molc/xdisplay_ai/pull/1",
+    "head": "04e713f22c5498143180315c632c039b125a0bff",
+    "pinManifest": "windows-packaging/manifests/pins/offline-inputs.s63f.json"
+  }
+}

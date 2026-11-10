@@ -1,0 +1,127 @@
+{
+  "Dockerfile": {
+    "sha256": "bdd86198bea1f87ac04e996613d8addbc02cc65cfaf9eba1b02c30478f56e5a0",
+    "size": 3845,
+    "git_blob": "6c5e959ae89a9da95851795ff978faeba731bea0"
+  },
+  "Dockerfile.embedding": {
+    "sha256": "5000ee5cce85105342ef9d8f62a3a2eb3fcaffeac41e30370fda60697c469a6e",
+    "size": 247,
+    "git_blob": "e1e1b2445a8f6da456afd1076963cc89d77816da"
+  },
+  "pyproject.toml": {
+    "sha256": "3ee559220d93d22c01a161c7269ca3c7b035a604e271808ef9aa6f815620b226",
+    "size": 2204,
+    "git_blob": "4e59cfac566209a02f4fe0ba331de27a7a7c81e0"
+  },
+  "uv.lock": {
+    "sha256": "7cff491628132689311deaae88e2ddb72bf97b4c84de874dfb5a9c6f763dd5b5",
+    "size": 248802,
+    "git_blob": "fc99237c439040339e094719db4c7effa79e4d6c"
+  },
+  ".dockerignore": {
+    "sha256": "589e1073119180e395f34fd0f58f8873f6a02f0528de6a27f90d7897aa08faff",
+    "size": 94,
+    "git_blob": "e19afa896d13ed085a57678fd89fc6436b1bd7c7"
+  },
+  "docker-compose.yml": {
+    "sha256": "9d273caffeb693fc8090803ea7bce1d4791311c028d4f779cdc9a61a32a5121e",
+    "size": 1146,
+    "git_blob": "e34c4a9d503ac8e777b011d948a8f2f1b0718682"
+  },
+  "docker-compose.local.yml": {
+    "sha256": "d514f5e81f04f4e458dcce962f30e2e14d92b9e86bca4357d5d735ff7d3a8ac9",
+    "size": 1100,
+    "git_blob": "d0aa8b6008067dc0c3b8be93e63b2c76cd6a7ad0"
+  },
+  "docker-compose.orches.yml": {
+    "sha256": "569dbcd011fcf9a66fd5ad488c20dced96a6eae507084b44a5b653c9dc41a488",
+    "size": 4091,
+    "git_blob": "8831d6c74033fe4159c0e746ac4d1f95a929ae12"
+  },
+  "scripts/embedding_http_service.py": {
+    "sha256": "801a95cb457771ed4a4b5140f6473b0f8e88c3527d2930d284e01a4035e9e1a6",
+    "size": 1637,
+    "git_blob": "0b5478be1b1597e80faaa05f6ba9ce8605c40cce"
+  },
+  "db/migrations/0001_init.sql": {
+    "sha256": "3a22fd590693d0c21b2be785e0cca6997d53f73ca9f7ea6f4b011c9b27d4d14a",
+    "size": 3622,
+    "git_blob": "71ad0e19fbeca2ad2be93f55fcd328e28929b71c"
+  },
+  "db/migrations/0002_rag.sql": {
+    "sha256": "ee11835c30c7a1dbab2ba2f9eb3d121fcaf0ca529fc27222ad3d6e910708e03e",
+    "size": 1677,
+    "git_blob": "785603b8ae030d4bb616e7794ac2df98f498baf6"
+  },
+  "db/migrations/0003_orch_runtime.sql": {
+    "sha256": "0d9d257c3b523be9e61ae200006291d93bb4bdaa0c5cf83315d513625e90ed92",
+    "size": 1274,
+    "git_blob": "b818f84dd6549cd59f3ba913c8309fa11c0b42bb"
+  },
+  "app/main.py": {
+    "sha256": "a3cfa87b094a6cb2c207ca888175b784b8bd6c1e8fc4566f32ab1028d10062ef",
+    "size": 42952,
+    "git_blob": "55782c95d5287930ebafa10e5a8f5ad659c6792e"
+  },
+  "app/prompts/intent_extractor/v2.24.md": {
+    "sha256": "81e2dd08f677519e228aad945a10d8bcf774e77a032e0ca3d3bebfb5faf909c0",
+    "size": 29920,
+    "git_blob": "86628bb7c1196f66f32662d7ad948a2d624e3c6b"
+  },
+  "app/prompts/read_display_declarer/v1.15.md": {
+    "sha256": "2fe677c374fdf911d16dd4adce04feb7a29def86afcb235c333595fa3528b613",
+    "size": 22744,
+    "git_blob": "d2f6515ce4199285747c4d2564c4dfdabce26f3e"
+  },
+  "app/prompts/write_action_declarer/v1.10.md": {
+    "sha256": "321047106583b2b83cc56a807266c4438f01ecf1d0e7c3346ccf4d3c8d116ba9",
+    "size": 10950,
+    "git_blob": "14a2a4a4dc833fce1d7bd5e699d22743b0ac7dd2"
+  },
+  "app/prompts/write_action_declarer_link/v1.8.md": {
+    "sha256": "74c7b3b54d27d5a48e7aea908323830ed319ccf1b2b1d5ea5362fe3e4a5a4493",
+    "size": 13243,
+    "git_blob": "7baa3f1fca538fced3761449fb8a0e44f085c3fa"
+  },
+  "app/prompts/sketch_interpreter/v4.0.md": {
+    "sha256": "7e063faa6d0bb1db55ecc5f114f8850240930ba498d23e1de109c22996ad6fee",
+    "size": 3081,
+    "git_blob": "946677bdb9da01c2b9253fe56071c0509805a46e"
+  },
+  "app/browser_solver/prompts/page_html_v19.md": {
+    "sha256": "c4ce695b6e13904e048ad5136f97a7bc22f7e2d6af3e685313e86e6d14d8c36b",
+    "size": 15477,
+    "git_blob": "22750d320effa4cb5c896606f279e26f4dedf9e1"
+  },
+  "app/browser_solver/prompts/engineering_stylesheet_v6.md": {
+    "sha256": "aa307f02358f985949144e687b903a2e7b5035774f82ce1865804e392351ba67",
+    "size": 3618,
+    "git_blob": "609208cfd1ddfd815d03d54cf10badb7834a1514"
+  },
+  "config/production_behaviour.env.snapshot": {
+    "sha256": "b45608536a7211d134fcab4c74f71c3fc65cf23a113d495740ea39c66b457025",
+    "size": 2358,
+    "git_blob": "a4a94adccb0b520c7251341e4bfa77b33ee52b0a"
+  },
+  "external/xdisplay/bin/xd_render_cli/xd_render_cli.pro": {
+    "sha256": "ba5d4c89240f56f64fa517cd999f496bd0c3f6138ac82c174c5c717833ccb0c5",
+    "size": 753,
+    "git_blob": null
+  },
+  "external/xdisplay/bin/xd_render_cli/main.cpp": {
+    "sha256": "20fa95dcba8810d59904663e4099424fdabba6e32aba8919504a16edcba10847",
+    "size": 5998,
+    "git_blob": null
+  },
+  "external/xdisplay/bin/xd_render_cli/Makefile": {
+    "sha256": "636146d4cedaeb7e4ad5e0e294d210508760d84da7795acaced747104dee33d5",
+    "size": 49022,
+    "git_blob": null
+  },
+  "SOURCE_REVISION.txt": {
+    "sha256": "43a41d1a61a23145e068efaf1974d921d7e95723800da60ffcd0248f0aad4e01",
+    "size": 41,
+    "git_blob": null
+  }
+}

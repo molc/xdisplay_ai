@@ -1,0 +1,17 @@
+FACT: lightweight tag prod/s63f points at the commit (not an annotated tag object).
+
+local:  git rev-parse refs/tags/prod/s63f
+        dd6ab3d505827a94cbc9d59d7067fcce14db6fbe
+
+local:  git cat-file -t refs/tags/prod/s63f
+        commit
+
+remote: git ls-remote origin refs/tags/prod/s63f
+        dd6ab3d505827a94cbc9d59d7067fcce14db6fbe	refs/tags/prod/s63f
+
+checkout used for this export:
+        git rev-parse HEAD
+        dd6ab3d505827a94cbc9d59d7067fcce14db6fbe
+
+author card prefix dd6ab3d50 matches this full SHA.
+Do not use branch HEAD of codex/page-engineering-redesign or any later commit.
