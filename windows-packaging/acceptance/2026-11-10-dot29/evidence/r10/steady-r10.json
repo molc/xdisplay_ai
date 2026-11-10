@@ -1,0 +1,31 @@
+﻿{
+    "exit":  0,
+    "seconds":  195.3,
+    "lines":  [
+                  "[xdisplayai] 本机 127.0.0.1:18001 健康，但不是本包 s63f 合同：orchestration-app runtime-fingerprint 5f1b3896315250c1a62ee3cba769909ffbf6c5f3984f6479cccf6d0e6e168233 does not match package fingerprint；HTTP 200 must not skip offline image load when the running app image is n",
+                  "[xdisplayai] 检查并安装离线前置依赖。",
+                  "[xdisplayai] 验证 bundle 已安装关键前置依赖。",
+                  "[xdisplayai] 设置 WSL 默认版本为 2。",
+                  "[xdisplayai] 忽略 3 条与 WSL/Docker/驱动无关的 PendingFileRenameOperations（临时文件/浏览器更新等），不要求重启。",
+                  "[xdisplayai] 前置依赖阶段完成。",
+                  "[xdisplayai] 导入离线 Docker 镜像。",
+                  "[xdisplayai] docker load -i orches_embedding-http_latest.tar",
+                  "[xdisplayai] docker load -i orches_orchestration-app_latest.tar",
+                  "[xdisplayai] docker load -i pgvector_pgvector_pg15.tar",
+                  "[xdisplayai] docker load -i redis_7.tar",
+                  "[xdisplayai] 选择可用的本机发布端口。",
+                  "[xdisplayai] POSTGRES_HOST_PORT 端口 55432 不可用，改用 55662。APP_HOST_PORT 仍固定为 18001。",
+                  "[xdisplayai] REDIS_HOST_PORT 端口 56379 不可用，改用 56380。APP_HOST_PORT 仍固定为 18001。",
+                  "[xdisplayai] EMBEDDING_HOST_PORT 端口 18090 不可用，改用 18091。APP_HOST_PORT 仍固定为 18001。",
+                  "[xdisplayai] 启动离线后端服务栈。",
+                  "[xdisplayai] 运行中的 orchestration-app 不是本包 s63f 镜像（orchestration-app runtime-fingerprint 5f1b3896315250c1a62ee3cba769909ffbf6c5f3984f6479cccf6d0e6e168233 does not match package fingerprint）。强制重建 app/embedding-worker，保留 postgres/redis 数据卷。",
+                  "[xdisplayai] 确认 PostgreSQL 已越过 docker-entrypoint 临时进程 (1/2) timeoutSec=360 lastError=SELECT 1 成功，但冷启动需要连续两次查询成功",
+                  "[xdisplayai] 执行数据库迁移。",
+                  "[xdisplayai] 跳过已执行迁移：0001_init.sql",
+                  "[xdisplayai] 跳过已执行迁移：0002_rag.sql",
+                  "[xdisplayai] 跳过已执行迁移：0003_orch_runtime.sql",
+                  "[xdisplayai] 等待应用健康检查通过。",
+                  "[xdisplayai] 等待本机 127.0.0.1:18001 健康检查 (1/60) timeoutSec=300 lastError=基础连接已经关闭: 连接被意外关闭。"
+              ],
+    "at":  "2026-11-10T21:54:55.1828115+08:00"
+}

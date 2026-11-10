@@ -1,0 +1,195 @@
+﻿{
+    "purpose":  "DOT29_SCENARIO1_FRESH_INSTALL_014_R5_AFTER_WIPE",
+    "machine":  "DESKTOP-LLRKFC6",
+    "started":  "2026-11-10T22:41:56.2005608+08:00",
+    "outcome":  "SCENARIO1_FRESH_GATES_FAIL",
+    "steps":  [
+
+              ],
+    "errors":  [
+
+               ],
+    "gates":  {
+                  "bootUnchanged":  true,
+                  "only014Registered":  true,
+                  "bootstrapImportedImages":  true,
+                  "bootstrapNoError":  false,
+                  "promptContract":  true,
+                  "local_no18001Portproxy":  true,
+                  "local_localDockerListener":  true,
+                  "local_explicitLocalLinuxEngine":  true,
+                  "local_fourServicesRunning":  true,
+                  "local_bothHealth200":  true,
+                  "local_appContainerImageIsS63f":  true,
+                  "local_allFourExePins":  true,
+                  "local_migrationHistoryHasRows":  true,
+                  "local_workspaceSourceIsS63f":  true,
+                  "workspaceSyncRecorded":  true,
+                  "noLeftoverBootstrapState":  true,
+                  "clientLaunched":  true
+              },
+    "regsBefore":  null,
+    "bootBefore":  "2026-11-10T21:13:02.5000000+08:00",
+    "updated":  "2026-11-10T22:46:37.5352101+08:00",
+    "installExit":  0,
+    "installSeconds":  273,
+    "regsAfterInstall":  [
+                             {
+                                 "DisplayName":  "XDisplay AI Offline Installer",
+                                 "DisplayVersion":  "0.1.4",
+                                 "PSChildName":  "{02438192-7280-4B1B-B448-AFA1AB14BF0B}",
+                                 "BundleCachePath":  null
+                             },
+                             {
+                                 "DisplayName":  "XDisplay AI Offline Installer",
+                                 "DisplayVersion":  "0.1.4",
+                                 "PSChildName":  "{D58D868D-1C5D-4627-A480-78B4E2004CCA}",
+                                 "BundleCachePath":  "C:\\ProgramData\\Package Cache\\{D58D868D-1C5D-4627-A480-78B4E2004CCA}\\XDisplayAI-0.1.4-dev.exe"
+                             }
+                         ],
+    "bootAfter":  "2026-11-10T21:13:02.5000000+08:00",
+    "healthSeconds":  0,
+    "bootstrapLines":  [
+                           "[xdisplayai] 按种子指纹同步工作目录（create）：app\\main.py",
+                           "[xdisplayai] 按种子指纹同步工作目录（create）：Xdisplay.exe",
+                           "PS\u003eTerminatingError(Invoke-WebRequest):“无法连接到远程服务器”",
+                           "[xdisplayai] 等待本机 127.0.0.1:18001 健康检查 (1/1) timeoutSec=5 lastError=无法连接到远程服务器",
+                           "PS\u003eTerminatingError():“应用健康检查失败（本机 http://127.0.0.1:18001，5 秒内未同时满足 HTTP 200 与本地 Docker 归属）：无法连接到远程服务器”",
+                           "[xdisplayai] 检查并安装离线前置依赖。",
+                           "[xdisplayai] 验证 bundle 已安装关键前置依赖。",
+                           "[xdisplayai] 设置 WSL 默认版本为 2。",
+                           "[xdisplayai] 忽略 4 条与 WSL/Docker/驱动无关的 PendingFileRenameOperations（临时文件/浏览器更新等），不要求重启。",
+                           "[xdisplayai] 前置依赖阶段完成。",
+                           "[xdisplayai] 导入离线 Docker 镜像。",
+                           "[xdisplayai] docker load -i orches_embedding-http_latest.tar",
+                           "[xdisplayai] docker load -i orches_orchestration-app_latest.tar",
+                           "[xdisplayai] docker load -i pgvector_pgvector_pg15.tar",
+                           "[xdisplayai] docker load -i redis_7.tar",
+                           "[xdisplayai] 选择可用的本机发布端口。",
+                           "[xdisplayai] POSTGRES_HOST_PORT 端口 55432 不可用，改用 55661。APP_HOST_PORT 仍固定为 18001。",
+                           "[xdisplayai] 启动离线后端服务栈。",
+                           "[xdisplayai] 等待 PostgreSQL 接受迁移查询 (1/120) timeoutSec=360 lastError=psql: error: connection to server on socket \"/var/run/postgresql/.s.PGSQL.5432\" failed: No such file or directory",
+                           "[xdisplayai] 确认 PostgreSQL 已越过 docker-entrypoint 临时进程 (1/2) timeoutSec=360 lastError=SELECT 1 成功，但冷启动需要连续两次查询成功",
+                           "[xdisplayai] 执行数据库迁移。",
+                           "[xdisplayai] 执行迁移：0001_init.sql",
+                           "[xdisplayai] 执行迁移：0002_rag.sql",
+                           "[xdisplayai] 执行迁移：0003_orch_runtime.sql",
+                           "[xdisplayai] 等待应用健康检查通过。",
+                           "PS\u003eTerminatingError(Invoke-WebRequest):“基础连接已经关闭: 连接被意外关闭。”",
+                           "[xdisplayai] 等待本机 127.0.0.1:18001 健康检查 (1/60) timeoutSec=300 lastError=基础连接已经关闭: 连接被意外关闭。",
+                           "[xdisplayai] 启动 XDisplay 客户端。"
+                       ],
+    "prompt":  {
+                   "exactly31":  true,
+                   "fiveAuthorPins":  true,
+                   "v19v6":  true,
+                   "retiredAbsent":  true,
+                   "agentCount":  31
+               },
+    "local":  {
+                  "gates":  {
+                                "no18001Portproxy":  true,
+                                "localDockerListener":  true,
+                                "explicitLocalLinuxEngine":  true,
+                                "fourServicesRunning":  true,
+                                "bothHealth200":  true,
+                                "appContainerImageIsS63f":  true,
+                                "allFourExePins":  true,
+                                "migrationHistoryHasRows":  true,
+                                "workspaceSourceIsS63f":  true
+                            },
+                  "listeners":  [
+                                    {
+                                        "address":  "127.0.0.1",
+                                        "process":  "com.docker.backend"
+                                    }
+                                ],
+                  "containers":  [
+                                     {
+                                         "id":  "75c9c1f28eb7",
+                                         "name":  "/xdisplayai-orchestration-app-1",
+                                         "service":  "orchestration-app",
+                                         "created":  "2026-11-10T14:46:03.776208224Z",
+                                         "image":  "sha256:f65e76a36836e031aae637abb7077ab8f8ca2caa2fb5a54f9d46f9e254567dc3",
+                                         "state":  "running"
+                                     },
+                                     {
+                                         "id":  "ba5f919e7662",
+                                         "name":  "/xdisplayai-embedding-worker-1",
+                                         "service":  "embedding-worker",
+                                         "created":  "2026-11-10T14:46:02.112379187Z",
+                                         "image":  "sha256:f9b4f01dc380f9c9611540b2b101e3c2ffdba9b65604521b4aa247a724e13484",
+                                         "state":  "running"
+                                     },
+                                     {
+                                         "id":  "0c01a89bbbf3",
+                                         "name":  "/xdisplayai-redis-1",
+                                         "service":  "redis",
+                                         "created":  "2026-11-10T14:46:02.11233636Z",
+                                         "image":  "sha256:f86d0efc1315f278af602d98cf105145618cb04caea7bdaa11eb82ee91274c4a",
+                                         "state":  "running"
+                                     },
+                                     {
+                                         "id":  "ca1c7759da50",
+                                         "name":  "/xdisplayai-postgres-1",
+                                         "service":  "postgres",
+                                         "created":  "2026-11-10T14:46:02.112270995Z",
+                                         "image":  "sha256:79ea5a9b8f8517d7ab35b9f99aa9aa91af06a2cec71a87c037e37537fa6f455a",
+                                         "state":  "running"
+                                     }
+                                 ],
+                  "appImageId":  "sha256:f65e76a36836e031aae637abb7077ab8f8ca2caa2fb5a54f9d46f9e254567dc3",
+                  "appLabels":  {
+                                    "xdisplayai.packaging.git-sha":  "dd6ab3d505827a94cbc9d59d7067fcce14db6fbe",
+                                    "xdisplayai.packaging.runtime-fingerprint":  "5f1b3896315250c1a62ee3cba769909ffbf6c5f3984f6479cccf6d0e6e168233",
+                                    "xdisplayai.packaging.source-archive-sha256":  "767E9305A7C9C6B57CE9220A971C9F1BE0F8102E46F9A8C67444203253B76A84",
+                                    "xdisplayai.packaging.tag":  "prod/s63f"
+                                },
+                  "clientHashes":  [
+                                       {
+                                           "ok":  true,
+                                           "path":  "C:\\Program Files\\XDisplayAI\\seed\\client\\Converter.exe",
+                                           "sha256":  "F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36"
+                                       },
+                                       {
+                                           "ok":  true,
+                                           "path":  "C:\\Program Files\\XDisplayAI\\seed\\client\\Xdisplay.exe",
+                                           "sha256":  "2A80890DB988157371CF28D24CA23685D7933C4E59630E5A2DCD2363B7DB5600"
+                                       },
+                                       {
+                                           "ok":  true,
+                                           "path":  "C:\\ProgramData\\XDisplayAI\\workspace\\client\\Converter.exe",
+                                           "sha256":  "F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36"
+                                       },
+                                       {
+                                           "ok":  true,
+                                           "path":  "C:\\ProgramData\\XDisplayAI\\workspace\\client\\Xdisplay.exe",
+                                           "sha256":  "2A80890DB988157371CF28D24CA23685D7933C4E59630E5A2DCD2363B7DB5600"
+                                       }
+                                   ],
+                  "pgVolume":  "xdisplayai_postgres_data|2026-11-10T14:46:02Z|local",
+                  "migrationRows":  "3",
+                  "healthz":  200,
+                  "assistant":  200,
+                  "workspaceRev":  "dd6ab3d505827a94cbc9d59d7067fcce14db6fbe"
+              },
+    "workspaceSync":  [
+                          {
+                              "content":  "{\r\n    \"clientSeedFingerprint\":  \"05b4d54f12c0b087e050c5822f5eb4d8d8003037049bc72e16a3b4a47872120a\",\r\n    \"backendSeedFingerprint\":  \"589e25908cab3262a0d164cd589bc4b1df3653b697b7017f562b291623afd301\",\r\n    \"packageVersion\":  \"0.1.4\",\r\n    \"updatedAtUtc\":  \"2026-11-10T14:42:37.4244882Z\"\r\n}",
+                              "path":  "C:\\ProgramData\\XDisplayAI\\config\\workspace-sync.json"
+                          }
+                      ],
+    "stateFiles":  [
+
+                   ],
+    "clientProcs":  [
+                        {
+                            "Id":  4652,
+                            "Path":  "C:\\ProgramData\\XDisplayAI\\workspace\\client\\Xdisplay.exe"
+                        }
+                    ],
+    "failedGates":  [
+                        "bootstrapNoError"
+                    ],
+    "completed":  "2026-11-10T22:46:37.5332011+08:00"
+}

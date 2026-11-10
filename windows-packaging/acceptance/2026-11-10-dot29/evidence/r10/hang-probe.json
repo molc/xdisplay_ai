@@ -1,0 +1,25 @@
+﻿{
+    "at":  "2026-11-10T21:00:32.9655796+08:00",
+    "tree":  [
+                 "child 10976 conhost.exe start=20:11:37 cpu=0s :: "
+             ],
+    "ps6168":  "threads=12 cpu=1s ws=156MB",
+    "wmiprvse":  [
+                     "12708 start=21:00:33 cpu=0s"
+                 ],
+    "netsh":  [
+
+              ],
+    "services":  [
+                     "TermService=Running (Manual)",
+                     "SessionEnv=Running (Manual)",
+                     "UmRdpService=Running (Manual)",
+                     "mpssvc=Running (Automatic)",
+                     "BFE=Running (Automatic)",
+                     "Winmgmt=Running (Automatic)",
+                     "EventLog=Running (Automatic)"
+                 ],
+    "fwRuleQuery":  "ok: RunspaceId                           Value\r\n----------                           -----\r\n1c562714-f190-46ec-9dc9-f640ff9e9c38 True",
+    "cimQuery":  "ok: Running",
+    "fDeny":  0
+}

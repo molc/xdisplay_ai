@@ -1,0 +1,138 @@
+﻿{
+    "purpose":  "DOT29_SCENARIO1_FULL_WIPE_OF_XDISPLAY_AI",
+    "machine":  "DESKTOP-LLRKFC6",
+    "started":  "2026-11-10T22:55:40.8422191+08:00",
+    "outcome":  "WIPE_CLEAN",
+    "steps":  [
+                  {
+                      "removeScriptExit":  0,
+                      "tail":  [
+                                   " Volume xdisplayai_redis_data Removing ",
+                                   " Volume xdisplayai_app_logs Removing ",
+                                   " Volume xdisplayai_postgres_data Removing ",
+                                   " Volume xdisplayai_app_data Removing ",
+                                   " Network xdisplayai_default Removing ",
+                                   " Volume xdisplayai_redis_data Removed ",
+                                   " Volume xdisplayai_postgres_data Removed ",
+                                   " Volume xdisplayai_app_logs Removed ",
+                                   " Volume xdisplayai_app_data Removed ",
+                                   " Network xdisplayai_default Removed ",
+                                   "[xdisplayai] 删除数据目录：C:\\ProgramData\\XDisplayAI",
+                                   ""
+                               ]
+                  },
+                  {
+                      "burnUninstall":  "C:\\ProgramData\\Package Cache\\{D58D868D-1C5D-4627-A480-78B4E2004CCA}\\XDisplayAI-0.1.4-dev.exe",
+                      "exit":  0
+                  },
+                  {
+                      "why":  "per-user client state",
+                      "removed":  "C:\\Users\\admin\\AppData\\Local\\Xdisplay",
+                      "bytes":  7208
+                  },
+                  {
+                      "kept":  "C:\\Temp\\XdisplayAI_20261108_full",
+                      "bytes":  2038158191
+                  },
+                  {
+                      "kept":  "C:\\Users\\Public\\XDisplayAI-014-candidate",
+                      "bytes":  14221189949
+                  },
+                  {
+                      "kept":  "C:\\Users\\Public\\XDisplayAI-s63f-fresh-r11",
+                      "bytes":  17798808
+                  },
+                  {
+                      "kept":  "C:\\Users\\Public\\XDisplayAI-s63f-upgrade-r10",
+                      "bytes":  81685136
+                  },
+                  {
+                      "kept":  "C:\\Users\\Public\\XDisplayAI-s63f-upgrade-r11",
+                      "bytes":  32509642
+                  },
+                  {
+                      "kept":  "C:\\Users\\Public\\XDisplayAI-s63f-upgrade-r5",
+                      "bytes":  32064489
+                  },
+                  {
+                      "kept":  "C:\\Users\\Public\\XDisplayAI-s63f-upgrade-r6",
+                      "bytes":  31951647
+                  },
+                  {
+                      "kept":  "C:\\Users\\Public\\XDisplayAI-s63f-upgrade-r9",
+                      "bytes":  15947622
+                  },
+                  {
+                      "kept":  "C:\\Users\\Public\\XDisplayAI-s63f-wipe",
+                      "bytes":  19608059
+                  }
+              ],
+    "errors":  [
+
+               ],
+    "freedBytes":  7208,
+    "regsBefore":  [
+                       {
+                           "DisplayName":  "XDisplay AI Offline Installer",
+                           "DisplayVersion":  "0.1.4",
+                           "PSChildName":  "{02438192-7280-4B1B-B448-AFA1AB14BF0B}",
+                           "BundleCachePath":  null
+                       },
+                       {
+                           "DisplayName":  "XDisplay AI Offline Installer",
+                           "DisplayVersion":  "0.1.4",
+                           "PSChildName":  "{D58D868D-1C5D-4627-A480-78B4E2004CCA}",
+                           "BundleCachePath":  "C:\\ProgramData\\Package Cache\\{D58D868D-1C5D-4627-A480-78B4E2004CCA}\\XDisplayAI-0.1.4-dev.exe"
+                       }
+                   ],
+    "bootBefore":  "2026-11-10T21:13:02.5000000+08:00",
+    "updated":  "2026-11-10T22:56:05.5645408+08:00",
+    "regsAfterUninstall":  null,
+    "imagesRemoved":  [
+                          {
+                              "exit":  0,
+                              "ref":  "orches/orchestration-app:latest"
+                          },
+                          {
+                              "exit":  0,
+                              "ref":  "orches/orchestration-app:s63f-dd6ab3d50"
+                          },
+                          {
+                              "exit":  0,
+                              "ref":  "orches/orchestration-app:s63f-dd6ab3d505827a94cbc9d59d7067fcce14db6fbe"
+                          },
+                          {
+                              "exit":  0,
+                              "ref":  "orches/embedding-http:latest"
+                          },
+                          {
+                              "exit":  0,
+                              "ref":  "redis:7"
+                          },
+                          {
+                              "exit":  0,
+                              "ref":  "pgvector/pgvector:pg15"
+                          }
+                      ],
+    "dockerAfter":  {
+                        "images":  "",
+                        "containers":  "",
+                        "volumes":  ""
+                    },
+    "verify":  {
+                   "registrations":  0,
+                   "programFiles":  false,
+                   "programData":  false,
+                   "containers":  "",
+                   "volumes":  "",
+                   "orchesImages":  "",
+                   "tasks":  0,
+                   "listener18001":  0,
+                   "clientProcs":  0,
+                   "packageCache":  0,
+                   "dockerDesktopStillInstalled":  true,
+                   "cFreeGB":  129.4
+               },
+    "bootAfter":  "2026-11-10T21:13:02.5000000+08:00",
+    "completed":  "2026-11-10T22:56:05.5645408+08:00"
+}

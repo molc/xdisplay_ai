@@ -1,0 +1,94 @@
+﻿**********************
+Windows PowerShell 脚本开始
+开始时间: 20261110225721
+用户名: DESKTOP-LLRKFC6\admin
+RunAs 用户: DESKTOP-LLRKFC6\admin
+配置名称: 
+计算机: DESKTOP-LLRKFC6 (Microsoft Windows NT 10.0.26100.0)
+主机应用程序: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File C:\Program Files\XDisplayAI\scripts\install\Bootstrap-InstalledPayload.ps1 -LaunchClient -NoAutoReboot
+进程 ID: 12512
+PSVersion: 5.1.26100.9711
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.9711
+BuildVersion: 10.0.26100.9711
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+[xdisplayai] 按种子指纹同步工作目录（create）：app\main.py
+[xdisplayai] 按种子指纹同步工作目录（create）：Xdisplay.exe
+PS>TerminatingError(Invoke-WebRequest):“无法连接到远程服务器”
+[xdisplayai] 等待本机 127.0.0.1:18001 健康检查 (1/1) timeoutSec=5 lastError=无法连接到远程服务器
+PS>TerminatingError():“应用健康检查失败（本机 http://127.0.0.1:18001，5 秒内未同时满足 HTTP 200 与本地 Docker 归属）：无法连接到远程服务器”
+[xdisplayai] 检查并安装离线前置依赖。
+[xdisplayai] 验证 bundle 已安装关键前置依赖。
+[xdisplayai] 设置 WSL 默认版本为 2。
+[xdisplayai] 忽略 8 条与 WSL/Docker/驱动无关的 PendingFileRenameOperations（临时文件/浏览器更新等），不要求重启。
+[xdisplayai] 前置依赖阶段完成。
+[xdisplayai] 导入离线 Docker 镜像。
+[xdisplayai] docker load -i orches_embedding-http_latest.tar
+Loaded image: orches/embedding-http:latest
+[xdisplayai] docker load -i orches_orchestration-app_latest.tar
+Loaded image: orches/orchestration-app:latest
+Loaded image: orches/orchestration-app:s63f-dd6ab3d50
+Loaded image: orches/orchestration-app:s63f-dd6ab3d505827a94cbc9d59d7067fcce14db6fbe
+[xdisplayai] docker load -i pgvector_pgvector_pg15.tar
+Loaded image: pgvector/pgvector:pg15
+[xdisplayai] docker load -i redis_7.tar
+Loaded image: redis:7
+[xdisplayai] 选择可用的本机发布端口。
+[xdisplayai] POSTGRES_HOST_PORT 端口 55432 不可用，改用 55661。APP_HOST_PORT 仍固定为 18001。
+[xdisplayai] 启动离线后端服务栈。
+
+[xdisplayai] 等待 PostgreSQL 接受迁移查询 (1/120) timeoutSec=360 lastError=psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432" failed: No such file or directory
+	Is the server running locally and accepting connections on that
+[xdisplayai] 确认 PostgreSQL 已越过 docker-entrypoint 临时进程 (1/2) timeoutSec=360 lastError=SELECT 1 成功，但冷启动需要连续两次查询成功
+[xdisplayai] 执行数据库迁移。
+[xdisplayai] 执行迁移：0001_init.sql
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE TABLE
+CREATE TABLE
+[xdisplayai] 执行迁移：0002_rag.sql
+CREATE EXTENSION
+CREATE TABLE
+CREATE INDEX
+CREATE INDEX
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+[xdisplayai] 执行迁移：0003_orch_runtime.sql
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+CREATE TABLE
+CREATE INDEX
+[xdisplayai] 等待应用健康检查通过。
+PS>TerminatingError(Invoke-WebRequest):“基础连接已经关闭: 连接被意外关闭。”
+[xdisplayai] 等待本机 127.0.0.1:18001 健康检查 (1/60) timeoutSec=300 lastError=基础连接已经关闭: 连接被意外关闭。
+{
+    "baseUrl":  "http://127.0.0.1:18001",
+    "healthz":  200,
+    "assistantApi":  200,
+    "origin":  "local",
+    "status":  "ok"
+}
+[xdisplayai] 启动 XDisplay 客户端。
+**********************
+Windows PowerShell 脚本结束
+结束时间: 20261110230111
+**********************
