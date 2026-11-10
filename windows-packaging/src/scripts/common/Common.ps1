@@ -690,6 +690,12 @@ function Initialize-RuntimeEnvironment {
     }
 
     if (Test-Path -LiteralPath $stateLayout.BackendEnvFile -PathType Leaf) {
+        # Retired keys were only dropped on the legacy runtime.env migration branch; an upgraded .env
+        # kept XDISPLAY_AI_STAGED_DRAFTER_ENABLED forever and failed the package contract.
+        $retiredRemoval = Remove-RetiredBackendEnvKeys -EnvPath $stateLayout.BackendEnvFile
+        if ($retiredRemoval.Changed) {
+            Write-Step ('已删除退役后端配置键：' + (@($retiredRemoval.Removed) -join ', '))
+        }
         $promptMigration = Update-BackendPromptVersionPins `
             -EnvPath $stateLayout.BackendEnvFile `
             -DefaultPromptVersions (Get-S63fRegisteredPromptVersionTable)

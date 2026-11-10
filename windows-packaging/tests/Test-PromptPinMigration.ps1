@@ -66,7 +66,8 @@ try {
     $defaultOnlyResult = Update-BackendPromptVersionPins `
         -EnvPath $defaultOnlyPath `
         -DefaultPromptVersions 'planner:v1.2'
-    Assert-Equal -Expected $false -Actual $defaultOnlyResult.Changed -Message 'An env without an explicit prompt table must keep using code defaults.'
+    Assert-Equal -Expected $true -Actual $defaultOnlyResult.Changed -Message 'An env without an explicit prompt table must be seeded; the package contract (Test-BackendPromptContractFromEnvEntries) requires the explicit 31-agent table and an upgraded 0.1.3 .env has none.'
+    Assert-Equal -Expected 'planner' -Actual ($defaultOnlyResult.Added -join ',') -Message 'Seeding must report every agent it wrote.'
 
     $crashPath = Join-Path $testRoot 'a62-crash.env'
     $crashTable = Get-S63fRejectedTruncatedPromptVersionPins
@@ -101,6 +102,23 @@ try {
 
     Write-Host 'Prompt pin migration tests passed.'
     exit 0
+
+    # 0.1.3 upgrade: the preserved .env has no XDISPLAY_AI_PROMPT_VERSIONS line at all.
+    $legacyEnvPath = Join-Path $testRoot 'legacy-backend.env'
+    [IO.File]::WriteAllText($legacyEnvPath, "XDISPLAY_AI_LOG_LEVEL=DEBUG`r`nXDISPLAY_AI_STAGED_DRAFTER_ENABLED=true`r`n", (New-Object Text.UTF8Encoding($false)))
+    $seeded = Update-BackendPromptVersionPins -EnvPath $legacyEnvPath -DefaultPromptVersions 'planner:v1.2,intent_extractor:v2.24,PAGE_HTML:v19,STYLESHEET:v6'
+    Assert-Equal -Expected $true -Actual $seeded.Changed -Message 'A .env without XDISPLAY_AI_PROMPT_VERSIONS must be seeded (dot29: 0.1.3 -> 0.1.4 upgrade stayed outside the prompt contract).'
+    Assert-Equal -Expected 'planner,intent_extractor' -Actual ($seeded.Added -join ',') -Message 'Seeding must add every agent pin and skip PAGE_HTML/STYLESHEET aliases.'
+    $seededContent = [IO.File]::ReadAllText($legacyEnvPath)
+    if ($seededContent -notmatch '(?m)^XDISPLAY_AI_PROMPT_VERSIONS=planner:v1\.2,intent_extractor:v2\.24\s*$') {
+        throw "Seeded .env must contain the full agent table: $seededContent"
+    }
+    if ($seededContent -notmatch '(?m)^XDISPLAY_AI_LOG_LEVEL=DEBUG') {
+        throw 'Seeding must keep the existing keys.'
+    }
+    if (-not (Test-Path -LiteralPath $seeded.BackupPath -PathType Leaf)) {
+        throw 'Seeding must back up the original .env.'
+    }
 }
 finally {
     if (Test-Path $testRoot) {

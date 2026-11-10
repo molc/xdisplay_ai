@@ -96,11 +96,36 @@ function Update-BackendPromptVersionPins {
     $assignmentPattern = '(?m)^(?!\s*#)\s*XDISPLAY_AI_PROMPT_VERSIONS=(?<value>[^\r\n]*)\s*$'
     $assignmentMatches = [regex]::Matches($content, $assignmentPattern)
     if ($assignmentMatches.Count -eq 0) {
+        # A .env written by an older package (0.1.3) has no XDISPLAY_AI_PROMPT_VERSIONS at all. Returning
+        # "nothing to do" left upgraded machines permanently outside the s63f prompt contract, so every
+        # client launch re-ran the full backend refresh. Seed the complete agent table instead.
+        $seedEntries = ConvertTo-PromptVersionEntries `
+            -Value $DefaultPromptVersions `
+            -Label 'Updated backend default prompt_versions'
+        $seedNonAgentNames = @('PAGE_HTML', 'STYLESHEET')
+        if (Get-Command Get-S63fNonAgentPromptPinNames -ErrorAction SilentlyContinue) {
+            $seedNonAgentNames = @(Get-S63fNonAgentPromptPinNames)
+        }
+        $seedAdded = New-Object System.Collections.Generic.List[string]
+        $seedPairs = @(
+            foreach ($agent in $seedEntries.Keys) {
+                if ($seedNonAgentNames -contains $agent) {
+                    continue
+                }
+                $seedAdded.Add([string]$agent)
+                "$agent`:$($seedEntries[$agent])"
+            }
+        )
+        $seedBackupPath = "$EnvPath.bak-prompt-pins-$([DateTime]::UtcNow.ToString('yyyyMMddHHmmssfff'))"
+        Copy-Item -LiteralPath $EnvPath -Destination $seedBackupPath -Force
+        $seedLine = "XDISPLAY_AI_PROMPT_VERSIONS=$($seedPairs -join ',')"
+        $seedContent = if ($content.Length -eq 0 -or $content.EndsWith("`n")) { $content + $seedLine + "`n" } else { $content + "`n" + $seedLine + "`n" }
+        [System.IO.File]::WriteAllText($EnvPath, $seedContent, (New-Object System.Text.UTF8Encoding($false)))
         return [pscustomobject]@{
-            Changed = $false
-            Added = @()
+            Changed = $true
+            Added = @($seedAdded)
             Removed = @()
-            BackupPath = ''
+            BackupPath = $seedBackupPath
         }
     }
     if ($assignmentMatches.Count -ne 1) {
