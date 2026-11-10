@@ -262,3 +262,5 @@ docker run --rm orches/orchestration-app:latest python -c 'from app.page_dsl.lay
 - 2026-11-10 10:3xZ 补：客户端仓 `RUNTIME_RESOURCES.md` 已核对代码里 31 处按文件读的图片；`images/_old/check_press-old.png`、`images/_old/toolbox/Button.png` 也入了仓（其余 `_old` 不发）。**源码引用但官方 2.4.4 包里也没有**：`images/base/scale_less_disable.png` / `scale_less_hover.png` / `scale_more_disable.png` / `scale_more_hover.png`、`images/launch/logo_tricolor.png`——需从原团队更新的素材树取；发布树校验清单可把 `images/bartitle/min.png` 等 9 张标题栏图列为必备。
 
 - 2026-11-10 11:0xZ 改号：客户端资源入仓的 tag 由 `client/c-181` 改为 **`client/c-184`**（3ac674f），因为 PR #1（`cursor/mogong-word-defects-c180-7ee1`）已用 c-181 / c-182 / c-183 作 Word 修法的编号；本文前面提到的 `client/c-181` 均指 c-184。
+
+- 2026-11-10 08:1xZ：PR #1（`cursor/mogong-word-defects-c180-7ee1`，c-181..183）已由总指挥并入客户端 `codex/int-6001` = **d4a3d2d**，tag **`client/c-185`**（= c-184 运行时资源入仓 + PR #1；13 条 python 单测绿、`check_code_rules.sh` 绿、Mac 全量构建 0 错）。打 Windows 包请从 `client/c-185` 取码；运行时资源（`data/keyboard_a..e` + `config_res`、`images/`、`res/`、`doc/`、根目录 `qrcode_about.jpg` / `logo*.png`）按客户端仓 `RUNTIME_RESOURCES.md` 从仓里取，不再从官方 2.4.4 payload 拷。
