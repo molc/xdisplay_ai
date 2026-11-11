@@ -1,0 +1,30 @@
+$ErrorActionPreference='Stop'
+$ProgressPreference='SilentlyContinue'
+if($env:COMPUTERNAME -ne 'DESKTOP-LLRKFC6'){throw 'Wrong machine'}
+$base='http://172.19.103.18:__HTTP_PORT__/'
+$dest='C:\Users\Public\XDisplayAI-014-candidate\pkg-__RUN__'
+$share='\\tsclient\results\xdai'
+if (-not (Test-Path $dest) -and (Test-Path 'C:\Users\Public\XDisplayAI-014-candidate\pkg-r9')) { Copy-Item 'C:\Users\Public\XDisplayAI-014-candidate\pkg-r9' $dest -Recurse -Force }
+New-Item -ItemType Directory $dest -Force | Out-Null
+New-Item -ItemType Directory $share -Force | Out-Null
+$r=[ordered]@{stage='start';at=(Get-Date).ToString('o');dest=$dest;files=@();errors=@()}
+function Save { $r | ConvertTo-Json -Depth 6 | Set-Content -Encoding UTF8 (Join-Path $share 'stage-__RUN__.json') }
+Save
+try {
+  $wc = New-Object Net.WebClient
+  $wc.DownloadFile($base + 'artifacts-dev.json', (Join-Path $dest 'artifacts-dev.json'))
+  $m = Get-Content (Join-Path $dest 'artifacts-dev.json') -Raw | ConvertFrom-Json
+  foreach ($e in $m) {
+    $p = Join-Path $dest $e.relativePath
+    $have = if (Test-Path $p) { (Get-FileHash $p -Algorithm SHA256).Hash.ToLower() } else { '' }
+    if ($have -ne $e.sha256) { $wc.DownloadFile($base + [Uri]::EscapeDataString($e.relativePath), $p) }
+    $h = (Get-FileHash $p -Algorithm SHA256).Hash.ToLower()
+    $ok = ($h -eq $e.sha256 -and (Get-Item $p).Length -eq $e.sizeBytes)
+    $r.files += @{ name = $e.relativePath; bytes = (Get-Item $p).Length; ok = $ok }
+    if (-not $ok) { throw "hash/size mismatch: $($e.relativePath)" }
+    Save
+  }
+  $r.exeSha256 = (Get-FileHash (Join-Path $dest 'XDisplayAI-0.1.4-dev.exe') -Algorithm SHA256).Hash
+  $r.stage = 'STAGED_VERIFIED'
+} catch { $r.errors += $_.Exception.Message; $r.stage = 'FAILED' }
+finally { $r.completed = (Get-Date).ToString('o'); Save }

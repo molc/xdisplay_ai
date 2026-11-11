@@ -1,0 +1,11 @@
+$ErrorActionPreference='Continue'
+if(-not([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw 'Elevation required'}
+$share='\\tsclient\results\xdai'; $log='C:\ProgramData\XDisplayAI\logs\bootstrap.log'
+$before=([IO.File]::ReadAllText($log)).Length
+$sw=[Diagnostics.Stopwatch]::StartNew()
+$p=Start-Process -FilePath "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" -ArgumentList '-NoProfile -ExecutionPolicy Bypass -File "C:\Program Files\XDisplayAI\scripts\install\Bootstrap-InstalledPayload.ps1" -NoAutoReboot' -PassThru -Wait -WindowStyle Hidden
+$sec=[math]::Round($sw.Elapsed.TotalSeconds,1)
+$t=[IO.File]::ReadAllText($log); $new=$t.Substring([Math]::Min($before,$t.Length))
+$lines=@($new -split "`r?`n" | Where-Object { $_ -match '\[xdisplayai\]|错误|Exception' } | ForEach-Object { $_.Substring(0,[Math]::Min(260,$_.Length)) })
+@{at=(Get-Date).ToString('o');exit=$p.ExitCode;seconds=$sec;lines=$lines} | ConvertTo-Json -Depth 3 | Set-Content -Encoding UTF8 (Join-Path $share 'steady-__RUN__.json')
+'DONE' | Set-Content -Encoding ASCII (Join-Path $share 'steady-__RUN__-DONE.txt')

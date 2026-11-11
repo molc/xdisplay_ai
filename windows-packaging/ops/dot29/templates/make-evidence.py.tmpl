@@ -1,0 +1,45 @@
+#!/usr/bin/env python3
+"""Build windows-pass.json for build-offline-package.ps1 -AcceptanceEvidencePath from the .29 scenario state files."""
+import json, sys, datetime, pathlib
+share = pathlib.Path('/tmp/xdisplay29-rdp-results/xdai')
+def load(name):
+    p = share / name
+    return json.load(open(p, encoding='utf-8-sig')) if p.exists() else None
+up, post, fresh = load('upgrade-__RUN__-state.json'), load('postresume-__RUN__-state.json'), load('fresh-__RUN__-state.json')
+steady = load('steady-__RUN__.json')
+fresh_ok = bool(fresh and fresh.get('outcome') == 'SCENARIO1_FRESH_PASS')
+steady_ok = bool(steady and steady.get('exit') == 0 and float(steady.get('seconds') or 1e9) < 90 and any('且为本包 s63f 镜像与 prompt 合同' in l for l in steady.get('lines', [])))
+def g(d, k): return bool(d and d.get('gates', {}).get(k))
+old_ok = bool((post and post.get('outcome') == 'SCENARIO2_UPGRADE_PASS') or (up and up.get('outcome') == 'SCENARIO2_UPGRADE_PASS'))
+src = post if (post and post.get('outcome') == 'SCENARIO2_UPGRADE_PASS') else up   # __RUN__ is expected to upgrade without a reboot, so the gates live in upgrade-__RUN__-state.json
+rebooted = bool(post)
+ev = {
+  "generatedAtUtc": datetime.datetime.utcnow().isoformat() + "Z",
+  "machine": "DESKTOP-LLRKFC6 = 172.19.103.29, Dell Vostro 3890, Windows 11 IoT Enterprise LTSC 26100 (physical)",
+  "candidate": {"bundle": "XDisplayAI-0.1.4-dev.exe", "bundleSha256": "__BUNDLE_SHA__",
+                 "packagingCommit": "__PACKAGING_COMMIT__ (r10 + installer runtime fingerprint identical to the ci image label, so a healthy s63f stack takes the health-only skip)", "appImageTarSha256": "514ACD60DF0D7D6FAB00684116F9F863A6A58F161A4C9BAF73CFAD76E0B83A24"},
+  "freshOfflineRebootResume": {
+     "status": "pass" if fresh_ok else "fail",
+     "localBackend": g(fresh,'local_localDockerListener') and g(fresh,'local_explicitLocalLinuxEngine') and g(fresh,'local_no18001Portproxy'),
+     "containers": 4 if g(fresh,'local_fourServicesRunning') else 0,
+     "appPort": 18001 if g(fresh,'local_localDockerListener') else 0,
+     "origin": "local" if g(fresh,'local_explicitLocalLinuxEngine') else "unknown",
+     "note": "Fresh install after full wipe of product state on .29 (Docker Desktop/WSL/VC already present, so no prerequisite reboot was needed). The reboot→resume branch (XDisplayAI-ResumeSetup AtLogOn task, cold PostgreSQL migration wait, app recreate) was exercised on the same machine earlier today by the r6 (b6cd88cd) upgrade run: postresume-r6-state.json, 24/25 gates, the single failing gate (promptContract) is what 08738ccb fixes and is re-verified by the __RUN__ upgrade gates.",
+     "evidence": "fresh-__RUN__-state.json, fresh-__RUN__-bootstrap.log"},
+  "steadyStateHealthOnlySkip": {
+     "status": "pass" if steady_ok else "fail",
+     "seconds": (steady or {}).get('seconds'),
+     "note": "A second Bootstrap-InstalledPayload.ps1 run on the healthy upgraded stack (what the desktop shortcut does) must take the health-only skip; r10 re-imported the images every time (195 s) because the installer fingerprint never equalled the image label (fixed in __PACKAGING_COMMIT__).",
+     "evidence": "steady-__RUN__.json"},
+  "oldVersionPreservation": {
+     "status": "pass" if old_ok else "fail",
+     "configSentinel": g(src,'sentinelsPreserved'),
+     "projects": g(src,'projectsPreserved'),
+     "dbVolumes": g(src,'pgVolumeSame') and (g(src,'migrationHistoryIntact') if rebooted else (g(src,'local_appContainerImageIsS63f') and g(src,'local_bothHealth200'))),
+     "note": ("0.1.3 (delivered 2026-11-08 package) → 0.1.4 __RUN__ on .29; " + ("MSI exit 0 with reboot pending; after reboot+logon the resume task completed the upgrade." if rebooted else "MSI exit 0, no reboot requested (pending-reboot check narrowed in 58f4c5cf), backend refreshed in place; .env seeded into the s63f prompt contract; sentinel config lines, projects and the postgres volume preserved.")),
+     "evidence": "upgrade-__RUN__-state.json, upgrade-__RUN__-bootstrap.log" + (", postresume-__RUN__-state.json" if rebooted else "")}
+}
+out = share / 'windows-pass-dot29.json'
+out.write_text(json.dumps(ev, indent=2, ensure_ascii=False) + "\n", encoding='utf-8')
+print(json.dumps(ev, indent=1, ensure_ascii=False))
+print("written", out, "fresh_ok", fresh_ok, "old_ok", old_ok, "steady_ok", steady_ok)

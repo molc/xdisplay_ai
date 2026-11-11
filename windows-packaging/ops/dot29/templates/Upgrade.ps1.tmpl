@@ -1,0 +1,136 @@
+$ErrorActionPreference='Stop'
+$ProgressPreference='SilentlyContinue'
+if($env:COMPUTERNAME -ne 'DESKTOP-LLRKFC6'){throw 'Wrong machine: ONLY .29'}
+if([Security.Principal.WindowsIdentity]::GetCurrent().Name -eq 'NT AUTHORITY\SYSTEM' -or (Get-Process -Id $PID).SessionId -eq 0){throw 'Need interactive elevated admin'}
+if(-not([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw 'Elevation required'}
+$share='\\tsclient\results\xdai'
+$logs='C:\Users\Public\XDisplayAI-s63f-upgrade-__RUN__'
+[void][IO.Directory]::CreateDirectory($share); [void][IO.Directory]::CreateDirectory($logs)
+$r5='C:\Users\Public\XDisplayAI-014-candidate\pkg-__RUN__\XDisplayAI-0.1.4-dev.exe'
+$r5Sha='__BUNDLE_SHA__'
+$old='C:\Temp\XdisplayAI_20261108_full\XDisplayAI-0.1.3-dev.exe'
+$oldSha='490A20E08EC69F467F949FD4E2BC613594E05AA075D5AE7D16C2DC6C1B7ACDDD'
+$r=[ordered]@{purpose='DOT29_SCENARIO2_UPGRADE_013_TO_014___RUNU__';machine=$env:COMPUTERNAME;started=(Get-Date).ToString('o');outcome='NOT_RUN';logs=$logs;steps=@();errors=@();gates=[ordered]@{}}
+function Save([string]$o){$r.outcome=$o;$r.updated=(Get-Date).ToString('o');$j=$r|ConvertTo-Json -Depth 12;$j|Set-Content -Encoding UTF8 (Join-Path $logs 'state.json');$j|Set-Content -Encoding UTF8 (Join-Path $share 'upgrade-__RUN__-state.json')}
+function Regs{@(Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*','HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*' -ErrorAction SilentlyContinue|Where-Object DisplayName -eq 'XDisplay AI Offline Installer'|Select-Object DisplayName,DisplayVersion,PSChildName,BundleCachePath)}
+function EnvMaps{$result=@{};foreach($f in @('C:\ProgramData\XDisplayAI\config\runtime.env','C:\ProgramData\XDisplayAI\workspace\backend\.env')){if(Test-Path $f){$map=@{};foreach($l in [IO.File]::ReadAllLines($f)){if($l -match '^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=(.*)$'){$v=$matches[2].Trim();if($v.Length -ge 2 -and (($v.StartsWith('"') -and $v.EndsWith('"')) -or ($v.StartsWith("'") -and $v.EndsWith("'")))){$v=$v.Substring(1,$v.Length-2)};$map[$matches[1]]=$v}};$result[$f]=$map}};return $result}
+$script:Managed=@('XDISPLAY_AI_PROMPT_VERSIONS','XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION','XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION','XDISPLAY_AI_STAGED_DRAFTER_ENABLED','BACKEND_WORKSPACE_PATH','XDISPLAY_AI_AGENT_RUNTIME_TIMEOUT_SECONDS','XDISPLAY_AI_LLM_TIMEOUT_SECONDS','POSTGRES_HOST_PORT','REDIS_HOST_PORT','EMBEDDING_HOST_PORT')  # the installer's documented published-port fallback may rewrite the three auxiliary ports; APP_HOST_PORT stays 18001 and is gated separately
+function CompareMaps($b,$a){@(foreach($f in $b.Keys){foreach($k in $b[$f].Keys){$present=$false;$same=$false;foreach($af in $a.Keys){if($a[$af].ContainsKey($k)){$present=$true;if([string]::Equals([string]$b[$f][$k],[string]$a[$af][$k],[StringComparison]::Ordinal)){$same=$true}}};[pscustomobject]@{keyName=$k;managed=($script:Managed -contains $k);present=$present;same=$same}}})}
+function ProjectManifest([string[]]$roots){$out=@();foreach($root in $roots){if(-not (Test-Path -LiteralPath $root)){continue};foreach($f in Get-ChildItem -LiteralPath $root -Recurse -File -Force -Attributes !ReparsePoint -ErrorAction SilentlyContinue){$out+=@{root=$root;rel=$f.FullName.Substring($root.Length).TrimStart([char]92);bytes=$f.Length;sha256=(Get-FileHash -LiteralPath $f.FullName -Algorithm SHA256).Hash}}};return @($out)}
+function ManifestSig($rows){(@($rows|Sort-Object root,rel|ForEach-Object{$_.root+'|'+$_.rel+'|'+$_.bytes+'|'+$_.sha256}) -join "`n")}
+function NativeDocker([string]$arguments,[int]$seconds=60){$d='C:\Program Files\Docker\Docker\resources\bin\docker.exe';$h='--host npipe:////./pipe/dockerDesktopLinuxEngine ';$p=New-Object Diagnostics.Process;$p.StartInfo.FileName=$d;$p.StartInfo.Arguments=($h+$arguments);$p.StartInfo.UseShellExecute=$false;$p.StartInfo.CreateNoWindow=$true;$p.StartInfo.RedirectStandardOutput=$true;$p.StartInfo.RedirectStandardError=$true;[void]$p.Start();$o=$p.StandardOutput.ReadToEndAsync();$e=$p.StandardError.ReadToEndAsync();if(-not$p.WaitForExit($seconds*1000)){$p.Kill();throw ('docker timeout: '+$arguments)};$p.WaitForExit();return @{exit=[int]$p.ExitCode;stdout=$o.Result;stderr=$e.Result}}
+function HttpCode([string]$path){try{$q=[Net.HttpWebRequest]::Create('http://127.0.0.1:18001'+$path);$q.Proxy=$null;$q.Timeout=5000;$a=$q.GetResponse();try{return [int]$a.StatusCode}finally{$a.Close()}}catch{return 0}}
+function WaitHealth([int]$sec){$w=[Diagnostics.Stopwatch]::StartNew();do{$hz=HttpCode '/healthz';$ah=HttpCode '/api/v1/assistant/health';if($hz -eq 200 -and $ah -eq 200){return [math]::Round($w.Elapsed.TotalSeconds,1)};Start-Sleep 5}while($w.Elapsed.TotalSeconds -lt $sec);return -1}
+function PromptContract{
+ $public=@{};foreach($line in [IO.File]::ReadAllLines('C:\ProgramData\XDisplayAI\workspace\backend\.env')){if($line -match '^(XDISPLAY_AI_PROMPT_VERSIONS|XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION|XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION|XDISPLAY_AI_STAGED_DRAFTER_ENABLED)=(.*)$'){$public[$matches[1]]=$matches[2].Trim().Trim([char]34).Trim([char]39)}}
+ $pairs=@($public['XDISPLAY_AI_PROMPT_VERSIONS'] -split ','|ForEach-Object{$_.Trim()}|Where-Object{$_});$agents=@{};foreach($pair in $pairs){$parts=$pair -split ':',2;if($parts.Count -eq 2){$agents[$parts[0]]=$parts[1]}}
+ $names=@('planner','clarifier','diagnoser','explainer','drafter','drafter_dsl','sketch_interpreter','sketch_interpretation_auditor','sketch_layout_auditor','auditor_dsl','intent_extractor','linker_dsl','layout_planner','component_planner','composition_layout_planner','component_slot_type_selector','component_slot_props_planner','page_scene_tweak_planner','fixer','write_action_declarer','nav_declarer','engineering_setting_declarer','write_action_declarer_link','page_set_skeleton_declarer','placement_declarer','read_display_declarer','point_table_column_annotator','repeated_series_declarer','style_token_declarer','strict_region_reader','navigation_target_grouping_judge')
+ return [ordered]@{exactly31=($pairs.Count -eq 31 -and $agents.Count -eq 31 -and @(Compare-Object @($names|Sort-Object) @($agents.Keys|Sort-Object)).Count -eq 0);fiveAuthorPins=($agents['intent_extractor'] -eq 'v2.24' -and $agents['read_display_declarer'] -eq 'v1.15' -and $agents['write_action_declarer'] -eq 'v1.10' -and $agents['write_action_declarer_link'] -eq 'v1.8' -and $agents['sketch_interpreter'] -eq 'v4.0');v19v6=($public['XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION'] -eq 'v19' -and $public['XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION'] -eq 'v6');retiredAbsent=(-not $public.ContainsKey('XDISPLAY_AI_STAGED_DRAFTER_ENABLED'));agentCount=$agents.Count}
+}
+function LocalBackend{
+ $g=[ordered]@{}
+ $proxyText=(& netsh.exe interface portproxy show all | Out-String); $g.no18001Portproxy=(-not ($proxyText -match '\b18001\b'))
+ $listeners=@(Get-NetTCPConnection -State Listen -LocalPort 18001 -ErrorAction SilentlyContinue|ForEach-Object{$p=Get-Process -Id $_.OwningProcess -ErrorAction SilentlyContinue;[pscustomobject]@{address=$_.LocalAddress;process=$p.ProcessName}})
+ $g.localDockerListener=(@($listeners|Where-Object{$_.address -in @('127.0.0.1','::1') -and $_.process -eq 'com.docker.backend'}).Count -gt 0)
+ $eng=NativeDocker 'info --format "{{.OSType}}|{{.Architecture}}|{{.Name}}"';$g.explicitLocalLinuxEngine=(($eng.stdout.Trim()) -eq 'linux|x86_64|docker-desktop')
+ $ids=@((NativeDocker 'ps -a --filter label=com.docker.compose.project=xdisplayai --format "{{.ID}}"').stdout -split '[\r\n]+'|Where-Object{$_})
+ $containers=@();foreach($id in $ids){$row=((NativeDocker ('inspect '+$id+' --format "{{.Name}}|{{index .Config.Labels \"com.docker.compose.service\"}}|{{.State.Status}}|{{.Image}}|{{.Created}}"')).stdout.Trim() -split '\|');$containers+=@{id=$id;name=$row[0];service=$row[1];state=$row[2];image=$row[3];created=$row[4]}}
+ $g.fourServicesRunning=($containers.Count -eq 4 -and @($containers|Where-Object{$_.state -ne 'running'}).Count -eq 0 -and @('postgres','redis','embedding-worker','orchestration-app'|Where-Object{$_ -notin @($containers|ForEach-Object service)}).Count -eq 0)
+ $hz=HttpCode '/healthz';$ah=HttpCode '/api/v1/assistant/health';$g.bothHealth200=($hz -eq 200 -and $ah -eq 200)
+ $appC=@($containers|Where-Object service -eq 'orchestration-app'|Select-Object -First 1)
+ $appImageId=if($appC.Count){$appC[0].image}else{''}
+ $lbl=(NativeDocker ('image inspect '+$appImageId+' --format "{{json .Config.Labels}}"')).stdout
+ $labels=@{}; if($lbl.Trim() -and $lbl.Trim() -ne 'null'){ $o=$lbl|ConvertFrom-Json; foreach($p in $o.PSObject.Properties){$labels[$p.Name]=$p.Value} }
+ $g.appContainerImageIsS63f=(($labels['xdisplayai.packaging.git-sha'] -eq 'dd6ab3d505827a94cbc9d59d7067fcce14db6fbe') -and ($labels['xdisplayai.packaging.runtime-fingerprint'] -eq '5f1b3896315250c1a62ee3cba769909ffbf6c5f3984f6479cccf6d0e6e168233') -and ($labels['xdisplayai.packaging.tag'] -eq 'prod/s63f'))
+ $g.appContainerNotOld013Image=(-not $appImageId.StartsWith('sha256:a001031bb9b0'))
+ $expected=@{'Xdisplay.exe'='2A80890DB988157371CF28D24CA23685D7933C4E59630E5A2DCD2363B7DB5600';'Converter.exe'='F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36'}
+ $hashes=@();foreach($root in @('C:\Program Files\XDisplayAI\seed\client','C:\ProgramData\XDisplayAI\workspace\client')){foreach($name in $expected.Keys){$file=Join-Path $root $name;$hash=if(Test-Path $file){(Get-FileHash $file).Hash}else{''};$hashes+=@{path=$file;sha256=$hash;ok=($hash -eq $expected[$name])}}}
+ $g.allFourExePins=(@($hashes|Where-Object{-not $_.ok}).Count -eq 0)
+ $vol=(NativeDocker 'volume inspect xdisplayai_postgres_data --format "{{.Name}}|{{.CreatedAt}}|{{.Driver}}"').stdout.Trim()
+ $wsRev=if(Test-Path 'C:\ProgramData\XDisplayAI\workspace\backend\SOURCE_REVISION.txt'){([IO.File]::ReadAllText('C:\ProgramData\XDisplayAI\workspace\backend\SOURCE_REVISION.txt') -split '\r?\n')[0].Trim()}else{''}
+ $g.workspaceSourceIsS63f=($wsRev -eq 'dd6ab3d505827a94cbc9d59d7067fcce14db6fbe')
+ return [ordered]@{gates=$g;listeners=$listeners;containers=$containers;appImageId=$appImageId;appLabels=$labels;clientHashes=$hashes;pgVolume=$vol;healthz=$hz;assistant=$ah;workspaceRev=$wsRev}
+}
+function NativeBurn([string]$exe,[string]$action,[string]$tag){
+ $row=[ordered]@{tag=$tag;exe=$exe;action=$action;started=(Get-Date).ToString('o')}
+ $args=@('/'+$action,'/quiet','/norestart','/log',(Join-Path $logs ($tag+'-'+$action+'-burn.log')))
+ $p=Start-Process -FilePath $exe -ArgumentList $args -PassThru;$null=$p.Handle;$row.pid=$p.Id;$r.steps+=,$row;Save ($tag.ToUpperInvariant()+'_'+$action.ToUpperInvariant()+'_RUNNING')
+ $w=[Diagnostics.Stopwatch]::StartNew()
+ if(-not $p.WaitForExit(2700000)){$row.timedOut=$true;Save 'NATIVE_TIMEOUT';throw ('Timeout on '+$tag+' '+$action)}
+ $p.Refresh();$row.exit=[int]$p.ExitCode;$row.elapsedSeconds=[Math]::Round($w.Elapsed.TotalSeconds,1);$row.ended=(Get-Date).ToString('o');$row.registrationsAfter=Regs;Save ($tag.ToUpperInvariant()+'_'+$action.ToUpperInvariant()+'_EXIT_'+$row.exit);return [int]$p.ExitCode
+}
+function CloseClient{foreach($p in @(Get-Process -Name Xdisplay -ErrorAction SilentlyContinue)){$req=$p.CloseMainWindow();$closed=$p.WaitForExit(20000);if(-not $closed){throw 'Client still open (save prompt?). No force kill.'}}}
+function AddSentinel([string]$file,[string]$key){if(Test-Path $file){$txt=[IO.File]::ReadAllText($file);if($txt -notmatch ('(?m)^'+$key+'=')){if(-not $txt.EndsWith("`n")){$txt+="`n"};[IO.File]::WriteAllText($file,$txt+$key+'=keep-me'+"`n")}}}
+try{
+ if((Get-Volume -DriveLetter C).SizeRemaining -lt 20GB){throw 'C free <20GiB'}
+ foreach($pair in @(@($r5,$r5Sha),@($old,$oldSha))){if(-not(Test-Path -LiteralPath $pair[0])){throw ('Missing '+$pair[0])};$h=(Get-FileHash -LiteralPath $pair[0] -Algorithm SHA256).Hash;if($h -ne $pair[1]){throw ('SHA mismatch '+$pair[0]+' '+$h)}}
+ $r.bootBefore=(Get-CimInstance Win32_OperatingSystem).LastBootUpTime.ToString('o')
+ $r.regsInitial=Regs
+ $projectRoots=@(Get-ChildItem 'C:\Users\admin\Downloads' -Directory|ForEach-Object FullName);$r.projectRoots=$projectRoots
+ CloseClient
+ Save 'PRECHECKS_OK'
+ # ---- Step A: remove the r4 0.1.4 candidate that a previous session left behind ----
+ $r4=@($r.regsInitial|Where-Object{$_.BundleCachePath})  # any registered bundle (0.1.3 half-bootstrapped or a 0.1.4 candidate) is removed before the baseline
+ if($r4.Count -eq 1){
+   $r.r4BundleCache=$r4[0].BundleCachePath
+   $ux=NativeBurn $r4[0].BundleCachePath 'uninstall' 'pre'
+   if($ux -ne 0){throw ('r4 uninstall exit '+$ux)}
+   if(@(Regs).Count -ne 0){throw 'Registrations remain after r4 uninstall'}
+   Unregister-ScheduledTask -TaskName 'XDisplayAI-ResumeSetup' -Confirm:$false -ErrorAction SilentlyContinue; Remove-Item 'C:\ProgramData\XDisplayAI\config\bootstrap-state.json' -Force -ErrorAction SilentlyContinue; $r.r5LeftoversCleared=@{task=($null -eq (Get-ScheduledTask -TaskName 'XDisplayAI-ResumeSetup' -ErrorAction SilentlyContinue));state=(-not (Test-Path 'C:\ProgramData\XDisplayAI\config\bootstrap-state.json'))}
+   $r.healthAfterR4Uninstall=WaitHealth 30
+   # harness-only: the MSI uninstall leaves the compose containers running, and 0.1.3 would then take its health-only skip and never lay down its own (old-image) stack; remove the project containers (volumes kept) so the baseline is a real 0.1.3 stack
+   $dk='C:\Program Files\Docker\Docker\resources\bin\docker.exe'; $ids=@((& $dk --host npipe:////./pipe/dockerDesktopLinuxEngine ps -aq --filter label=com.docker.compose.project=xdisplayai 2>$null) | Where-Object { $_ -match '^[0-9a-f]{12,64}$' })
+   if($ids.Count){ $null=(& $dk --host npipe:////./pipe/dockerDesktopLinuxEngine rm -f @ids 2>&1) }; $r.harnessContainersRemoved=$ids.Count; $r.healthAfterContainerRemoval=WaitHealth 10
+ } elseif(@($r.regsInitial|Where-Object{$_}).Count -eq 0){ $r.r4BundleCache='none-registered' } else { throw 'Unexpected registration set before test; refusing' }
+ # ---- Step B: install the delivered 0.1.3 package = customer baseline ----
+ # harness-only: 0.1.3 rolls back on ANY PendingFileRenameOperations entry (fixed in 0.1.4); drop the temp-file deletions left by the uninstall above so the baseline can be laid without a reboot
+ $pk='HKLM:\SYSTEM\CurrentControlSet\Control\Session Manager'; $pf=@((Get-ItemProperty $pk -Name PendingFileRenameOperations -ErrorAction SilentlyContinue).PendingFileRenameOperations)
+ if($pf.Count){ $keep=New-Object System.Collections.Generic.List[string]; $dropped=@(); for($i=0;$i -lt $pf.Count;$i+=2){ $src=[string]$pf[$i]; $dst=if($i+1 -lt $pf.Count){[string]$pf[$i+1]}else{''}; if($src -match '(?i)\\Temp\\[^\\]*\.tmp$'){$dropped+=$src}else{$keep.Add($src);$keep.Add($dst)} }
+   if($keep.Count){ Set-ItemProperty $pk -Name PendingFileRenameOperations -Value ([string[]]$keep) -Type MultiString } else { Remove-ItemProperty $pk -Name PendingFileRenameOperations -ErrorAction SilentlyContinue }
+   $r.harnessPfroCleanup=@{before=$pf.Count;dropped=$dropped;kept=$keep.Count} }
+ $ix=NativeBurn $old 'install' 'v013'
+ if($ix -ne 0){throw ('0.1.3 install exit '+$ix)}
+ $regs013=Regs; if(@($regs013|Where-Object DisplayVersion -ne '0.1.3').Count -or @($regs013).Count -lt 2){throw 'Baseline is not a clean 0.1.3 registration'}
+ $r.healthAfter013=WaitHealth 300
+ Start-Sleep 8; CloseClient
+ AddSentinel 'C:\ProgramData\XDisplayAI\config\runtime.env' 'XDAI_UPGRADE_SENTINEL_RUNTIME'
+ AddSentinel 'C:\ProgramData\XDisplayAI\workspace\backend\.env' 'XDAI_UPGRADE_SENTINEL_BACKEND'
+ $before=EnvMaps;$r.beforeConfigKeyNames=@($before.Values|ForEach-Object{$_.Keys}|Sort-Object -Unique)
+ $r.projectBefore=ProjectManifest $projectRoots;$r.projectBeforeSig=ManifestSig $r.projectBefore;$r.projectFileCount=$r.projectBefore.Count
+ $bb=LocalBackend;$r.baseline013=@{gates=$bb.gates;pgVolume=$bb.pgVolume;appImageId=$bb.appImageId;workspaceRev=$bb.workspaceRev;containers=$bb.containers;prompt=(PromptContract)}
+ $r.bootBeforeUpgrade=(Get-CimInstance Win32_OperatingSystem).LastBootUpTime.ToString('o')
+ $bsLenBefore=$(if(Test-Path 'C:\ProgramData\XDisplayAI\logs\bootstrap.log'){([IO.File]::ReadAllText('C:\ProgramData\XDisplayAI\logs\bootstrap.log')).Length}else{0})  # chars, not bytes: the log is UTF-8 with CJK text
+ Save 'BASELINE_013_READY'
+ # ---- Step C: upgrade with the r5 0.1.4 candidate ----
+ $up=NativeBurn $r5 'install' '__RUN__'
+ $r.bootAfterUpgrade=(Get-CimInstance Win32_OperatingSystem).LastBootUpTime.ToString('o');$r.gates.bootUnchanged=($r.bootBeforeUpgrade -eq $r.bootAfterUpgrade)
+ $r.regsAfterUpgrade=Regs
+ if($up -eq 3010){Save 'UPGRADE_3010_REBOOT_REQUIRED';throw 'Upgrade requested reboot (3010) on a machine with prerequisites present'}
+ if($up -ne 0){throw ('Upgrade exit '+$up)}
+ $r.gates.only014Registered=(@($r.regsAfterUpgrade).Count -ge 2 -and @($r.regsAfterUpgrade|Where-Object DisplayVersion -notin @('0.1.4','0.1.4.0')).Count -eq 0)
+ $r.healthAfterUpgradeSeconds=WaitHealth 600
+ Start-Sleep 5
+ $bs=[IO.File]::ReadAllText('C:\ProgramData\XDisplayAI\logs\bootstrap.log'); $newTail=if($bsLenBefore){$bs.Substring([Math]::Min([int]$bsLenBefore,$bs.Length))}else{$bs}
+ $r.bootstrapNewLines=@($newTail -split '\r?\n'|Where-Object{$_ -match '\[xdisplayai\]|错误|Exception|error'}|Select-Object -First 80)
+ $r.gates.bootstrapRefusedHealthOnlySkip=($newTail -match '不是本包 s63f 合同')
+ $r.gates.bootstrapNoError=(-not ($newTail -match 'Exception|错误：|Error:'))
+ $after=EnvMaps;$r.configAfterUpgrade=CompareMaps $before $after
+ $r.gates.configLiteralsPreserved=(@($r.configAfterUpgrade|Where-Object{(-not $_.managed) -and (-not $_.present -or -not $_.same)}).Count -eq 0)
+ $r.gates.sentinelsPreserved=(($after.Values|ForEach-Object{$_.ContainsKey('XDAI_UPGRADE_SENTINEL_RUNTIME')}) -contains $true) -and (($after.Values|ForEach-Object{$_.ContainsKey('XDAI_UPGRADE_SENTINEL_BACKEND')}) -contains $true)
+ $r.projectAfter=ProjectManifest $projectRoots;$r.gates.projectsPreserved=((ManifestSig $r.projectAfter) -ceq $r.projectBeforeSig)
+ $r.promptAfterUpgrade=PromptContract;$r.gates.promptContract=($r.promptAfterUpgrade.exactly31 -and $r.promptAfterUpgrade.fiveAuthorPins -and $r.promptAfterUpgrade.v19v6 -and $r.promptAfterUpgrade.retiredAbsent)
+ $lb=LocalBackend;$r.localAfterUpgrade=$lb
+ foreach($k in $lb.gates.Keys){$r.gates[('local_'+$k)]=$lb.gates[$k]}
+ $r.gates.pgVolumeSame=($lb.pgVolume -eq $bb.pgVolume)
+ $r.gates.appContainerRecreated=($lb.appImageId -ne $bb.appImageId)
+ $wsPath='C:\ProgramData\XDisplayAI\config\workspace-sync.json'; $r.workspaceSync=@($(if([IO.File]::Exists($wsPath)){@{path=$wsPath;content=[IO.File]::ReadAllText($wsPath)}}))
+ $failed=@($r.gates.Keys|Where-Object{-not $r.gates[$_]})
+ $r.failedGates=$failed
+ $r.completed=(Get-Date).ToString('o')
+ if($failed.Count){Save 'SCENARIO2_UPGRADE_GATES_FAIL'}else{Save 'SCENARIO2_UPGRADE_PASS'}
+}catch{$r.errors+=$_.Exception.Message;Save 'STOPPED_FAIL';$_|Out-String|Set-Content -Encoding UTF8 (Join-Path $share 'upgrade-__RUN__-ERROR.txt')}
+finally{
+ foreach($f in Get-ChildItem $logs -File -ErrorAction SilentlyContinue){Copy-Item -LiteralPath $f.FullName -Destination (Join-Path $share ('upgrade-__RUN__-'+$f.Name)) -Force}
+ if(Test-Path 'C:\ProgramData\XDisplayAI\logs\bootstrap.log'){Copy-Item 'C:\ProgramData\XDisplayAI\logs\bootstrap.log' (Join-Path $share 'upgrade-__RUN__-bootstrap.log') -Force}
+ 'DONE '+$r.outcome|Set-Content -Encoding ASCII (Join-Path $share 'upgrade-__RUN__-DONE.txt')
+}
