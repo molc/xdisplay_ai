@@ -175,6 +175,24 @@ try {
     try { Get-MissingImportedDlls -ReleaseDir $sourceClient -ExecutableDirectory $sourceClient -ImportedDlls @('avcodec-62.dll') | Out-Null; $closureRejected = $true } catch { $closureRejected = $false }
     Assert-True -Condition $closureRejected -Message 'Shipped ffmpeg DLL must satisfy the import closure.'
 
+    # Frozen-resource layer: a fixture guard manifest whose entries match the (1,2,3) placeholders; a drifted byte must fail.
+    $guardFixture = Join-Path $testRoot 'word-fix-guard.json'
+    $resourceManifest = [ordered]@{}
+    foreach ($relative in @('data/keyboard_a/keypage.json', 'images/bartitle/titlelogo.png', 'res/pinyin.bin', 'qrcode_about.jpg', 'images/not-shipped-in-fixture.png')) {
+        $resourceManifest[$relative] = $placeholderSha.ToLowerInvariant()
+    }
+    [System.IO.File]::WriteAllText($guardFixture, ([pscustomobject]@{ resourceTag = 'client/c-184'; resourceCommit = 'fixture'; sourceFiles = @{}; resourceFiles = $resourceManifest } | ConvertTo-Json -Depth 4))
+    $frozen = Assert-FrozenClientResources -ClientReleaseDir $sourceClient -ManifestPath $guardFixture
+    Assert-True -Condition ($frozen.checked -eq 4) -Message "Frozen-resource check must verify the manifest entries present in the tree and skip absent ones (checked=$($frozen.checked))."
+    $realManifest = Get-Content -LiteralPath (Get-WordFixGuardManifestPath) -Raw | ConvertFrom-Json
+    Assert-True -Condition (@($realManifest.sourceFiles.PSObject.Properties).Count -ge 21 -and @($realManifest.resourceFiles.PSObject.Properties).Count -ge 280) -Message 'Real word-fix-guard.json must list the 21 Word-fix sources and the c-184 resources.'
+    Assert-True -Condition ($realManifest.resourceFiles.'data/keyboard_a/keypage.json' -match '^[0-9a-f]{64}$') -Message 'Guard manifest must pin keyboard_a/keypage.json by SHA256.'
+    [System.IO.File]::WriteAllBytes((Join-Path $sourceClient 'res\pinyin.bin'), [byte[]](7, 7, 7))
+    $frozenRejected = $false
+    try { Assert-FrozenClientResources -ClientReleaseDir $sourceClient -ManifestPath $guardFixture | Out-Null } catch { $frozenRejected = $_.Exception.Message -match 'res/pinyin.bin' }
+    Assert-True -Condition $frozenRejected -Message 'A resource byte that differs from client/c-184 must fail qualification.'
+    [System.IO.File]::WriteAllBytes((Join-Path $sourceClient 'res\pinyin.bin'), [byte[]](1, 2, 3))
+
     $destination = Join-Path $testRoot 'qualified-client'
     $qualified = New-QualifiedCachedClientRelease `
         -ClientReleaseDir $sourceClient `
@@ -184,7 +202,8 @@ try {
         -ExpectedClientBytes ([long]$clientBytes.Length) `
         -ExpectedConverterSha256 $converterShaText `
         -ExpectedConverterBytes ([long]$converterBytes.Length) `
-        -ExpectedThirdPartyRuntime $fixtureThirdParty
+        -ExpectedThirdPartyRuntime $fixtureThirdParty `
+        -WordFixGuardManifestPath $guardFixture
 
     Assert-True -Condition (Test-Path -LiteralPath (Join-Path $destination 'Xdisplay.exe')) -Message 'Qualified tree must contain Xdisplay.exe.'
     $converterInQualified = @(Get-ChildItem -LiteralPath $destination -Filter 'Converter.exe' -Recurse -File)
@@ -208,7 +227,8 @@ try {
         -ExpectedClientBytes ([long]$clientBytes.Length) `
         -ExpectedConverterSha256 $converterShaText `
         -ExpectedConverterBytes ([long]$converterBytes.Length) `
-        -ExpectedThirdPartyRuntime $fixtureThirdParty | Out-Null
+        -ExpectedThirdPartyRuntime $fixtureThirdParty `
+        -WordFixGuardManifestPath $guardFixture | Out-Null
     Assert-True `
         -Condition ((Get-Item -LiteralPath (Join-Path $sourceClient 'Xdisplay.exe')).LastWriteTimeUtc -eq $sourceTouched) `
         -Message 'Re-qualifying must still leave the source client bytes untouched.'

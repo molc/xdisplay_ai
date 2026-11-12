@@ -329,6 +329,36 @@ function Assert-ExecutableImportClosure {
     return @($results)
 }
 
+function Get-WordFixGuardManifestPath {
+    return (Join-Path $PSScriptRoot '..\manifests\pins\word-fix-guard.json')
+}
+
+function Assert-FrozenClientResources {
+    <# Layer that must not move between packages: the official 2.4.4 runtime resources tracked at client/c-184
+       (data/, res/, images/, doc/, root images). Every manifest entry that exists in the release tree must be
+       byte-identical; shipping a different byte means Word items 2/3/4/8/9/13/14 need re-verification, so fail. #>
+    param(
+        [Parameter(Mandatory = $true)][string]$ClientReleaseDir,
+        [string]$ManifestPath = (Get-WordFixGuardManifestPath)
+    )
+    if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) { throw "Word-fix guard manifest is missing: $ManifestPath (regenerate with ops/host/word-fix-guard.py --write)" }
+    $manifest = Get-Content -LiteralPath $ManifestPath -Raw | ConvertFrom-Json
+    $checked = 0; $drift = @()
+    foreach ($prop in $manifest.resourceFiles.PSObject.Properties) {
+        $relative = [string]$prop.Name
+        $absolute = $ClientReleaseDir
+        foreach ($segment in @($relative -split '/' | Where-Object { $_ })) { $absolute = Join-Path $absolute $segment }
+        if (-not (Test-Path -LiteralPath $absolute -PathType Leaf)) { continue }
+        $checked++
+        $actual = (Get-FileHash -LiteralPath $absolute -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($actual -ne ([string]$prop.Value).ToLowerInvariant()) { $drift += $relative }
+    }
+    if ($drift.Count -gt 0) {
+        throw ("Frozen client resources drifted from {0} ({1} file(s)): {2}. Re-verify the Word items and regenerate the guard manifest on purpose." -f $manifest.resourceTag, $drift.Count, (($drift | Select-Object -First 12) -join ', '))
+    }
+    return [pscustomobject]@{ manifest = $ManifestPath; resourceTag = [string]$manifest.resourceTag; resourceCommit = [string]$manifest.resourceCommit; checked = $checked }
+}
+
 function Assert-CachedClientReleaseTree {
     param(
         [Parameter(Mandatory = $true)]
@@ -358,7 +388,8 @@ function New-QualifiedCachedClientRelease {
         [long]$ExpectedClientBytes = (Get-PinnedCatalogwriteClientBytes),
         [string]$ExpectedConverterSha256 = (Get-PinnedConverterSha256),
         [long]$ExpectedConverterBytes = (Get-PinnedConverterBytes),
-        $ExpectedThirdPartyRuntime = (Get-PinnedThirdPartyRuntimeFiles)
+        $ExpectedThirdPartyRuntime = (Get-PinnedThirdPartyRuntimeFiles),
+        [string]$WordFixGuardManifestPath = (Get-WordFixGuardManifestPath)
     )
 
     if ([string]::IsNullOrWhiteSpace($ClientReleaseDir) -or -not (Test-Path -LiteralPath $ClientReleaseDir -PathType Container)) {
@@ -380,6 +411,7 @@ function New-QualifiedCachedClientRelease {
         -DisplayName 'Converter.exe'
     Assert-CachedClientReleaseTree -ClientReleaseDir $sourceClient
     $thirdPartyRuntime = Assert-ThirdPartyRuntimeIdentity -ClientReleaseDir $sourceClient -Expected $ExpectedThirdPartyRuntime
+    $frozenResources = Assert-FrozenClientResources -ClientReleaseDir $sourceClient -ManifestPath $WordFixGuardManifestPath
 
     $destinationPath = [System.IO.Path]::GetFullPath($Destination)
     if ([string]::Equals($destinationPath.TrimEnd('\', '/'), $sourceClient.TrimEnd('\', '/'), [StringComparison]::OrdinalIgnoreCase)) {
@@ -422,6 +454,7 @@ function New-QualifiedCachedClientRelease {
     $importClosure = Assert-ExecutableImportClosure -ReleaseDir $destinationPath -ExecutablePaths (@($qualifiedClientExe, (Join-Path $destinationPath 'Simulator.exe')) + @($qualifiedConverters | ForEach-Object { $_.FullName }))
 
     return [pscustomobject]@{
+        frozenResources = $frozenResources
         thirdPartyRuntime = @($thirdPartyRuntime | ForEach-Object { [pscustomobject]@{ name = $_.displayName; sizeBytes = $_.sizeBytes; sha256 = $_.sha256 } })
         importClosure = @($importClosure | ForEach-Object { [pscustomobject]@{ executable = (Split-Path -Leaf $_.executable); skipped = $_.skipped; imports = @($_.imports) } })
         destination = $destinationPath
@@ -823,6 +856,7 @@ function Export-CachedReleasePins {
         }
         client = $QualifiedRelease.client
         converter = $QualifiedRelease.converter
+        frozenResources = $QualifiedRelease.frozenResources
         thirdPartyRuntime = $QualifiedRelease.thirdPartyRuntime
         importClosure = $QualifiedRelease.importClosure
         clientProvenance = [pscustomobject]@{

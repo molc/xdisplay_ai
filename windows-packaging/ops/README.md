@@ -39,6 +39,21 @@
 4. **第三方运行时**（与 exe 同目录、不在客户端仓里）：`Simulator.exe`、ffmpeg 五个 DLL（`avcodec-62/avformat-62/avutil-60/swresample-6/swscale-9`）、`ffmpeg.exe`、`optipng.exe` 取自官方 `Xdisplay_2.4.4_20261027` 包，SHA256/字节数钉在 `ci/CachedRelease.ps1 Get-PinnedThirdPartyRuntimeFiles`，资格检查时逐个核对；换官方包版本就改这张表。构建期还有"导入闭包"门：`Xdisplay.exe` / `Simulator.exe` / `Converter.exe` 导入的每个非系统 DLL 都必须在树里（r10/r11 漏 ffmpeg 的教训）。
 5. 版本号不变时（0.1.4 内多次 rN）无需动 `manifests/bundle.json`；要升到 0.1.5 时改 `bundle.json` 并检查 `tests/Test-InstallerCorrectness.ps1` 末尾对版本的断言。
 
+## 2a. 分层固定：什么锁死、什么跟着线走（2026-11-11 起的打包策略）
+
+严格线与自由线同时推进，变的是后端和客户端 AI 侧；核心 Xdisplay 6001 功能与莫工 Word 16 项的修法不能动。打包按层处理：
+
+| 层 | 内容 | 钉在哪 | 变更方式 |
+|---|---|---|---|
+| 冻结：官方运行时资源 | `data/`、`res/`、`images/`、`doc/`、根目录三张图（client/c-184） | `manifests/pins/word-fix-guard.json` `resourceFiles`（287 个文件 SHA256）；资格检查 `Assert-FrozenClientResources` 逐字节核对，差一个字节构建失败 | 只能由架构师裁决后 `ops/host/word-fix-guard.py --write` 重生成并在提交信息写明 |
+| 冻结：第三方运行时 | Simulator.exe、ffmpeg 五 DLL、ffmpeg.exe、optipng.exe、Qt 运行时布局 | `ci/CachedRelease.ps1 Get-PinnedThirdPartyRuntimeFiles` + 导入闭包门 | 换官方包版本时改钉表 |
+| 守卫：Word 修法源码 | PR #1（client/c-185）改过的 21 个 `src/` 文件 | `word-fix-guard.json` `sourceFiles`；控制端 `ops/host/word-fix-guard.py --check <客户端提交>` 做祖先检查 + 文件哈希 + "Word 修法新增行是否还在" | 允许改（AI 侧功能会碰 `widget_main.cpp` 等），但 `--check` 一报 DRIFT 就必须在 .29 重走对应 Word 项，并把结论写进验收记录 |
+| 跟线：客户端二进制 | `Xdisplay.exe`（含 AI 侧） | 构建提交号 + SHA 钉（`Get-PinnedCatalogwriteClientSha256`） | 从合并线重编；编前先 `--check` |
+| 跟线：后端 | s63f 镜像与源码快照 | `manifests/pins/offline-inputs.s63f.json` + 镜像三标签 | 父流程导出后整体换钉 |
+| 冻结：安装器 | `src/scripts/**`、WiX、ci | 本仓提交 + 单测 + .29 两场景 | 只修缺陷 |
+
+打包前的固定动作：`python3 ops/host/word-fix-guard.py --check <要打的客户端提交>`。2026-11-11 对 `int-6001` 顶端 `9e59c066` 的结果：资源 287/287 未动；21 个守卫源码文件里 9 个有改动，其中 7 个 Word 修法新增行全部保留，`src/Helper/dialog_tool_image.cpp`（18/19）与 `src/Helper/image_library_mutation_v1.cpp`（21/25）各缺了几行 c-182/c-183 的修法——打这个提交前必须在 .29 重走 Word 第 8 项（图库），或由合并的 agent 说明这些行是等价重写。
+
 ## 3. 只更新后端时要改什么
 
 后端走 **"已有镜像 + 源码快照 bind-mount"** 模式（`-UseExistingBackendInputs`），不在 builder 上构建镜像。
