@@ -1,4 +1,6 @@
 # Windows Packaging 交接文档
+
+> **2026-11-11 补充**：Word 反馈闭环的前提条件与合并注意事项见 `docs/handoffs/2026-11-11-word-feedback-preconditions.md`；日常重打包见 `ops/README.md`。
 更新时间：2026-08-14
 
 ## 目标与范围
