@@ -13,8 +13,8 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $state = Get-Content (Join-Path $Logs "$Run-state.json") -Raw | ConvertFrom-Json
-$args = $state.actualArguments
-function Arg([string]$name) { $i = [array]::IndexOf($args, $name); if ($i -lt 0) { throw "state has no $name" }; return $args[$i + 1] }
+$script:buildArgs = @($state.actualArguments)   # not $args: inside a function $args is the function's own automatic variable
+function Arg([string]$name) { $i = [array]::IndexOf($script:buildArgs, $name); if ($i -lt 0) { throw "state has no $name" }; return $script:buildArgs[$i + 1] }
 $ev = Join-Path $Logs "windows-pass-$Run.json"
 Invoke-WebRequest -UseBasicParsing $EvidenceUrl -OutFile $ev
 $evidence = Get-Content $ev -Raw | ConvertFrom-Json
