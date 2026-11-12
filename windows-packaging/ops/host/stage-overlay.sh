@@ -10,7 +10,7 @@ DST="$ROOT/$RUN"; rm -rf "$DST"; mkdir -p "$DST"
 python3 - "$BASE" "$DST" <<'PY'
 import subprocess, sys, pathlib, hashlib, json, shutil
 base, dst = sys.argv[1], pathlib.Path(sys.argv[2])
-files = [l for l in subprocess.check_output(['git','diff','--name-only','--diff-filter=ACMR',base,'HEAD','--','.'],text=True).split('\n') if l]
+files = [l for l in subprocess.check_output(['git','diff','--name-only','--relative','--diff-filter=ACMR',base,'HEAD','--','.'],text=True).split('\n') if l]
 files = [f for f in files if not f.startswith(('acceptance/','ops/','backend-export/')) and not f.endswith('.md')]
 man = {}
 for f in files:
