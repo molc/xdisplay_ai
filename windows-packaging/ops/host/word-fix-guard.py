@@ -40,13 +40,13 @@ def write(repo):
     res = tree_files(repo, RESOURCE_TAG, RESOURCE_ROOTS)
     m = {
         'generatedAtUtc': datetime.datetime.utcnow().isoformat() + 'Z',
-        'purpose': '莫工 Word 16 项闭环所依赖的客户端源码文件与官方运行时资源；打包前任何一项有变化都必须在 .29 重走 Word 项',
+        'purpose': 'Client source files carrying the Word-feedback fixes (PR #1) and the official runtime resources; any drift means the Word items must be re-verified on .29 before packaging. ASCII only: Windows PowerShell 5.1 reads BOM-less files as CP936.',
         'wordFixTag': WORD_FIX_TAG, 'wordFixCommit': git(repo, 'rev-parse', WORD_FIX_TAG).strip(),
         'resourceTag': RESOURCE_TAG, 'resourceCommit': git(repo, 'rev-parse', RESOURCE_TAG).strip(),
         'sourceFiles': {p: blob_sha256(repo, WORD_FIX_TAG, p) for p in src},
         'resourceFiles': {p: blob_sha256(repo, RESOURCE_TAG, p) for p in res},
     }
-    manifest_path.write_text(json.dumps(m, indent=1, ensure_ascii=False) + '\n', encoding='utf-8')
+    manifest_path.write_text(json.dumps(m, indent=1, ensure_ascii=True) + '\n', encoding='utf-8')
     print(f'wrote {manifest_path}: {len(src)} source files, {len(res)} resource files')
 
 def word_fix_added_lines(repo, path):

@@ -342,7 +342,8 @@ function Assert-FrozenClientResources {
         [string]$ManifestPath = (Get-WordFixGuardManifestPath)
     )
     if (-not (Test-Path -LiteralPath $ManifestPath -PathType Leaf)) { throw "Word-fix guard manifest is missing: $ManifestPath (regenerate with ops/host/word-fix-guard.py --write)" }
-    $manifest = Get-Content -LiteralPath $ManifestPath -Raw | ConvertFrom-Json
+    # explicit UTF-8: Windows PowerShell 5.1 Get-Content would read a BOM-less UTF-8 file as CP936 and break the JSON
+    $manifest = [System.IO.File]::ReadAllText($ManifestPath, [System.Text.Encoding]::UTF8) | ConvertFrom-Json
     $checked = 0; $drift = @()
     foreach ($prop in $manifest.resourceFiles.PSObject.Properties) {
         $relative = [string]$prop.Name

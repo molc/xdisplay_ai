@@ -184,7 +184,7 @@ try {
     [System.IO.File]::WriteAllText($guardFixture, ([pscustomobject]@{ resourceTag = 'client/c-184'; resourceCommit = 'fixture'; sourceFiles = @{}; resourceFiles = $resourceManifest } | ConvertTo-Json -Depth 4))
     $frozen = Assert-FrozenClientResources -ClientReleaseDir $sourceClient -ManifestPath $guardFixture
     Assert-True -Condition ($frozen.checked -eq 4) -Message "Frozen-resource check must verify the manifest entries present in the tree and skip absent ones (checked=$($frozen.checked))."
-    $realManifest = Get-Content -LiteralPath (Get-WordFixGuardManifestPath) -Raw | ConvertFrom-Json
+    $realManifest = [System.IO.File]::ReadAllText((Get-WordFixGuardManifestPath), [System.Text.Encoding]::UTF8) | ConvertFrom-Json
     Assert-True -Condition (@($realManifest.sourceFiles.PSObject.Properties).Count -ge 21 -and @($realManifest.resourceFiles.PSObject.Properties).Count -ge 280) -Message 'Real word-fix-guard.json must list the 21 Word-fix sources and the c-184 resources.'
     Assert-True -Condition ($realManifest.resourceFiles.'data/keyboard_a/keypage.json' -match '^[0-9a-f]{64}$') -Message 'Guard manifest must pin keyboard_a/keypage.json by SHA256.'
     [System.IO.File]::WriteAllBytes((Join-Path $sourceClient 'res\pinyin.bin'), [byte[]](7, 7, 7))

@@ -86,9 +86,10 @@ cp /dev/shm/xdai-ops/builder/*.ps1 /dev/shm/xdai-overlay/   # 让 builder 能下
 cat > /dev/shm/kick-r12.ps1 <<'PS'
 $b='http://172.19.103.18:18049'
 foreach($n in 'Sync-SourceOverlay.ps1','Invoke-NativeBuild.ps1','Get-BuildPhase.ps1','Invoke-DeltaUpload.ps1','Invoke-VerifyPass.ps1','Upload-DistMeta.ps1'){ Invoke-WebRequest -UseBasicParsing "$b/$n" -OutFile "T:\logs\$n" }
-Start-Process powershell -WindowStyle Hidden -ArgumentList '-NoProfile','-ExecutionPolicy','Bypass','-File','T:\logs\Sync-SourceOverlay.ps1','-Run','r12','-BaseUrl',"$b/r12"
+Start-Process powershell -WindowStyle Hidden -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File T:\logs\Sync-SourceOverlay.ps1 -Run r12 -BaseUrl $b/r12"
 Start-Sleep 15
-Start-Process powershell -WindowStyle Hidden -ArgumentList '-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File','T:\logs\Invoke-NativeBuild.ps1','-Run','r12','-SourceCommit','<40 hex>','-Reason','client c-186'
+# 注意：-ArgumentList 用一整个字符串；分成数组元素时 Start-Process 不会给含空格的 -Reason 加引号，脚本会在参数绑定阶段失败且不留状态文件
+Start-Process powershell -WindowStyle Hidden -ArgumentList '-NoProfile -NonInteractive -ExecutionPolicy Bypass -File T:\logs\Invoke-NativeBuild.ps1 -Run r12 -SourceCommit <40 hex> -Reason "client c-186"'
 PS
 python3 /dev/shm/xdai-ops/host/qga.py win11-wsl2-builder /dev/shm/kick-r12.ps1
 # 轮询（每 4 分钟）：

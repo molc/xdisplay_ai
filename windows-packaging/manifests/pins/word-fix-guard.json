@@ -1,6 +1,6 @@
 {
- "generatedAtUtc": "2026-11-12T03:12:16.256629Z",
- "purpose": "莫工 Word 16 项闭环所依赖的客户端源码文件与官方运行时资源；打包前任何一项有变化都必须在 .29 重走 Word 项",
+ "generatedAtUtc": "2026-11-12T05:19:45.783698Z",
+ "purpose": "Client source files carrying the Word-feedback fixes (PR #1) and the official runtime resources; any drift means the Word items must be re-verified on .29 before packaging. ASCII only: Windows PowerShell 5.1 reads BOM-less files as CP936.",
  "wordFixTag": "client/c-185",
  "wordFixCommit": "d4a3d2d47a51cd57cc815b6945d3d564a5b6f457",
  "resourceTag": "client/c-184",
@@ -217,7 +217,7 @@
   "data/uat_reports/rc2_bg_removal_verify_20260519/before_after.md": "71099217f77602e6817ed9cca1269d011d7711b4e8fa7764ee8e514256ea2870",
   "data/uat_reports/rc5_sparkline_diagnosis.md": "a6da6caa514d89964c3dfb689010630ba2a1a1aa2a8844710bc1cf97d1a26758",
   "data/uat_reports/rc5_sparkline_trace/.gitkeep": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "doc/Xdisplay使用手册V2.4.4.pdf": "080e4c9b27b1269610b34c87ef81d3cdd20952b4228abe2d7d1d7f4d5009576a",
+  "doc/Xdisplay\u4f7f\u7528\u624b\u518cV2.4.4.pdf": "080e4c9b27b1269610b34c87ef81d3cdd20952b4228abe2d7d1d7f4d5009576a",
   "images/_old/check_press-old.png": "63977594a770da6696346767d14e6324988810ec248e77eb0928a3c4eb3b4156",
   "images/_old/toolbox/Button.png": "379371d6eff86038bc5c45c336c1221bfd0ec58b14ef5119ef6e18cf15cf877e",
   "images/barmenu/comp/animation.png": "ea12c23abe9129b75a1be454e3fd182fc0bd6adbeb5519da52c70c5618d25a73",
