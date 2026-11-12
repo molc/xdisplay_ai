@@ -149,7 +149,7 @@ try {
     foreach ($name in @((Get-PinnedThirdPartyRuntimeFiles).Keys)) {
         $fixtureThirdParty[$name] = @{ Sha256 = $placeholderSha; Bytes = [long]3 }
     }
-    Assert-Equal -Expected 8 -Actual @((Get-PinnedThirdPartyRuntimeFiles).Keys).Count -Message 'Third-party runtime pin table must list Simulator.exe plus the five ffmpeg DLLs, ffmpeg.exe and optipng.exe.'
+    Assert-True -Condition (@((Get-PinnedThirdPartyRuntimeFiles).Keys).Count -eq 8) -Message 'Third-party runtime pin table must list Simulator.exe plus the five ffmpeg DLLs, ffmpeg.exe and optipng.exe.'
     foreach ($name in @((Get-PinnedThirdPartyRuntimeFiles).Keys)) {
         Assert-True -Condition ((Get-RequiredCachedClientReleaseRelativePaths) -contains $name) -Message "Required cached client list must include third-party runtime file $name."
         Assert-True -Condition ([string](Get-PinnedThirdPartyRuntimeFiles)[$name].Sha256 -match '^[0-9A-F]{64}$') -Message "Third-party runtime pin for $name must be a SHA256."
@@ -162,7 +162,7 @@ try {
 
     # Import-closure gate: pure decision plus a real PE parse (the fixtures are not PE images and must be reported as skipped).
     $missingDecision = Get-MissingImportedDlls -ReleaseDir $sourceClient -ExecutableDirectory $sourceClient -ImportedDlls @('KERNEL32.dll', 'api-ms-win-crt-runtime-l1-1-0.dll', 'Qt5Core.dll', 'avcodec-62.dll', 'Qt5NotShipped.dll')
-    Assert-Equal -Expected 'Qt5NotShipped.dll' -Actual ($missingDecision -join ',') -Message 'Import closure must ignore Windows DLLs and shipped DLLs and report only the absent ones.'
+    Assert-True -Condition (($missingDecision -join ',') -eq 'Qt5NotShipped.dll') -Message "Import closure must ignore Windows DLLs and shipped DLLs and report only the absent ones (got: $($missingDecision -join ','))"
     Assert-True -Condition ($null -eq (Get-PeImportedDllNames -Path (Join-Path $sourceClient 'Simulator.exe'))) -Message 'A non-PE placeholder must parse as $null (skipped), not as an empty import list.'
     if ($env:OS -eq 'Windows_NT') {
         $notepad = Join-Path $env:SystemRoot 'System32\notepad.exe'
