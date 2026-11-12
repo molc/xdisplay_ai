@@ -52,7 +52,7 @@
 | 跟线：后端 | s63f 镜像与源码快照 | `manifests/pins/offline-inputs.s63f.json` + 镜像三标签 | 父流程导出后整体换钉 |
 | 冻结：安装器 | `src/scripts/**`、WiX、ci | 本仓提交 + 单测 + .29 两场景 | 只修缺陷 |
 
-打包前的固定动作：`python3 ops/host/word-fix-guard.py --check <要打的客户端提交>`。2026-11-11 对 `int-6001` 顶端 `9e59c066` 的结果：资源 287/287 未动；21 个守卫源码文件里 9 个有改动，其中 7 个 Word 修法新增行全部保留，`src/Helper/dialog_tool_image.cpp`（18/19）与 `src/Helper/image_library_mutation_v1.cpp`（21/25）各缺了几行 c-182/c-183 的修法——打这个提交前必须在 .29 重走 Word 第 8 项（图库），或由合并的 agent 说明这些行是等价重写。
+打包前的固定动作：`python3 ops/host/word-fix-guard.py --check <要打的客户端提交>`。2026-11-12 对 `int-6001` 顶端 `48c8102b` 的结果：资源 287/287 未动；21 个守卫源码文件里 9 个有改动，7 个修法行全在（黄），`dialog_tool_image.cpp` 与 `image_library_mutation_v1.cpp` 经逐行核对是等价/增强重写（owner 参数；c-301 H 修正 c-182 的误删回归），已登记为已评审重写，守卫绿。守卫判定：祖先断裂 / 资源漂移 / 修法行丢失且未评审 → 红；改了但修法行全在 → 黄。
 
 ## 3. 只更新后端时要改什么
 

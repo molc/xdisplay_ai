@@ -17,14 +17,16 @@
 - 截至 11-11，`client/c-185` 与 `client/c-184` 都已是 `origin/codex/int-6001` 顶端（`9e59c066`）的祖先。**合并、rebase、squash、冲突解决时不得丢掉这些提交的行为**；上面这些文件出现冲突，优先保留 Word 修法，并在提交信息里写明。
 - 自检：`git merge-base --is-ancestor client/c-185 <你的分支>` 必须为真；对上面 21 个文件 `git diff client/c-185 <你的分支> -- <文件>` 若有改动，需要对照 Word 项复测。
 
-### 1a. 2026-11-11 对 `int-6001` 顶端（9e59c066）的守卫检查结果
+### 1a. 守卫检查结果（2026-11-12 复核，`int-6001` 顶端 48c8102b）
 
-工具：`xdisplay_ai/windows-packaging/ops/host/word-fix-guard.py --check <提交>`（祖先检查 + 文件哈希 + PR #1 新增行是否仍在）。
+工具：`xdisplay_ai/windows-packaging/ops/host/word-fix-guard.py --check <提交>`（祖先检查 + 文件哈希 + PR #1 新增行是否仍在 + 已评审重写名单）。
 
 - `client/c-185`、`client/c-184` 都是祖先；官方资源 287 个文件 0 漂移。
-- 21 个 Word 修法源码文件里 9 个在合并后有改动：`tc_project.cpp/.h`、`widget_main.cpp/.h`、`widget_panelai.qml`、`browser_image_apply_transaction_v1.cpp`、`service_ai_image_downloader.cpp` 的 Word 修法新增行**全部保留**；
-- **两个文件缺了修法行**：`src/Helper/dialog_tool_image.cpp` 18/19（缺 `if (!TC_Project::GetInstance()->func_save_json_data(temporaryPath, …` 一带，c-183 图库临时文件 QTemporaryFile→QSaveFile）、`src/Helper/image_library_mutation_v1.cpp` 21/25（缺 `observed.digest == operation.publication.digest`、`observed.size == … acceptedBytes`、`const bool ours = (!operation.publishedObjectId.isEmpty()` 一带，c-182 同源校验）。
-- **请合并这两处的 agent 回答**：是等价重写，还是修法被覆盖？在 Windows 上复测 Word 第 8 项（系统图库、背景 PNG 不误报 restore_failed）并把结论写进提交信息；打包侧在拿到答复前不会把这个提交打进包。
+- 21 个 Word 修法源码文件里 9 个在合并后有改动，7 个的修法新增行全部保留（AI 侧改动，守卫记为 CHANGED 提示）。
+- 11-11 报过"缺修法行"的两处，**11-12 逐行核对后确认都不是丢失**，已登记为已评审重写（manifest `acceptedRewrites`，守卫对这两个哈希放行）：
+  - `src/Helper/dialog_tool_image.cpp`：c-183 的 staging 修法完整，只是 `func_save_json_data(temporaryPath, json)` 多了严格线事务的 `mutation.owner()` 参数。
+  - `src/Helper/image_library_mutation_v1.cpp`：严格线 `9fafbdf8`（c-301 H）有意修正 c-182 的"是否本事务文件"判定——objectId 是稳定文件身份，外部原地改写后不变，原判定会在回滚时误删别人改过的新建文件；现改为"已知发布内容时以摘要+大小判定，未知时才退回身份比对"。提交说明：c-182 的权限漂移用例（Word 第 8 项依赖的 Windows 场景）照旧通过、c182 源码钉 3/3 绿、图库相关 30 个测试无新红。
+- 守卫策略：祖先断裂 / 资源漂移 / 修法行丢失且未登记评审 → 红（exit 1）；改了但修法行全在 → 黄（exit 0，重编后抽查相关 Word 项）。登记新的评审重写：改 `ops/host/word-fix-guard.py` 的 `ACCEPTED_REWRITES` 并 `--write`，提交信息写明理由。
 
 ## 2. 必须保持字节一致的运行时资源：`client/c-184`（cc97e3f0 / 7f0a94cf / 3ac674f8）
 

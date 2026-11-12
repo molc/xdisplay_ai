@@ -1,5 +1,5 @@
 {
- "generatedAtUtc": "2026-11-12T05:19:45.783698Z",
+ "generatedAtUtc": "2026-11-12T08:10:09.611036Z",
  "purpose": "Client source files carrying the Word-feedback fixes (PR #1) and the official runtime resources; any drift means the Word items must be re-verified on .29 before packaging. ASCII only: Windows PowerShell 5.1 reads BOM-less files as CP936.",
  "wordFixTag": "client/c-185",
  "wordFixCommit": "d4a3d2d47a51cd57cc815b6945d3d564a5b6f457",
@@ -316,5 +316,21 @@
   "res/pinyin-3500-single.bin": "0e2b2aef43b2693b4ad31db432d93e43c27a873ba5af1971020a950d30a5d5cf",
   "res/pinyin-7000-single.bin": "2c9fee45177754a1776668d479ba7f7558f91ef6ed6dcd7f2a6b8a6684c0f953",
   "res/pinyin.bin": "980a12ca3d1397baf8f4c75e4829114ddaf3f30a251c062dea333d11d41b13a6"
+ },
+ "acceptedRewrites": {
+  "src/Helper/dialog_tool_image.cpp": [
+   {
+    "sha256": "7baac88504554ff31c336d673d33329a9133701812151c231ce02b96fd344959",
+    "reviewedAt": "origin/codex/int-6001 2026-11-12",
+    "reason": "c-183 staging fix intact; func_save_json_data() gained the strict-transaction owner argument (mutation.owner())."
+   }
+  ],
+  "src/Helper/image_library_mutation_v1.cpp": [
+   {
+    "sha256": "cab990d8e3f8fc7d4b47520c497c43c64c485747a2364f705cfc8fb8c5e8fd37",
+    "reviewedAt": "origin/codex/int-6001 2026-11-12",
+    "reason": "c-301 H (9fafbdf8) deliberately refines the c-182 ownership predicate: known published bytes decide, object id only as fallback, so an externally rewritten new file is never erased on rollback; the c-182 Windows permission-drift case (unchanged contents) still rolls back, c182 pins 3/3 green."
+   }
+  ]
  }
 }
