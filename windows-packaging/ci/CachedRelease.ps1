@@ -314,13 +314,15 @@ function Assert-ExecutableImportClosure {
     $failures = @()
     foreach ($exe in $ExecutablePaths) {
         if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { $failures += "$exe does not exist"; continue }
-        $imports = Get-PeImportedDllNames -Path $exe
-        if ($null -eq $imports) {
+        $importsRaw = Get-PeImportedDllNames -Path $exe
+        if ($null -eq $importsRaw) {
             $results += [pscustomobject]@{ executable = $exe; skipped = $true; imports = @(); missing = @() }
             continue
         }
-        $missing = Get-MissingImportedDlls -ReleaseDir $ReleaseDir -ExecutableDirectory (Split-Path -Parent $exe) -ImportedDlls $imports
-        $results += [pscustomobject]@{ executable = $exe; skipped = $false; imports = @($imports); missing = @($missing) }
+        # PowerShell unrolls single-element function results into scalars; keep arrays so .Count is valid under StrictMode
+        $imports = @($importsRaw)
+        $missing = @(Get-MissingImportedDlls -ReleaseDir $ReleaseDir -ExecutableDirectory (Split-Path -Parent $exe) -ImportedDlls $imports)
+        $results += [pscustomobject]@{ executable = $exe; skipped = $false; imports = $imports; missing = $missing }
         if ($missing.Count -gt 0) { $failures += ('{0} imports DLLs that are not in the release tree: {1}' -f (Split-Path -Leaf $exe), ($missing -join ', ')) }
     }
     if ($failures.Count -gt 0) {
