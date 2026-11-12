@@ -36,7 +36,8 @@
    - `tests/Test-S63fPackagingContract.ps1`、`tests/Test-CachedReleasePackaging.ps1` 里引用的常量（跑单测会告诉你哪一行）。
    - `manifests/pins/offline-inputs.s63f.json` / `offline-inputs.0.1.4.json` 若记录了客户端 SHA 也要同步。
 3. 如果官方资源（键盘模板、图片）变了而 `Xdisplay.exe` 没变：升级时工作目录是否同步由**种子指纹**决定，指纹覆盖 `Xdisplay.exe` + 五个 `keypage.json` + `logo_tricolor.png`（`InstallerCorrectness.ps1 Get-WorkspaceFingerprintRelativePaths`）。改了别的资源文件又希望升级覆盖到客户机，就把它加进这个列表并补单测。
-4. 版本号不变时（0.1.4 内多次 rN）无需动 `manifests/bundle.json`；要升到 0.1.5 时改 `bundle.json` 并检查 `tests/Test-InstallerCorrectness.ps1` 末尾对版本的断言。
+4. **第三方运行时**（与 exe 同目录、不在客户端仓里）：`Simulator.exe`、ffmpeg 五个 DLL（`avcodec-62/avformat-62/avutil-60/swresample-6/swscale-9`）、`ffmpeg.exe`、`optipng.exe` 取自官方 `Xdisplay_2.4.4_20261027` 包，SHA256/字节数钉在 `ci/CachedRelease.ps1 Get-PinnedThirdPartyRuntimeFiles`，资格检查时逐个核对；换官方包版本就改这张表。构建期还有"导入闭包"门：`Xdisplay.exe` / `Simulator.exe` / `Converter.exe` 导入的每个非系统 DLL 都必须在树里（r10/r11 漏 ffmpeg 的教训）。
+5. 版本号不变时（0.1.4 内多次 rN）无需动 `manifests/bundle.json`；要升到 0.1.5 时改 `bundle.json` 并检查 `tests/Test-InstallerCorrectness.ps1` 末尾对版本的断言。
 
 ## 3. 只更新后端时要改什么
 

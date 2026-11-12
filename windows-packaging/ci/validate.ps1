@@ -140,7 +140,14 @@ if ($RequirePayloads) {
         'res/pinyin.bin',
         'doc/Xdisplay使用手册V2.4.4.pdf',
         'qrcode_about.jpg',
-        'Simulator.exe'
+        'Simulator.exe',
+        'avcodec-62.dll',
+        'avformat-62.dll',
+        'avutil-60.dll',
+        'swresample-6.dll',
+        'swscale-9.dll',
+        'ffmpeg.exe',
+        'optipng.exe'
     )) {
         if (-not (Test-ClientReleaseRelativePath -ClientReleaseDir $inputLayout.ClientReleaseDir -RelativePath $requiredClientRelativePath)) {
             throw "客户端发布目录缺少必需文件：$requiredClientRelativePath"

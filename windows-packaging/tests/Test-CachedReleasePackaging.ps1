@@ -107,7 +107,14 @@ try {
         'res/pinyin.bin',
         'doc/Xdisplay使用手册V2.4.4.pdf',
         'qrcode_about.jpg',
-        'Simulator.exe'
+        'Simulator.exe',
+        'avcodec-62.dll',
+        'avformat-62.dll',
+        'avutil-60.dll',
+        'swresample-6.dll',
+        'swscale-9.dll',
+        'ffmpeg.exe',
+        'optipng.exe'
     )) {
         Write-FixtureBytes -Path (Join-Path $sourceClient $relative) -Bytes ([byte[]](1, 2, 3))
         Write-FixtureBytes -Path (Join-Path $oldInputsClient $relative) -Bytes ([byte[]](9, 9, 9))
@@ -136,6 +143,38 @@ try {
     }
     Assert-True -Condition $wrongRejected -Message 'A stale inputs/client Xdisplay.exe must fail the catalogwrite pin.'
 
+    # The fixture's third-party runtime files are the (1,2,3) placeholders; pin them by their real fixture identity.
+    $fixtureThirdParty = [ordered]@{}
+    $placeholderSha = (Get-FileHash -Path (Join-Path $sourceClient 'avcodec-62.dll') -Algorithm SHA256).Hash
+    foreach ($name in @((Get-PinnedThirdPartyRuntimeFiles).Keys)) {
+        $fixtureThirdParty[$name] = @{ Sha256 = $placeholderSha; Bytes = [long]3 }
+    }
+    Assert-Equal -Expected 8 -Actual @((Get-PinnedThirdPartyRuntimeFiles).Keys).Count -Message 'Third-party runtime pin table must list Simulator.exe plus the five ffmpeg DLLs, ffmpeg.exe and optipng.exe.'
+    foreach ($name in @((Get-PinnedThirdPartyRuntimeFiles).Keys)) {
+        Assert-True -Condition ((Get-RequiredCachedClientReleaseRelativePaths) -contains $name) -Message "Required cached client list must include third-party runtime file $name."
+        Assert-True -Condition ([string](Get-PinnedThirdPartyRuntimeFiles)[$name].Sha256 -match '^[0-9A-F]{64}$') -Message "Third-party runtime pin for $name must be a SHA256."
+    }
+    $wrongThirdParty = [ordered]@{}; foreach ($k in $fixtureThirdParty.Keys) { $wrongThirdParty[$k] = $fixtureThirdParty[$k] }
+    $wrongThirdParty['avcodec-62.dll'] = @{ Sha256 = ('0' * 64); Bytes = [long]3 }
+    $thirdPartyRejected = $false
+    try { Assert-ThirdPartyRuntimeIdentity -ClientReleaseDir $sourceClient -Expected $wrongThirdParty | Out-Null } catch { $thirdPartyRejected = $_.Exception.Message -match 'avcodec-62.dll' }
+    Assert-True -Condition $thirdPartyRejected -Message 'A third-party runtime file with the wrong SHA256 must fail qualification.'
+
+    # Import-closure gate: pure decision plus a real PE parse (the fixtures are not PE images and must be reported as skipped).
+    $missingDecision = Get-MissingImportedDlls -ReleaseDir $sourceClient -ExecutableDirectory $sourceClient -ImportedDlls @('KERNEL32.dll', 'api-ms-win-crt-runtime-l1-1-0.dll', 'Qt5Core.dll', 'avcodec-62.dll', 'Qt5NotShipped.dll')
+    Assert-Equal -Expected 'Qt5NotShipped.dll' -Actual ($missingDecision -join ',') -Message 'Import closure must ignore Windows DLLs and shipped DLLs and report only the absent ones.'
+    Assert-True -Condition ($null -eq (Get-PeImportedDllNames -Path (Join-Path $sourceClient 'Simulator.exe'))) -Message 'A non-PE placeholder must parse as $null (skipped), not as an empty import list.'
+    if ($env:OS -eq 'Windows_NT') {
+        $notepad = Join-Path $env:SystemRoot 'System32\notepad.exe'
+        if (Test-Path -LiteralPath $notepad) {
+            $notepadImports = @(Get-PeImportedDllNames -Path $notepad)
+            Assert-True -Condition (@($notepadImports | Where-Object { $_ -match '^(KERNEL32|api-ms-win)' }).Count -gt 0) -Message 'PE import parser must read notepad.exe imports (KERNEL32 / api-ms-win-*).'
+        }
+    }
+    $closureRejected = $false
+    try { Get-MissingImportedDlls -ReleaseDir $sourceClient -ExecutableDirectory $sourceClient -ImportedDlls @('avcodec-62.dll') | Out-Null; $closureRejected = $true } catch { $closureRejected = $false }
+    Assert-True -Condition $closureRejected -Message 'Shipped ffmpeg DLL must satisfy the import closure.'
+
     $destination = Join-Path $testRoot 'qualified-client'
     $qualified = New-QualifiedCachedClientRelease `
         -ClientReleaseDir $sourceClient `
@@ -144,7 +183,8 @@ try {
         -ExpectedClientSha256 $clientShaText `
         -ExpectedClientBytes ([long]$clientBytes.Length) `
         -ExpectedConverterSha256 $converterShaText `
-        -ExpectedConverterBytes ([long]$converterBytes.Length)
+        -ExpectedConverterBytes ([long]$converterBytes.Length) `
+        -ExpectedThirdPartyRuntime $fixtureThirdParty
 
     Assert-True -Condition (Test-Path -LiteralPath (Join-Path $destination 'Xdisplay.exe')) -Message 'Qualified tree must contain Xdisplay.exe.'
     $converterInQualified = @(Get-ChildItem -LiteralPath $destination -Filter 'Converter.exe' -Recurse -File)

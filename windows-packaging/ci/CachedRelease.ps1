@@ -45,7 +45,16 @@ function Get-RequiredCachedClientReleaseRelativePaths {
         'res/pinyin.bin',
         'doc/Xdisplay使用手册V2.4.4.pdf',
         'qrcode_about.jpg',
-        'Simulator.exe'
+        'Simulator.exe',
+        # Simulator.exe hard-imports the ffmpeg runtime; Converter/compile tooling shells out to ffmpeg.exe / optipng.exe.
+        # All seven are third-party files from the official Xdisplay_2.4.4_20261027 payload, pinned in Get-PinnedThirdPartyRuntimeFiles.
+        'avcodec-62.dll',
+        'avformat-62.dll',
+        'avutil-60.dll',
+        'swresample-6.dll',
+        'swscale-9.dll',
+        'ffmpeg.exe',
+        'optipng.exe'
     )
 }
 
@@ -148,6 +157,178 @@ function Find-ConverterExecutable {
     throw "ConverterReleaseDir does not contain Converter.exe: $ConverterReleaseDir"
 }
 
+function Get-PinnedThirdPartyRuntimeFiles {
+    # Third-party runtime shipped next to Xdisplay.exe, taken byte-for-byte from the official Xdisplay_2.4.4_20261027 payload
+    # (architect ruling 2026-11-10, RUNTIME_RESOURCES.md: not in the client repo, pinned with checksums by the packaging project).
+    # Simulator.exe stays pinned here until the packaging script builds it from simulator/ sources.
+    return [ordered]@{
+        'Simulator.exe'    = @{ Sha256 = '2A9C324C7538701D1CEE9F59465E5FEE6CECEFD36437172CC0F44A541B2F5DA4'; Bytes = [long]13540972;  Origin = 'Xdisplay_2.4.4_20261027 payload' }
+        'avcodec-62.dll'   = @{ Sha256 = '66E2DECF480A1678B9AF9C12B1BEBD2B8872ECBCDA72D6F63F68E896561223F7'; Bytes = [long]106030080; Origin = 'Xdisplay_2.4.4_20261027 payload (ffmpeg runtime imported by Simulator.exe)' }
+        'avformat-62.dll'  = @{ Sha256 = '76FF5415F0A3F68E10690623AC1D166C65FEBFAA2457A887912FBACEF4745652'; Bytes = [long]22030336;  Origin = 'Xdisplay_2.4.4_20261027 payload (ffmpeg runtime imported by Simulator.exe)' }
+        'avutil-60.dll'    = @{ Sha256 = '6579D21877B552BE5B6AB5F2523675115F7300CAE87A079111E3B13A4936FF5B'; Bytes = [long]2946048;   Origin = 'Xdisplay_2.4.4_20261027 payload (ffmpeg runtime imported by Simulator.exe)' }
+        'swresample-6.dll' = @{ Sha256 = 'F6093DF2C73E8F209EA1812C3E2D12BA7D53D6FBFAF52539748B289D575EC8DF'; Bytes = [long]723456;    Origin = 'Xdisplay_2.4.4_20261027 payload (ffmpeg runtime imported by Simulator.exe)' }
+        'swscale-9.dll'    = @{ Sha256 = '9A78D623C9FE280C92D3D52ED33B553C8E491FEBD04B2495B43C6746A916DFBC'; Bytes = [long]2200576;   Origin = 'Xdisplay_2.4.4_20261027 payload (ffmpeg runtime imported by Simulator.exe)' }
+        'ffmpeg.exe'       = @{ Sha256 = '36A59B638B49F8E6C622F4DE7C4C8AAF8442F30138A58882EE2AF3F410E5FD5C'; Bytes = [long]148103168; Origin = 'Xdisplay_2.4.4_20261027 payload (Converter.exe shells out to ./ffmpeg.exe)' }
+        'optipng.exe'      = @{ Sha256 = 'DE908E5BA742C4132F7628087CA40FE8588A681C9992AE136E1CEEE83DCD8139'; Bytes = [long]275456;    Origin = 'Xdisplay_2.4.4_20261027 payload' }
+    }
+}
+
+function Assert-ThirdPartyRuntimeIdentity {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ClientReleaseDir,
+        [Parameter(Mandatory = $true)]
+        $Expected
+    )
+
+    $results = @()
+    foreach ($name in @($Expected.Keys)) {
+        $spec = $Expected[$name]
+        $results += Assert-PinnedFileIdentity `
+            -Path (Join-Path $ClientReleaseDir $name) `
+            -ExpectedSha256 ([string]$spec.Sha256) `
+            -ExpectedBytes ([long]$spec.Bytes) `
+            -DisplayName $name
+    }
+    return @($results)
+}
+
+function Get-SystemImportDllAllowList {
+    # DLLs the Windows loader resolves from System32; everything else an executable imports must ship next to it.
+    return @(
+        'KERNEL32.dll', 'USER32.dll', 'GDI32.dll', 'SHELL32.dll', 'ADVAPI32.dll', 'ole32.dll', 'OLEAUT32.dll', 'msvcrt.dll',
+        'WINMM.dll', 'dbghelp.dll', 'PSAPI.DLL', 'WS2_32.dll', 'SHLWAPI.dll', 'COMDLG32.dll', 'UxTheme.dll', 'dwmapi.dll',
+        'IMM32.dll', 'VERSION.dll', 'WINSPOOL.DRV', 'NETAPI32.dll', 'USERENV.dll', 'MPR.dll', 'WTSAPI32.dll', 'SETUPAPI.dll',
+        'CRYPT32.dll', 'bcrypt.dll', 'ncrypt.dll', 'ntdll.dll', 'COMCTL32.dll', 'IPHLPAPI.DLL', 'wintrust.dll', 'd3d9.dll',
+        'd3d11.dll', 'd3d12.dll', 'dxgi.dll', 'opengl32.dll', 'glu32.dll', 'RPCRT4.dll', 'SECUR32.dll', 'WINHTTP.dll',
+        'WININET.dll', 'urlmon.dll', 'ODBC32.dll', 'powrprof.dll', 'Normaliz.dll', 'DNSAPI.dll', 'AUTHZ.dll', 'msimg32.dll',
+        'propsys.dll', 'cfgmgr32.dll', 'hid.dll', 'avrt.dll', 'dsound.dll', 'mf.dll', 'mfplat.dll', 'mfreadwrite.dll',
+        'evr.dll', 'dxva2.dll', 'strmiids.dll', 'wmcodecdspuuid.dll', 'bcryptprimitives.dll', 'KERNELBASE.dll'
+    )
+}
+
+function Test-SystemImportDll {
+    param([Parameter(Mandatory = $true)][string]$Name)
+    if ($Name -match '^(api-ms-win-|ext-ms-)') { return $true }
+    foreach ($allowed in @(Get-SystemImportDllAllowList)) {
+        if ([string]::Equals($allowed, $Name, [StringComparison]::OrdinalIgnoreCase)) { return $true }
+    }
+    return $false
+}
+
+function Get-PeImportedDllNames {
+    <# Returns the DLL names in a PE file's import directory, or $null when the file is not a PE image.
+       Reads with seeks (Xdisplay.exe is 675 MB; never load it into memory). #>
+    param([Parameter(Mandatory = $true)][string]$Path)
+
+    $fs = [System.IO.File]::Open($Path, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read)
+    try {
+        $br = New-Object System.IO.BinaryReader($fs)
+        if ($fs.Length -lt 0x40) { return $null }
+        $fs.Position = 0
+        if ($br.ReadUInt16() -ne 0x5A4D) { return $null }
+        $fs.Position = 0x3C
+        $peOffset = [long]$br.ReadUInt32()
+        if ($peOffset + 24 -gt $fs.Length) { return $null }
+        $fs.Position = $peOffset
+        if ($br.ReadUInt32() -ne 0x00004550) { return $null }
+        $fs.Position = $peOffset + 6
+        $numberOfSections = [int]$br.ReadUInt16()
+        $fs.Position = $peOffset + 20
+        $sizeOfOptionalHeader = [int]$br.ReadUInt16()
+        $optionalHeaderOffset = $peOffset + 24
+        $fs.Position = $optionalHeaderOffset
+        $magic = $br.ReadUInt16()
+        $dataDirectoryOffset = $optionalHeaderOffset + $(if ($magic -eq 0x20B) { 112 } else { 96 })
+        $fs.Position = $dataDirectoryOffset + 8
+        $importRva = [long]$br.ReadUInt32()
+        if ($importRva -eq 0) { return @() }
+
+        $sections = New-Object System.Collections.Generic.List[object]
+        $sectionTableOffset = $optionalHeaderOffset + $sizeOfOptionalHeader
+        for ($i = 0; $i -lt $numberOfSections; $i++) {
+            $fs.Position = $sectionTableOffset + 40 * $i + 8
+            $virtualSize = [long]$br.ReadUInt32()
+            $virtualAddress = [long]$br.ReadUInt32()
+            $sizeOfRawData = [long]$br.ReadUInt32()
+            $pointerToRawData = [long]$br.ReadUInt32()
+            $sections.Add([pscustomobject]@{ VA = $virtualAddress; Size = [Math]::Max($virtualSize, $sizeOfRawData); Raw = $pointerToRawData })
+        }
+        $resolve = {
+            param([long]$rva)
+            foreach ($section in $sections) {
+                if ($rva -ge $section.VA -and $rva -lt ($section.VA + $section.Size)) { return [long]($section.Raw + ($rva - $section.VA)) }
+            }
+            return [long](-1)
+        }
+
+        $names = New-Object System.Collections.Generic.List[string]
+        $descriptorOffset = & $resolve $importRva
+        if ($descriptorOffset -lt 0) { return @() }
+        for ($i = 0; $i -lt 4096; $i++) {
+            $fs.Position = $descriptorOffset + 20 * $i + 12
+            $nameRva = [long]$br.ReadUInt32()
+            if ($nameRva -eq 0) { break }
+            $nameOffset = & $resolve $nameRva
+            if ($nameOffset -lt 0) { break }
+            $fs.Position = $nameOffset
+            $builder = New-Object System.Text.StringBuilder
+            while ($true) {
+                $b = $fs.ReadByte()
+                if ($b -le 0 -or $builder.Length -ge 260) { break }
+                [void]$builder.Append([char]$b)
+            }
+            $names.Add($builder.ToString())
+        }
+        return @($names)
+    }
+    finally {
+        $fs.Dispose()
+    }
+}
+
+function Get-MissingImportedDlls {
+    # Pure decision: which imported DLLs are neither Windows-provided nor present next to the executable / at the tree root.
+    param(
+        [Parameter(Mandatory = $true)][string]$ReleaseDir,
+        [Parameter(Mandatory = $true)][string]$ExecutableDirectory,
+        [AllowEmptyCollection()][string[]]$ImportedDlls = @()
+    )
+    $missing = @()
+    foreach ($dll in @($ImportedDlls)) {
+        if ([string]::IsNullOrWhiteSpace($dll) -or (Test-SystemImportDll -Name $dll)) { continue }
+        if ((Test-Path -LiteralPath (Join-Path $ExecutableDirectory $dll) -PathType Leaf) -or (Test-Path -LiteralPath (Join-Path $ReleaseDir $dll) -PathType Leaf)) { continue }
+        $missing += $dll
+    }
+    return @($missing)
+}
+
+function Assert-ExecutableImportClosure {
+    <# Build gate: every DLL a shipped executable imports must be in the tree. This is the check that would have caught
+       Simulator.exe shipping without avcodec-62.dll (0.1.4 r10/r11). Non-PE files (test fixtures) are reported as skipped. #>
+    param(
+        [Parameter(Mandatory = $true)][string]$ReleaseDir,
+        [Parameter(Mandatory = $true)][string[]]$ExecutablePaths
+    )
+    $results = @()
+    $failures = @()
+    foreach ($exe in $ExecutablePaths) {
+        if (-not (Test-Path -LiteralPath $exe -PathType Leaf)) { $failures += "$exe does not exist"; continue }
+        $imports = Get-PeImportedDllNames -Path $exe
+        if ($null -eq $imports) {
+            $results += [pscustomobject]@{ executable = $exe; skipped = $true; imports = @(); missing = @() }
+            continue
+        }
+        $missing = Get-MissingImportedDlls -ReleaseDir $ReleaseDir -ExecutableDirectory (Split-Path -Parent $exe) -ImportedDlls $imports
+        $results += [pscustomobject]@{ executable = $exe; skipped = $false; imports = @($imports); missing = @($missing) }
+        if ($missing.Count -gt 0) { $failures += ('{0} imports DLLs that are not in the release tree: {1}' -f (Split-Path -Leaf $exe), ($missing -join ', ')) }
+    }
+    if ($failures.Count -gt 0) {
+        throw ('Executable import closure failed. ' + ($failures -join ' | ') + '. Ship the third-party runtime next to the executable (see Get-PinnedThirdPartyRuntimeFiles).')
+    }
+    return @($results)
+}
+
 function Assert-CachedClientReleaseTree {
     param(
         [Parameter(Mandatory = $true)]
@@ -176,7 +357,8 @@ function New-QualifiedCachedClientRelease {
         [string]$ExpectedClientSha256 = (Get-PinnedCatalogwriteClientSha256),
         [long]$ExpectedClientBytes = (Get-PinnedCatalogwriteClientBytes),
         [string]$ExpectedConverterSha256 = (Get-PinnedConverterSha256),
-        [long]$ExpectedConverterBytes = (Get-PinnedConverterBytes)
+        [long]$ExpectedConverterBytes = (Get-PinnedConverterBytes),
+        $ExpectedThirdPartyRuntime = (Get-PinnedThirdPartyRuntimeFiles)
     )
 
     if ([string]::IsNullOrWhiteSpace($ClientReleaseDir) -or -not (Test-Path -LiteralPath $ClientReleaseDir -PathType Container)) {
@@ -197,6 +379,7 @@ function New-QualifiedCachedClientRelease {
         -ExpectedBytes $ExpectedConverterBytes `
         -DisplayName 'Converter.exe'
     Assert-CachedClientReleaseTree -ClientReleaseDir $sourceClient
+    $thirdPartyRuntime = Assert-ThirdPartyRuntimeIdentity -ClientReleaseDir $sourceClient -Expected $ExpectedThirdPartyRuntime
 
     $destinationPath = [System.IO.Path]::GetFullPath($Destination)
     if ([string]::Equals($destinationPath.TrimEnd('\', '/'), $sourceClient.TrimEnd('\', '/'), [StringComparison]::OrdinalIgnoreCase)) {
@@ -236,8 +419,11 @@ function New-QualifiedCachedClientRelease {
             -DisplayName 'Converter.exe' | Out-Null
     }
     Assert-CachedClientReleaseTree -ClientReleaseDir $destinationPath
+    $importClosure = Assert-ExecutableImportClosure -ReleaseDir $destinationPath -ExecutablePaths (@($qualifiedClientExe, (Join-Path $destinationPath 'Simulator.exe')) + @($qualifiedConverters | ForEach-Object { $_.FullName }))
 
     return [pscustomobject]@{
+        thirdPartyRuntime = @($thirdPartyRuntime | ForEach-Object { [pscustomobject]@{ name = $_.displayName; sizeBytes = $_.sizeBytes; sha256 = $_.sha256 } })
+        importClosure = @($importClosure | ForEach-Object { [pscustomobject]@{ executable = (Split-Path -Leaf $_.executable); skipped = $_.skipped; imports = @($_.imports) } })
         destination = $destinationPath
         client = $clientIdentity
         converter = $converterIdentity
@@ -637,6 +823,8 @@ function Export-CachedReleasePins {
         }
         client = $QualifiedRelease.client
         converter = $QualifiedRelease.converter
+        thirdPartyRuntime = $QualifiedRelease.thirdPartyRuntime
+        importClosure = $QualifiedRelease.importClosure
         clientProvenance = [pscustomobject]@{
             policy = 'retain-word-fix-superset'
             notAuthorC180MailBytes = $true
