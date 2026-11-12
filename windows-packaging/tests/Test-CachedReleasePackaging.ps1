@@ -207,7 +207,8 @@ try {
         -ExpectedClientSha256 $clientShaText `
         -ExpectedClientBytes ([long]$clientBytes.Length) `
         -ExpectedConverterSha256 $converterShaText `
-        -ExpectedConverterBytes ([long]$converterBytes.Length) | Out-Null
+        -ExpectedConverterBytes ([long]$converterBytes.Length) `
+        -ExpectedThirdPartyRuntime $fixtureThirdParty | Out-Null
     Assert-True `
         -Condition ((Get-Item -LiteralPath (Join-Path $sourceClient 'Xdisplay.exe')).LastWriteTimeUtc -eq $sourceTouched) `
         -Message 'Re-qualifying must still leave the source client bytes untouched.'
