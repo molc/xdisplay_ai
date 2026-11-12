@@ -1,0 +1,33 @@
+{
+  "generatedAtUtc": "2026-11-12T06:50:43.445896Z",
+  "machine": "DESKTOP-LLRKFC6 = 172.19.103.29, Dell Vostro 3890, Windows 11 IoT Enterprise LTSC 26100 (physical)",
+  "candidate": {
+    "bundle": "XDisplayAI-0.1.4-dev.exe",
+    "bundleSha256": "6593a0a378ed808a5fdf26ba217b16487932e929d7656bab1a04a50846d5bccf",
+    "packagingCommit": "33d00305 (r10 + installer runtime fingerprint identical to the ci image label, so a healthy s63f stack takes the health-only skip)",
+    "appImageTarSha256": "514ACD60DF0D7D6FAB00684116F9F863A6A58F161A4C9BAF73CFAD76E0B83A24"
+  },
+  "freshOfflineRebootResume": {
+    "status": "pass",
+    "localBackend": true,
+    "containers": 4,
+    "appPort": 18001,
+    "origin": "local",
+    "note": "Fresh install after full wipe of product state on .29 (Docker Desktop/WSL/VC already present, so no prerequisite reboot was needed). The reboot→resume branch (XDisplayAI-ResumeSetup AtLogOn task, cold PostgreSQL migration wait, app recreate) was exercised on the same machine earlier today by the r6 (b6cd88cd) upgrade run: postresume-r6-state.json, 24/25 gates, the single failing gate (promptContract) is what 08738ccb fixes and is re-verified by the r12 upgrade gates.",
+    "evidence": "fresh-r12-state.json, fresh-r12-bootstrap.log"
+  },
+  "steadyStateHealthOnlySkip": {
+    "status": "pass",
+    "seconds": 3.1,
+    "note": "A second Bootstrap-InstalledPayload.ps1 run on the healthy upgraded stack (what the desktop shortcut does) must take the health-only skip; r10 re-imported the images every time (195 s) because the installer fingerprint never equalled the image label (fixed in 33d00305).",
+    "evidence": "steady-r12.json"
+  },
+  "oldVersionPreservation": {
+    "status": "pass",
+    "configSentinel": true,
+    "projects": true,
+    "dbVolumes": true,
+    "note": "0.1.3 (delivered 2026-11-08 package) → 0.1.4 r12 on .29; MSI exit 0, no reboot requested (pending-reboot check narrowed in 58f4c5cf), backend refreshed in place; .env seeded into the s63f prompt contract; sentinel config lines, projects and the postgres volume preserved.",
+    "evidence": "upgrade-r12-state.json, upgrade-r12-bootstrap.log"
+  }
+}

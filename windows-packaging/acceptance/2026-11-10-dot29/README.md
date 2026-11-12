@@ -1,6 +1,8 @@
 # 0.1.4 (s63f) 在 .29 上的安装 / 升级验收记录
 
-## 结论（2026-11-10 23:15）
+## 结论（2026-11-10 23:15；2026-11-11 15:30 更新）
+
+> **2026-11-11 更新：放行版本改为 r12**（包装源码 `33d00305` + `Invoke-VerifyPass` 小修 `0f…`，安装包 `XDisplayAI-0.1.4-dev.exe` SHA256 `6593a0a378ed808a5fdf26ba217b16487932e929d7656bab1a04a50846d5bccf`），交付目录 `~/Downloads/XDisplayAI-0.1.4-dev-s63f-r12/`（21 个文件，2.0 GB，本机逐文件核对 20/20 与清单一致，`release-status.json` = `pass`）。相对 r11：修了"编译预览"起不来模拟器（补齐 ffmpeg 运行时并钉死）、新增导入闭包门与官方资源冻结门；两场景 19/19 + 17/17 重新通过，二次启动 3.1 s，模拟器在全新安装上实际跑起（截图）。r11 目录保留作对照，不要再发。详见下文"2026-11-11 追加：r12"。
 
 **放行版本：r11，包装源码 `bf74d56d`（builder 上构建时的提交；推送前把本地 main 变基到 `origin/main` 后，同一改动的提交号为 `d203e24`，打包脚本内容相同），安装包 `XDisplayAI-0.1.4-dev.exe` SHA256 `df92a8e4e8c654bb32facf92d72b2bfe638e36a4eab07409238a109b4bdc6e86`。** 交付目录 `~/Downloads/XDisplayAI-0.1.4-dev-s63f/`（20 个文件，2,022,868,870 B：bundle、MSI、10 个 cab、Docker Desktop / VC / WSL 三个前置、4 个 json 清单；本机逐文件与 `artifacts-dev.json` 核对 19/19 一致，`release-status.json` = `pass`，`NOT_READY.txt` 已由 builder 的放行门自己移除）。
 
@@ -18,6 +20,13 @@
 
 日期：2026-11-10。目标机：`172.19.103.29` = DESKTOP-LLRKFC6，Dell Vostro 3890 物理机，Windows 11 IoT 企业版 LTSC 26100，静态 IP，无自动登录。
 候选包：`XDisplayAI-0.1.4-dev.exe` SHA256 `DA39C672…`，由 `win11-wsl2-builder` 上 `T:\work\014-s63f-48f75880-r5\dist\dev` 构建（打包提交 48f75880，与 `main` b6f21509 树完全一致；app 镜像 tar `514ACD60…`，git-sha dd6ab3d50，runtime-fingerprint 5f1b3896…）。
+
+## 2026-11-11 追加：r12（模拟器修复 + 冻结门）
+
+- **起因**：用户在 .29 的 r11 上点"编译预览"，模拟器起不来。复现：`workspace\client\Simulator.exe` 直接运行弹"由于找不到 avcodec-62.dll，无法继续执行代码"。根因：官方 2.4.4 的 `Simulator.exe` 硬导入 ffmpeg 五个 DLL（`avcodec-62 / avformat-62 / avutil-60 / swresample-6 / swscale-9`），缓存客户端树是按 `Xdisplay.exe` 用 windeployqt 部署的，没有这些 DLL；`Converter.exe` 还引用 `./ffmpeg.exe`。r10 加 `Simulator.exe` 时没带依赖闭包（我的疏漏）。
+- **修复（`7b8527f`…`33d0030`）**：七个第三方文件（五个 DLL + `ffmpeg.exe` + `optipng.exe`）从官方包入树并钉 SHA256/字节数（`Get-PinnedThirdPartyRuntimeFiles`，连同 `Simulator.exe` 共 8 项）；新增构建门 `Assert-ExecutableImportClosure`（解析 PE 导入表，非系统 DLL 必须在树里）；新增冻结门 `Assert-FrozenClientResources`（`manifests/pins/word-fix-guard.json` 的 287 个官方资源 SHA256，差一字节构建失败）；控制端 `ops/host/word-fix-guard.py --check <客户端提交>` 守 PR #1 的 21 个源码文件。对真实输入树实跑：资源 278/278 一致（9 个清单项本就不发），第三方 8 项一致，三个 exe 导入闭包成立。
+- **r12 构建**：`33d00305`，33.6 分钟（第一次启动因 `Start-Process -ArgumentList` 对含空格的 `-Reason` 不加引号而在参数绑定阶段失败、未留状态文件；第二次因导入闭包门在 StrictMode 下单元素展开 `.Count` 报错 34 秒失败；两者都修了）。安装包 SHA256 `6593a0a378ed808a5fdf26ba217b16487932e929d7656bab1a04a50846d5bccf`，21 个文件（客户端 cab 多出 `xdp9.cab`）。
+- **.29 验收**：下载校验 21/21。场景二（14:28–14:40）：第一次启动被 r11 客户端的"是否保存工程?"挡住（用户留着 new-2 工程未保存；已替用户保存后关闭）；第二次：前置卸载 24 s、移除 4 个旧容器、清 20 条待删除项、0.1.3 基线 248 s、升级到 r12 265 s、exit 0、不要求重启，**19/19 门通过**（`a001031b…` → `f65e76a3…`，pg 卷/工程/哨兵/合同全对），二次启动 **3.1 s** 跳过。场景一（14:41–14:50）：全清 WIPE_CLEAN → 全新安装 281.5 s、exit 0、健康即通过，**17/17 门通过**；随后在客户端新建 800×480 工程点"编译预览"：编译完成后 `Simulator.exe`（PID 8208，窗口标题 Simulator，"编译预览"界面含页面 0 / 数字键盘 / 全键盘与指令显示区）正常运行，工作目录里五个 ffmpeg DLL、`ffmpeg.exe`、`optipng.exe` 齐全（截图 `evidence/screens/simcheck-window.png`，对照修复前 `s29-sim.png` 的"找不到 avcodec-62.dll"）；再跑一次 bootstrap **3.1 s** 跳过。证据：`evidence/r12/`。
 
 ## 场景二：已安装机器直接升级（0.1.3 → 0.1.4）
 

@@ -1,0 +1,16 @@
+﻿{
+    "at":  "2026-11-12T14:48:31.4857669+08:00",
+    "dlls":  [
+                 "avcodec-62.dll=106030080",
+                 "avformat-62.dll=22030336",
+                 "avutil-60.dll=2946048",
+                 "swresample-6.dll=723456",
+                 "swscale-9.dll=2200576",
+                 "ffmpeg.exe=148103168",
+                 "optipng.exe=275456",
+                 "Simulator.exe=13540972"
+             ],
+    "simProcsBefore":  [
+                           "8208 title=[Simulator]"
+                       ]
+}

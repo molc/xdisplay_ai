@@ -1,0 +1,117 @@
+﻿{
+    "stage":  "STAGED_VERIFIED",
+    "at":  "2026-11-12T14:25:42.2385018+08:00",
+    "dest":  "C:\\Users\\Public\\XDisplayAI-014-candidate\\pkg-r12",
+    "files":  [
+                  {
+                      "ok":  true,
+                      "name":  "cached-release-pins.json",
+                      "bytes":  9051
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "Docker Desktop Installer.exe",
+                      "bytes":  628979632
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "input-pins.json",
+                      "bytes":  3274
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "NOT_READY.txt",
+                      "bytes":  225
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "release-status.json",
+                      "bytes":  459
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "VC_redist.x64.exe",
+                      "bytes":  18731856
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "wsl_update_x64.msi",
+                      "bytes":  258990080
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "XDisplayAI-0.1.4-dev.exe",
+                      "bytes":  1073260
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "XDisplayAI-0.1.4-dev.msi",
+                      "bytes":  1389826
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "XDisplayAI-0.1.4-dev.wixpdb",
+                      "bytes":  15975
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "xdp1.cab",
+                      "bytes":  49348923
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "xdp2.cab",
+                      "bytes":  209715200
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "xdp2a.cab",
+                      "bytes":  209715200
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "xdp2b.cab",
+                      "bytes":  140002006
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "xdp3.cab",
+                      "bytes":  121380573
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "xdp4.cab",
+                      "bytes":  62643147
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "xdp5.cab",
+                      "bytes":  145060927
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "xdp6.cab",
+                      "bytes":  45248861
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "xdp7.cab",
+                      "bytes":  88612162
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "xdp8.cab",
+                      "bytes":  90430176
+                  },
+                  {
+                      "ok":  true,
+                      "name":  "xdp9.cab",
+                      "bytes":  50011619
+                  }
+              ],
+    "errors":  [
+
+               ],
+    "exeSha256":  "6593A0A378ED808A5FDF26BA217B16487932E929D7656BAB1A04A50846D5BCCF",
+    "completed":  "2026-11-12T14:25:53.8329041+08:00"
+}
