@@ -11,11 +11,11 @@
   "rules": [
     {
       "id": "provider-token-prefix",
-      "description": "Binary match of sk- plus contiguous [A-Za-z0-9_-] run (stops before @ and other separators)"
+      "description": "Reviewed provider-family superset: sk- (threshold 24), GitHub classic/OAuth/user/server (ghp_/gho_/ghu_/ghs_), fine-grained github_pat_, and AWS AKIA access-key IDs; left-boundary anchored; all occurrences enumerated"
     },
     {
       "id": "private-pem-header",
-      "description": "Exact private PEM header literals only; complete PEM body+footer is never exempt"
+      "description": "Exact private PEM header literals (RSA/EC/OPENSSH/DSA/PKCS8); complete PEM body+footer is never exempt; broader header hits are findings unless exact exception-bound"
     }
   ],
   "failClosedOn": [
@@ -26,14 +26,22 @@
     "failed_policy_evidence_checks",
     "complete_pem_body_or_key",
     "real_provider_token",
-    "scan_error"
+    "scan_error",
+    "directory_enumeration_error",
+    "symlink_or_reparse",
+    "manifest_or_file_count_mismatch",
+    "missing_stale_or_tampered_audited_report",
+    "status_string_or_pins_only_bypass"
   ],
   "explicitlyNotAllowed": [
     "filename_allowlist",
     "library_allowlist",
     "global_pattern_allowlist",
     "backend_companion_snakeoil_complete_pem",
-    "empty_gitleaks_array_as_gate_pass"
+    "empty_gitleaks_array_as_gate_pass",
+    "git_directory_skip",
+    "status_string_packaging_authorization",
+    "overwrite_existing_scan_output"
   ],
   "gitleaks": {
     "independent": true,
@@ -679,5 +687,27 @@
         "Changed file hash or additional occurrence fails closed"
       ]
     }
-  ]
+  ],
+  "providerFamilies": [
+    "sk",
+    "ghp",
+    "gho",
+    "ghu",
+    "ghs",
+    "github_pat",
+    "akia"
+  ],
+  "evidenceBinding": {
+    "requireExactProposedMatch": true,
+    "authoritativeProposedExceptionsRelativePath": "PROPOSED-EXACT-EXCEPTIONS.NOT-ACTIVE.json",
+    "note": "Active exceptions must match reviewed proposal bindings and proof digests exactly; nonempty proof lists alone are insufficient"
+  },
+  "expectedReleaseTree": {
+    "requireBinding": true,
+    "fileCount": 2389,
+    "manifestSha256": "5A2C4A23E9D7689F09C76281764CE929D26D45CAA23A28D7F6C9FA3058264A1B",
+    "bytes": 1536238861,
+    "note": "Real-tree audits must pass --expected-file-count and --tree-manifest matching the frozen complete manifest; synthetic unit tests use unbound mini-policies"
+  },
+  "scannerReportSchema": "xdisplay-ai.release-fullbyte-secret-scan.v2"
 }

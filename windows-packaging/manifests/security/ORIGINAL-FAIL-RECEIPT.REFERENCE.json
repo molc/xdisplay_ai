@@ -9,6 +9,6 @@
   "clientExeSha256": "17876130AC2901E0665434559CBDCFF897BCEA86A532B4A96379C74D4C3B6AF9",
   "reviewEvidence": "Parent REVIEW.md five groups / 18 occurrences; empty gitleaks [] insufficient",
   "policyRelativePath": "manifests/security/release-fullbyte-scan-policy.s63i-hf2b.json",
-  "policySha256AtCommit": "935CA68AF3FA5904BE4B505427346D4BDF6F6A2AAA25FB468A379D1D51D1CC44",
-  "note": "Implementation emits NEW audited scan reports; this reference is metadata only and is not a PASS."
+  "policySha256AtCommit": "B7BB9B49C4E24534B252FD8022C32D2AA713A76532A466777939D2710508508E",
+  "note": "Implementation emits NEW audited scan reports; this reference is metadata only and is not a PASS. Status-string VERIFIED without a hash-bound report must not authorize packaging."
 }

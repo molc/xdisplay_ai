@@ -5,13 +5,16 @@
 .DESCRIPTION
   Full-file binary scan of a Windows final release candidate tree.
   Exact public-constant exceptions come from the active policy JSON.
-  Emits a NEW audited report; does not rewrite the preserved original FAIL receipt.
+  Emits a NEW create-new/exclusive audited report; refuses protected evidence /
+  policy / scanner paths and refuses outputs inside the release root.
   Independent of text-only Invoke-SecretsScan and of gitleaks (empty gitleaks [] is not PASS).
 
 .EXAMPLE
   pwsh -NoProfile -File windows-packaging/ci/Invoke-ReleaseFullByteSecretScan.ps1 `
     -ReleaseRoot 'T:\c186-client-inputs-1898d30c-20261112\final' `
-    -OutputPath 'T:\c186-client-inputs-1898d30c-20261112\audited-fullbyte-scan-report.json'
+    -TreeManifestPath 'T:\c186-client-inputs-1898d30c-20261112\final-tree-manifest.json' `
+    -ExpectedFileCount 2389 `
+    -OutputPath 'T:\c186-client-inputs-1898d30c-20261112\audited-fullbyte-scan-report-NEW.json'
 #>
 param(
     [Parameter(Mandatory = $true)]
@@ -19,6 +22,10 @@ param(
     [string]$PolicyPath = '',
     [Parameter(Mandatory = $true)]
     [string]$OutputPath,
+    [Parameter(Mandatory = $true)]
+    [int]$ExpectedFileCount,
+    [Parameter(Mandatory = $true)]
+    [string]$TreeManifestPath,
     [string]$PythonExe = 'python',
     [switch]$AllowEmptyTree
 )
@@ -41,6 +48,15 @@ if (-not (Test-Path -LiteralPath $PolicyPath -PathType Leaf)) {
 if (-not (Test-Path -LiteralPath $ReleaseRoot -PathType Container)) {
     throw "Release root does not exist: $ReleaseRoot"
 }
+if (-not (Test-Path -LiteralPath $TreeManifestPath -PathType Leaf)) {
+    throw "Tree manifest does not exist: $TreeManifestPath"
+}
+if ($ExpectedFileCount -le 0) {
+    throw 'ExpectedFileCount must be a positive complete tree file count'
+}
+if (Test-Path -LiteralPath $OutputPath) {
+    throw "OutputPath already exists (create-new/exclusive only; refusing overwrite): $OutputPath"
+}
 
 $python = $PythonExe
 if (-not (Get-Command -Name $python -ErrorAction SilentlyContinue)) {
@@ -59,7 +75,9 @@ $argList = @(
     $scanner,
     '--root', $ReleaseRoot,
     '--policy', $PolicyPath,
-    '--output', $OutputPath
+    '--output', $OutputPath,
+    '--expected-file-count', "$ExpectedFileCount",
+    '--tree-manifest', $TreeManifestPath
 )
 if ($AllowEmptyTree) {
     $argList += '--allow-empty-tree'
@@ -68,7 +86,7 @@ if ($AllowEmptyTree) {
 & $python @argList
 $exit = $LASTEXITCODE
 if ($exit -ne 0) {
-    throw "Audited full-byte secret scan FAIL (exit $exit). Report: $OutputPath. Original FAIL receipt must remain preserved; this is a NEW report only."
+    throw "Audited full-byte secret scan FAIL (exit $exit). Report path was create-new only: $OutputPath. Original FAIL receipt must remain preserved."
 }
 
 return [pscustomobject]@{
@@ -76,4 +94,6 @@ return [pscustomobject]@{
     outputPath = $OutputPath
     policyPath = $PolicyPath
     releaseRoot = $ReleaseRoot
+    expectedFileCount = $ExpectedFileCount
+    treeManifestPath = $TreeManifestPath
 }

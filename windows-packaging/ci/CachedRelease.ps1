@@ -28,6 +28,120 @@ function Get-VerifiedAuditedFullByteScanStatus {
     return 'VERIFIED_AUDITED_FULLBYTE'
 }
 
+function Get-AuditedFullByteScanReportSchema {
+    return 'xdisplay-ai.release-fullbyte-secret-scan.v2'
+}
+
+function Get-AuditedFullByteScanPolicyRelativePath {
+    return 'manifests/security/release-fullbyte-scan-policy.s63i-hf2b.json'
+}
+
+function Get-PinnedFrozenTreeFileCount {
+    return 2389
+}
+
+function Get-PinnedFrozenTreeManifestSha256 {
+    return '5A2C4A23E9D7689F09C76281764CE929D26D45CAA23A28D7F6C9FA3058264A1B'
+}
+
+function Assert-AuditedFullByteScanReport {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ReportPath,
+        [Parameter(Mandatory = $true)]
+        [string]$PolicyPath,
+        [Parameter(Mandatory = $true)]
+        [string]$ExpectedClientSha256,
+        [Parameter(Mandatory = $true)]
+        [long]$ExpectedClientBytes,
+        [string]$ReleaseRoot = '',
+        [string]$ExpectedTreeManifestSha256 = (Get-PinnedFrozenTreeManifestSha256),
+        [int]$ExpectedFileCount = (Get-PinnedFrozenTreeFileCount)
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ReportPath) -or -not (Test-Path -LiteralPath $ReportPath -PathType Leaf)) {
+        throw 'Mandatory audited full-byte scan report is missing; status/pin strings alone cannot authorize packaging'
+    }
+    if ([string]::IsNullOrWhiteSpace($PolicyPath) -or -not (Test-Path -LiteralPath $PolicyPath -PathType Leaf)) {
+        throw "Audited full-byte scan policy missing: $PolicyPath"
+    }
+
+    $reportRaw = [System.IO.File]::ReadAllBytes($ReportPath)
+    $reportSha = (Get-FileHash -Path $ReportPath -Algorithm SHA256).Hash.ToUpperInvariant()
+    $report = [System.Text.Encoding]::UTF8.GetString($reportRaw) | ConvertFrom-Json
+    $policySha = (Get-FileHash -Path $PolicyPath -Algorithm SHA256).Hash.ToUpperInvariant()
+    $scannerPath = Join-Path $PSScriptRoot 'release_fullbyte_secret_scan.py'
+    if (-not (Test-Path -LiteralPath $scannerPath -PathType Leaf)) {
+        throw "Audited scanner module missing: $scannerPath"
+    }
+    $scannerSha = (Get-FileHash -Path $scannerPath -Algorithm SHA256).Hash.ToUpperInvariant()
+
+    $problems = New-Object System.Collections.Generic.List[string]
+    $schema = Get-AuditedFullByteScanReportSchema
+    if ([string]$report.schema -ne $schema) {
+        $problems.Add("audited report schema '$($report.schema)' is not $schema")
+    }
+    if (-not [bool]$report.ok -or [string]$report.status -ne 'PASS') {
+        $problems.Add("audited report is not PASS (status=$($report.status); ok=$($report.ok))")
+    }
+    if ([string]$report.policySha256 -ne $policySha) {
+        $problems.Add('audited report policySha256 does not match active policy file hash')
+    }
+    if ([string]$report.scannerModule -ne 'release_fullbyte_secret_scan.py') {
+        $problems.Add('audited report scannerModule mismatch')
+    }
+    if ([string]$report.scannerSha256 -ne $scannerSha) {
+        $problems.Add('audited report scannerSha256 does not match checked-in scanner')
+    }
+    if (@($report.remainingFindings).Count -gt 0) {
+        $problems.Add('audited report still has remainingFindings')
+    }
+    if (@($report.unusedExceptions).Count -gt 0) {
+        $problems.Add('audited report still has unusedExceptions')
+    }
+    if ([int]$report.filesScanned -ne [int]$ExpectedFileCount) {
+        $problems.Add("audited report filesScanned $($report.filesScanned) != expected $ExpectedFileCount")
+    }
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedTreeManifestSha256)) {
+        if ([string]$report.treeManifestSha256 -ne $ExpectedTreeManifestSha256.ToUpperInvariant()) {
+            $problems.Add('audited report treeManifestSha256 does not match pinned frozen tree manifest')
+        }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($ReleaseRoot)) {
+        if (-not (Test-Path -LiteralPath $ReleaseRoot -PathType Container)) {
+            $problems.Add("release root missing for report binding: $ReleaseRoot")
+        }
+        else {
+            $exePath = Join-Path $ReleaseRoot 'Xdisplay.exe'
+            if (-not (Test-Path -LiteralPath $exePath -PathType Leaf)) {
+                $problems.Add('release root missing Xdisplay.exe for audited report binding')
+            }
+            else {
+                $exeItem = Get-Item -LiteralPath $exePath
+                $exeSha = (Get-FileHash -Path $exePath -Algorithm SHA256).Hash.ToUpperInvariant()
+                if ([long]$exeItem.Length -ne [long]$ExpectedClientBytes) {
+                    $problems.Add('release Xdisplay.exe size does not match pinned client bytes')
+                }
+                if ($exeSha -ne (Convert-ToNormalizedSha256 -Value $ExpectedClientSha256)) {
+                    $problems.Add('release Xdisplay.exe SHA256 does not match pinned client hash')
+                }
+            }
+        }
+    }
+    if ($problems.Count -gt 0) {
+        throw ("Audited full-byte scan report rejected ($reportSha). " + ($problems -join '; '))
+    }
+
+    return [pscustomobject]@{
+        ok = $true
+        reportPath = $ReportPath
+        reportSha256 = $reportSha
+        policySha256 = $policySha
+        scannerSha256 = $scannerSha
+        filesScanned = [int]$report.filesScanned
+    }
+}
+
 function Get-PinnedConverterBytes {
     return [long]529920
 }
@@ -48,8 +162,14 @@ function Assert-ApprovedCardPinsReady {
     param(
         [string]$ExpectedClientSha256 = (Get-PinnedCatalogwriteClientSha256),
         [long]$ExpectedClientBytes = (Get-PinnedCatalogwriteClientBytes),
-        [string]$PinManifestPath = '',
-        [string]$ExpectedClientScanStatus = (Get-PinnedClientScanStatus)
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
+        [string]$PinManifestPath,
+        [string]$ExpectedClientScanStatus = (Get-PinnedClientScanStatus),
+        [string]$AuditedFullByteScanReportPath = '',
+        [string]$AuditedFullByteScanPolicyPath = '',
+        [string]$ReleaseRoot = '',
+        [switch]$SkipAuditedReportVerification
     )
 
     $problems = New-Object System.Collections.Generic.List[string]
@@ -63,11 +183,11 @@ function Assert-ApprovedCardPinsReady {
     if (-not [string]::IsNullOrWhiteSpace($ExpectedClientSha256) -and [string]::Equals((Convert-ToNormalizedSha256 -Value $ExpectedClientSha256), $forbiddenMac, [StringComparison]::Ordinal)) {
         $problems.Add('Refusing Mac c186 package SHA as the Windows client pin')
     }
-    $verifiedScan = Get-VerifiedAuditedFullByteScanStatus
-    if (-not [string]::Equals([string]$ExpectedClientScanStatus, $verifiedScan, [StringComparison]::OrdinalIgnoreCase)) {
-        $problems.Add("client audited full-byte secret scan is pending ($ExpectedClientScanStatus); refusing installer while scan is not $verifiedScan")
+
+    if ([string]::IsNullOrWhiteSpace($PinManifestPath) -or -not (Test-Path -LiteralPath $PinManifestPath -PathType Leaf)) {
+        $problems.Add('PinManifestPath is mandatory; omitting it cannot bypass pending image/scan checks')
     }
-    if (-not [string]::IsNullOrWhiteSpace($PinManifestPath) -and (Test-Path -LiteralPath $PinManifestPath -PathType Leaf)) {
+    else {
         $manifest = Get-Content -LiteralPath $PinManifestPath -Raw | ConvertFrom-Json
         if ($null -ne $manifest.backend) {
             $sourceSha = [string]$manifest.backend.sourceArchiveSha256
@@ -93,13 +213,6 @@ function Assert-ApprovedCardPinsReady {
             if ([string]::IsNullOrWhiteSpace($clientSha)) {
                 $problems.Add('client.sha256 is pending in the pin manifest')
             }
-            $scanStatus = [string]$manifest.client.scanStatus
-            if ([string]::IsNullOrWhiteSpace($scanStatus)) {
-                $scanStatus = [string]$manifest.client.clientScanStatus
-            }
-            if (-not [string]::Equals($scanStatus, $verifiedScan, [StringComparison]::OrdinalIgnoreCase)) {
-                $problems.Add("client.scanStatus is pending ($scanStatus); audited full-byte rescan required before pack")
-            }
         }
         if ($null -ne $manifest.files) {
             foreach ($entry in @($manifest.files)) {
@@ -124,6 +237,39 @@ function Assert-ApprovedCardPinsReady {
             }
         }
     }
+
+    # Status strings / pin markers alone never authorize packaging.
+    $verifiedScan = Get-VerifiedAuditedFullByteScanStatus
+    $statusLooksVerified = [string]::Equals([string]$ExpectedClientScanStatus, $verifiedScan, [StringComparison]::OrdinalIgnoreCase)
+    if ($SkipAuditedReportVerification) {
+        $problems.Add('SkipAuditedReportVerification is not allowed for packaging authorization')
+    }
+    if ([string]::IsNullOrWhiteSpace($AuditedFullByteScanReportPath)) {
+        $problems.Add('mandatory AuditedFullByteScanReportPath is missing; VERIFIED status strings/pins cannot authorize packaging')
+    }
+    else {
+        if ([string]::IsNullOrWhiteSpace($AuditedFullByteScanPolicyPath)) {
+            $packagingRoot = Split-Path -Parent $PSScriptRoot
+            $AuditedFullByteScanPolicyPath = Join-Path $packagingRoot (Get-AuditedFullByteScanPolicyRelativePath)
+        }
+        try {
+            Assert-AuditedFullByteScanReport `
+                -ReportPath $AuditedFullByteScanReportPath `
+                -PolicyPath $AuditedFullByteScanPolicyPath `
+                -ExpectedClientSha256 $ExpectedClientSha256 `
+                -ExpectedClientBytes $ExpectedClientBytes `
+                -ReleaseRoot $ReleaseRoot `
+                -ExpectedTreeManifestSha256 (Get-PinnedFrozenTreeManifestSha256) `
+                -ExpectedFileCount (Get-PinnedFrozenTreeFileCount) | Out-Null
+        }
+        catch {
+            $problems.Add([string]$_.Exception.Message)
+            if ($statusLooksVerified) {
+                $problems.Add('VERIFIED status string is insufficient when audited report verification fails')
+            }
+        }
+    }
+
     if ($problems.Count -gt 0) {
         throw ("Approved card pins are incomplete for $(Get-ApprovedBackendCardName) / $(Get-PinnedClientTag). " + ($problems -join '; '))
     }

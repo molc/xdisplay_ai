@@ -124,8 +124,36 @@ catch {
     $pendingPinMessage = [string]$_.Exception.Message
 }
 Assert-True -Condition $pendingPinsRejected -Message 'Assert-ApprovedCardPinsReady must fail closed while audited scan / image hashes are pending.'
-Assert-True -Condition ($pendingPinMessage -match 'PENDING_AUDITED_RESCAN' -or $pendingPinMessage -match 'audited full-byte') -Message 'Gate refusal must cite pending audited full-byte scan.'
+Assert-True -Condition ($pendingPinMessage -match 'mandatory AuditedFullByteScanReportPath' -or $pendingPinMessage -match 'audited full-byte scan report') -Message 'Gate refusal must require a mandatory audited report path.'
 Assert-True -Condition ($pendingPinMessage -match 'PENDING' -and $pendingPinMessage -match 'backend/images') -Message 'Gate refusal must still cite pending image hashes.'
+
+$statusOnlyRejected = $false
+$statusOnlyMessage = ''
+try {
+    Assert-ApprovedCardPinsReady `
+        -PinManifestPath $pinPath `
+        -ExpectedClientScanStatus (Get-VerifiedAuditedFullByteScanStatus) `
+        -AuditedFullByteScanReportPath ''
+}
+catch {
+    $statusOnlyRejected = $true
+    $statusOnlyMessage = [string]$_.Exception.Message
+}
+Assert-True -Condition $statusOnlyRejected -Message 'VERIFIED status string alone must not authorize packaging.'
+Assert-True -Condition ($statusOnlyMessage -match 'mandatory AuditedFullByteScanReportPath' -or $statusOnlyMessage -match 'status strings/pins cannot authorize') -Message 'Status-only bypass must be rejected explicitly.'
+
+$omittedManifestRejected = $false
+$omittedManifestMessage = ''
+try {
+    Assert-ApprovedCardPinsReady -PinManifestPath '' -AuditedFullByteScanReportPath ''
+}
+catch {
+    $omittedManifestRejected = $true
+    $omittedManifestMessage = [string]$_.Exception.Message
+}
+Assert-True -Condition $omittedManifestRejected -Message 'Omitting PinManifestPath must fail closed.'
+Assert-True -Condition ($omittedManifestMessage -match 'PinManifestPath is mandatory') -Message "Empty PinManifestPath must be rejected as mandatory bypass; got: $omittedManifestMessage"
+
 Assert-True -Condition ((Get-PinnedClientTag) -eq 'client/c-186') -Message 'Pinned client tag must be client/c-186.'
 Assert-True -Condition ((Get-PinnedClientGitCommit) -eq '1898d30cc036241f5af5283c4dc9d7f95dbb8887') -Message 'Pinned client commit must be c-186 1898d30c.'
 Assert-True -Condition ((Get-PinnedCatalogwriteClientSha256) -eq '17876130AC2901E0665434559CBDCFF897BCEA86A532B4A96379C74D4C3B6AF9') -Message 'Pinned Windows c186 exe SHA must be filled.'

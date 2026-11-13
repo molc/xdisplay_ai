@@ -17,6 +17,9 @@
     [long]$ExpectedClientBytes = 758893746,
     [long]$ExpectedConverterBytes = 529920,
     [string]$ExpectedInputPinsPath = '',
+    # Mandatory for UseExistingBackendInputs packaging once scan is verified; empty keeps gate closed.
+    [string]$AuditedFullByteScanReportPath = '',
+    [string]$AuditedFullByteScanPolicyPath = '',
     [string]$QmakePath = '',
     [string]$MingwMakePath = '',
     [string]$WinDeployQtPath = '',
@@ -441,7 +444,10 @@ try {
             Assert-ApprovedCardPinsReady `
                 -ExpectedClientSha256 $ExpectedClientSha256 `
                 -ExpectedClientBytes $ExpectedClientBytes `
-                -PinManifestPath $ExpectedInputPinsPath
+                -PinManifestPath $ExpectedInputPinsPath `
+                -AuditedFullByteScanReportPath $AuditedFullByteScanReportPath `
+                -AuditedFullByteScanPolicyPath $AuditedFullByteScanPolicyPath `
+                -ReleaseRoot $ClientReleaseDir
             Assert-ExistingBackendInputs `
                 -InputsRoot (Join-Path $packagingRoot 'inputs') `
                 -PinManifestPath $ExpectedInputPinsPath

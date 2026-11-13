@@ -61,6 +61,9 @@ Assert-True `
     -Condition ($entrypoint -match 'Invoke-SecretsScan' -and $entrypoint -match 'Export-InputPins' -and $entrypoint -match 'Assert-BurnExternalPayloadBindings' -and $entrypoint -match 'Write-ReleaseHold' -and $entrypoint -match 'Assert-WindowsAcceptanceEvidence') `
     -Message 'Cached installer rebuild must keep secretscan, pins, Burn SHA512, NOT_READY, and acceptance gates.'
 Assert-True `
+    -Condition ($entrypoint -match 'AuditedFullByteScanReportPath' -and $entrypoint -match 'Assert-ApprovedCardPinsReady') `
+    -Message 'Cached installer rebuild must pass AuditedFullByteScanReportPath into Assert-ApprovedCardPinsReady.'
+Assert-True `
     -Condition ($entrypoint -match 'XDISPLAYAI_STAGING_ROOT' -or $entrypoint -match 'Set-PackagingWorkLayout') `
     -Message 'WorkRoot/StagingRoot/DistRoot must be applied for child WiX scripts.'
 
