@@ -426,7 +426,7 @@ function Get-ApprovedBackendRevisionFull {
 }
 
 function Get-ApprovedBackendTag {
-    return 'prod/s63i-hf2b'
+    return 'prod/s63i-hf2'
 }
 
 function Get-S63fPackagingGitShaLabelName {
@@ -442,6 +442,8 @@ function Get-S63fPackagingRuntimeFingerprintLabelName {
 }
 
 function Get-OrchestrationAppRuntimeFingerprintPaths {
+    # Card s63i-hf2b at prod/s63i-hf2: Dockerfile/pyproject changed vs s63f and docker/strict-ocr/* is NEW.
+    # Do not invent a fingerprint value; builders compute it via Get-SourceContentFingerprint / Get-PathContentFingerprint.
     return @(
         'Dockerfile',
         'pyproject.toml',
@@ -450,7 +452,11 @@ function Get-OrchestrationAppRuntimeFingerprintPaths {
         'external\xdisplay\bin\xd_render_cli\render_runner.cpp',
         'external\xdisplay\bin\xd_render_cli\render_runner.h',
         'external\xdisplay\bin\xd_render_cli\xd_render_cli.pro',
-        'external\xdisplay\bin\xd_render_cli\Makefile'
+        'external\xdisplay\bin\xd_render_cli\Makefile',
+        'docker\strict-ocr\LICENSE-APACHE-2.0.txt',
+        'docker\strict-ocr\NOTICE.md',
+        'docker\strict-ocr\fetch_models.py',
+        'docker\strict-ocr\model-manifest.json'
     )
 }
 
@@ -655,8 +661,8 @@ function Get-ApprovedXdisplaySubmoduleCommit {
 }
 
 function Get-ApprovedS63fSourceArchiveSha256 {
-    # Compatibility alias name retained. Source archive SHA for s63i-hf2b is pending parent export.
-    return ''
+    # Compatibility alias name retained. Verified sanitized archive for s63i-hf2b / prod/s63i-hf2.
+    return '68B6E331A6942A9CBDE6FDDFA7579E1AD8227B57C1D05E0D6C724F32A8317278'
 }
 
 function Test-ApprovedSourceArchiveSha256Ready {

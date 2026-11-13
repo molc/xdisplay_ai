@@ -1,6 +1,6 @@
 {
   "kind": "s63i-hf2b-offline-backend-export-metadata",
-  "status": "PACKAGING_SOURCE_ONLY_PENDING_HASHES",
+  "status": "SOURCE_ARCHIVE_VERIFIED_IMAGES_AND_CLIENT_PENDING",
   "notACodeChange": true,
   "notADeploy": true,
   "notBuilt": true,
@@ -19,7 +19,7 @@
   "forbiddenMacClientNote": "Mac c186 package bytes only; never pin as Windows Xdisplay.exe.",
   "source": {
     "repo": "https://github.com/molc/ai_orchestration",
-    "tag": "prod/s63i-hf2b",
+    "tag": "prod/s63i-hf2",
     "authorCard": "s63i-hf2b",
     "fullCommit": "623b072320d2e8c68059ec5e7e33958267203a9c",
     "authorCardPrefix": "623b07232",
@@ -27,23 +27,27 @@
       "path": "external/xdisplay",
       "url": "https://github.com/molc/xdisplay.git",
       "commit": "0c657ad3eac7ece814206bd40fea807ec6568f81",
-      "note": "Retained from verified s63f pin until parent confirms gitlink at 623b07232; do not invent a different submodule SHA."
-    }
+      "note": "Confirmed gitlink at 623b07232."
+    },
+    "tagNote": "Verified Git tag is prod/s63i-hf2. s63i-hf2b is the test-card name only; do not invent prod/s63i-hf2b."
   },
   "archive": {
-    "relativePath": "ai_orchestration-s63i-hf2b-623b07232.tar.gz",
-    "sha256": null,
-    "sizeBytes": null,
-    "status": "PENDING_PARENT_SANITIZED_EXPORT",
+    "relativePath": "ai_orchestration-s63i-hf2b-623b07232.sanitized.tar.gz",
+    "sha256": "68B6E331A6942A9CBDE6FDDFA7579E1AD8227B57C1D05E0D6C724F32A8317278",
+    "sizeBytes": 3205603,
+    "status": "VERIFIED",
     "unpacksTo": "ai_orchestration-s63i-hf2b-623b07232/",
-    "note": "Do not invent or copy the s63f archive hash 767E9305…. Parent must supply immutable sanitized source archive from 623b07232."
+    "fileCountInside": 1425,
+    "note": "Sanitized runtime-only snapshot. Do not commit the tarball to git. Do not confuse with unapproved Mac archive lacking .sanitized suffix."
   },
   "runtimeContract": {
     "image": "orches/orchestration-app:latest",
     "dockerfile": "Dockerfile",
     "buildContext": ".",
     "bindMount": "/app",
-    "composeCopies": ["docker-compose.yml"],
+    "composeCopies": [
+      "docker-compose.yml"
+    ],
     "migrations": [
       "db/migrations/0001_init.sql",
       "db/migrations/0002_rag.sql",
@@ -62,7 +66,9 @@
     "STYLESHEET": "v6",
     "sketchVisionTimeoutSeconds": 90
   },
-  "retiredEnvKeys": ["XDISPLAY_AI_STAGED_DRAFTER_ENABLED"],
+  "retiredEnvKeys": [
+    "XDISPLAY_AI_STAGED_DRAFTER_ENABLED"
+  ],
   "clientPolicy": {
     "clientTag": "client/c-186",
     "clientCommit": "1898d30cc036241f5af5283c4dc9d7f95dbb8887",

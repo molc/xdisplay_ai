@@ -16,7 +16,7 @@
 ## 设计
 
 1. 新增 `packaging-export/s63i-hf2b-623b07232/`（镜像 s63f 导出布局的 metadata/scripts；无源码 tar / 无 docker-save）与 `manifests/pins/offline-inputs.s63i-hf2b.json`（缺哈希字段标 PENDING）。
-2. 批准修订：`Get-ApprovedBackendRevision*` / tag `prod/s63i-hf2b`；companion `orches/orchestration-app:s63i-hf2b-623b07232`；prompt 31 代理 + PAGE_HTML **v20**（独立键）+ link **v1.10**；迁移仍仅 0001–0003；STAGED_DRAFTER 仍退役。
+2. 批准修订：`Get-ApprovedBackendRevision*` / verified Git tag `prod/s63i-hf2` (card name s63i-hf2b is not a Git tag)；companion `orches/orchestration-app:s63i-hf2b-623b07232`；prompt 31 代理 + PAGE_HTML **v20**（独立键）+ link **v1.10**；迁移仍仅 0001–0003；STAGED_DRAFTER 仍退役。
 3. `Assert-ApprovedCardPinsReady` 在打包入口失败关闭；禁止把 Mac c186 / 旧 s63f 镜像身份抄进本卡钉。
 4. 用户可见日志从误导性 “s63f” 改为当前卡名，不削弱任何门禁。
 5. `.29` 模板常量更新为新卡；指纹与 Windows 客户端 SHA 用 `__PENDING_*__` 占位。

@@ -13,10 +13,10 @@
 | 项 | 值 |
 |---|---|
 | author card | `s63i-hf2b` |
-| tag | `prod/s63i-hf2b` |
+| tag | `prod/s63i-hf2` |
 | full commit | `623b072320d2e8c68059ec5e7e33958267203a9c` |
 | author-card prefix | `623b07232` |
-| 源码包 | `ai_orchestration-s63i-hf2b-623b07232.tar.gz`（PENDING） |
+| 源码包 | `ai_orchestration-s63i-hf2b-623b07232.sanitized.tar.gz`（3205603 / `68B6E331…`） |
 
 ## Prompt / 迁移合同
 
@@ -29,7 +29,7 @@
 
 1. 解压已核源码包到 `ai_orchestration-s63i-hf2b-623b07232/`
 2. 确认 `SOURCE_REVISION.txt` 前缀 `623b07232`
-3. 运行 `rebuild-orches-app-image.sh`（带 `EXPECTED_SOURCE_SHA`）
+3. 运行 `rebuild-orches-app-image.sh`（默认校验已核 SHA）
 4. 写出 companion inspect JSON；四个 Linux amd64 tar 放 durable host storage，**不进 git**
 5. 更新 `windows-packaging/manifests/pins/offline-inputs.s63i-hf2b.json` 的 `files[]` / `backend.appImage` / Windows client 钉
 

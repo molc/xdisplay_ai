@@ -474,7 +474,7 @@ function Build-BackendImagesFromSource {
                     "SkipBackendImageBuild is invalid for $(Get-ApprovedBackendCardName)：$($imageBuild.ImageRef). " +
                     "expectedFingerprint=$runtimeFingerprint cachedFingerprint=$cachedFingerprint " +
                     "git-sha=$cachedGitSha tag=$cachedTag. " +
-                    'docker/export_runtime_requirements.py and docker/strict-ocr do not exist. ' +
+                    'docker/export_runtime_requirements.py is not an input; docker/strict-ocr is required for prod/s63i-hf2. ' +
                     'Rebuild from Dockerfile (qt_builder qmake6, pip, playwright 1.56 Chromium 1194). ' +
                     'Do not require a cached Linux xd_render_cli ELF. Do not reuse F3EECC91.'
                 )

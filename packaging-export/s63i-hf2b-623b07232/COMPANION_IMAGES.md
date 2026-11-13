@@ -16,9 +16,9 @@ Parent must supply exact four Linux amd64 image tars with inspect records before
 ## App image — must rebuild from 623b07232
 
 - Source snapshot + Dockerfile pair required.
-- Labels required: `xdisplayai.packaging.git-sha`, `xdisplayai.packaging.tag=prod/s63i-hf2b`, `xdisplayai.packaging.runtime-fingerprint`.
+- Labels required: `xdisplayai.packaging.git-sha`, `xdisplayai.packaging.tag=prod/s63i-hf2`, `xdisplayai.packaging.runtime-fingerprint`.
 - Companion tags: `orches/orchestration-app:s63i-hf2b-623b07232` and `orches/orchestration-app:latest`.
 
 ## Fingerprint inputs (do not require missing legacy paths)
 
-Same as corrected s63f recipe: `Dockerfile`, `pyproject.toml`, `.dockerignore`, and xd_render_cli sources. Do **not** require `docker/export_runtime_requirements.py` or `docker/strict-ocr`.
+Fingerprint inputs: Dockerfile, pyproject.toml, .dockerignore, xd_render_cli build files, **and** `docker/strict-ocr/{LICENSE-APACHE-2.0.txt,NOTICE.md,fetch_models.py,model-manifest.json}`. Do **not** require `docker/export_runtime_requirements.py`. Do **not** invent the fingerprint value.

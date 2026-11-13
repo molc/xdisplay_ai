@@ -30,7 +30,7 @@ function LocalBackend{
  $hz=HttpCode '/healthz';$ah=HttpCode '/api/v1/assistant/health';$g.bothHealth200=($hz -eq 200 -and $ah -eq 200)
  $appC=@($containers|Where-Object service -eq 'orchestration-app'|Select-Object -First 1); $appImageId=if($appC.Count){$appC[0].image}else{''}
  $lbl=(Docker ('image inspect '+$appImageId+' --format "{{json .Config.Labels}}"')).stdout; $labels=@{}; if($lbl.Trim() -and $lbl.Trim() -ne 'null'){ $o=$lbl|ConvertFrom-Json; foreach($p in $o.PSObject.Properties){$labels[$p.Name]=$p.Value} }
- $g.appContainerImageIsApprovedCard=(($labels['xdisplayai.packaging.git-sha'] -eq '623b072320d2e8c68059ec5e7e33958267203a9c') -and ($labels['xdisplayai.packaging.runtime-fingerprint'] -eq '__PENDING_RUNTIME_FINGERPRINT__') -and ($labels['xdisplayai.packaging.tag'] -eq 'prod/s63i-hf2b'))
+ $g.appContainerImageIsApprovedCard=(($labels['xdisplayai.packaging.git-sha'] -eq '623b072320d2e8c68059ec5e7e33958267203a9c') -and ($labels['xdisplayai.packaging.runtime-fingerprint'] -eq '__PENDING_RUNTIME_FINGERPRINT__') -and ($labels['xdisplayai.packaging.tag'] -eq 'prod/s63i-hf2'))
  $expected=@{'Xdisplay.exe'='__PENDING_WINDOWS_C186_SHA256__';'Converter.exe'='F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36'}
  $hashes=@();foreach($root in @('C:\Program Files\XDisplayAI\seed\client','C:\ProgramData\XDisplayAI\workspace\client')){foreach($name in $expected.Keys){$file=Join-Path $root $name;$hash=if(Test-Path $file){(Get-FileHash $file).Hash}else{''};$hashes+=@{path=$file;sha256=$hash;ok=($hash -eq $expected[$name])}}}
  $g.allFourExePins=(@($hashes|Where-Object{-not $_.ok}).Count -eq 0)

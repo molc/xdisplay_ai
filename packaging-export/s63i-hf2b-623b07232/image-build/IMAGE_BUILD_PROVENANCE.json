@@ -2,9 +2,10 @@
   "kind": "s63i-hf2b-orchestration-app-docker-save",
   "status": "PENDING_NOT_BUILT",
   "source": {
-    "tag": "prod/s63i-hf2b",
+    "tag": "prod/s63i-hf2",
     "fullCommit": "623b072320d2e8c68059ec5e7e33958267203a9c",
-    "sourceArchiveSha256": null
+    "sourceArchiveSha256": "68B6E331A6942A9CBDE6FDDFA7579E1AD8227B57C1D05E0D6C724F32A8317278",
+    "sourceArchiveBytes": 3205603
   },
   "image": {
     "id": null,

@@ -687,7 +687,7 @@ function Assert-S63fXdRenderCliSourcePresent {
     foreach ($relativePath in @(Get-OrchestrationAppRuntimeFingerprintPaths)) {
         $absolutePath = Get-InputsRelativePath -Root $SourceRoot -RelativePath $relativePath
         if (-not (Test-Path -LiteralPath $absolutePath)) {
-            throw "$(Get-ApprovedBackendCardName) runtime fingerprint input is missing: $relativePath. docker/export_runtime_requirements.py and docker/strict-ocr are not part of this tree."
+            throw "$(Get-ApprovedBackendCardName) runtime fingerprint input is missing: $relativePath. docker/export_runtime_requirements.py is not an input; docker/strict-ocr runtime files are required at prod/s63i-hf2."
         }
     }
 
@@ -761,11 +761,12 @@ function Assert-SkipBackendImageBuildFromSource {
     if ($SkipBackendImageBuild -and -not $UseExistingBackendInputs) {
         throw (
             "SkipBackendImageBuild is invalid for $(Get-ApprovedBackendCardName) from-source packaging. " +
-            "docker/export_runtime_requirements.py and docker/strict-ocr do not exist at $(Get-ApprovedBackendTag). " +
-            'The app image must be built from Dockerfile (qt_builder qmake6 + pip + playwright 1.56 Chromium 1194). ' +
+            "docker/export_runtime_requirements.py is not an input at $(Get-ApprovedBackendTag). " +
+            'docker/strict-ocr runtime inputs are required and must be included in the runtime fingerprint. ' +
+            'The app image must be built from Dockerfile (qt_builder qmake6 + pip + playwright 1.56 Chromium 1194 + strict-ocr). ' +
             'Do not require a cached Linux xd_render_cli ELF; Dockerfile rm -f of the Mach-O leftover and rebuilds it. ' +
             'Parent Docker builder runs the sanctioned rebuild-orches-app-image.sh, then Windows packaging uses -UseExistingBackendInputs with companion inspect JSON. ' +
-            'Do not reuse F3EECC91 / s63f 514ACD60 / cloud 35E5F27E.'
+            'Do not reuse F3EECC91 / s63f 514ACD60 / cloud 35E5F27E / fingerprint 5f1b3896.'
         )
     }
 }

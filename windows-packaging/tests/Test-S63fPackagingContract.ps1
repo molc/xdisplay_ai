@@ -47,9 +47,10 @@ Assert-True -Condition ($truncatedProblems.Count -ge 28) -Message 'The a62 crash
 Assert-True -Condition (($truncatedProblems -join ' ') -match 'PAGE_HTML') -Message 'Registry-shape checks must reject PAGE_HTML as a non-directory agent alias.'
 Assert-True -Condition (($truncatedProblems -join ' ') -match 'STYLESHEET') -Message 'Registry-shape checks must reject STYLESHEET as a non-directory agent alias.'
 
-Assert-True -Condition ((Get-ApprovedBackendRevisionPrefix) -eq '623b07232') -Message 'Approved backend tip is 623b07232 / prod/s63i-hf2b, not HEAD.'
+Assert-True -Condition ((Get-ApprovedBackendRevisionPrefix) -eq '623b07232') -Message 'Approved backend tip is 623b07232 / prod/s63i-hf2, not HEAD.'
 Assert-True -Condition ((Get-ApprovedBackendRevisionFull) -eq '623b072320d2e8c68059ec5e7e33958267203a9c') -Message 'Approved backend full revision is 623b072320d2e8c68059ec5e7e33958267203a9c.'
-Assert-True -Condition ((Get-ApprovedBackendTag) -eq 'prod/s63i-hf2b') -Message 'Approved backend tag must be prod/s63i-hf2b.'
+Assert-True -Condition ((Get-ApprovedBackendTag) -eq 'prod/s63i-hf2') -Message 'Approved backend Git tag must be prod/s63i-hf2 (card name s63i-hf2b is not a Git tag).'
+Assert-True -Condition ((Get-ApprovedBackendTag) -ne 'prod/s63i-hf2b') -Message 'Must not accept invented Git tag prod/s63i-hf2b.'
 Assert-True -Condition ((Get-ApprovedXdisplaySubmoduleCommit) -eq '0c657ad3eac7ece814206bd40fea807ec6568f81') -Message 'xd_render_cli submodule source is 0c657ad3; Linux ELF is built in qt_builder.'
 Assert-True -Condition ((Get-S63fPlaywrightVersion) -eq '1.56.0') -Message 'approved-card runtime image pins playwright 1.56.0.'
 Assert-True -Condition ((Get-S63fChromiumRevision) -eq '1194') -Message 'approved-card runtime image pins Chromium 1194.'
@@ -96,6 +97,9 @@ $pinPath = Join-Path $PackagingRoot 'manifests\pins\offline-inputs.s63i-hf2b.jso
 Assert-True -Condition (Test-Path -LiteralPath $pinPath) -Message 's63i-hf2b pin manifest is missing.'
 $pins = Get-Content -LiteralPath $pinPath -Raw | ConvertFrom-Json
 Assert-True -Condition ($pins.backend.requiredRevisionPrefix -eq '623b07232') -Message 's63i-hf2b pin manifest must require 623b07232, not HEAD.'
+Assert-True -Condition ($pins.backend.requiredTag -eq 'prod/s63i-hf2') -Message 'Pin manifest requiredTag must be verified Git tag prod/s63i-hf2, not an invented hf2b tag.'
+Assert-True -Condition ($pins.backend.sourceArchiveSha256 -eq '68B6E331A6942A9CBDE6FDDFA7579E1AD8227B57C1D05E0D6C724F32A8317278') -Message 'Pin manifest must record verified sanitized source archive SHA.'
+Assert-True -Condition ($pins.backend.runtimeFingerprintInputs -contains 'docker/strict-ocr/fetch_models.py') -Message 'Pin manifest fingerprint inputs must include strict-ocr fetch_models.py.'
 Assert-True -Condition ($pins.backend.forbiddenAppImageSha256 -eq 'F3EECC91AB386DE950F175329AB7CCF078435FF9E863E55708F60485BFFC2309') -Message 's63i-hf2b pin manifest must forbid the previous app tar hash.'
 Assert-True -Condition ($pins.promptPins -eq (Get-S63fRegisteredPromptVersionTable)) -Message 's63i-hf2b pin manifest promptPins must be the full registered-agent table, not the truncated author-card replacement.'
 Assert-True -Condition ($pins.rejectedTruncatedPromptPins -eq (Get-S63fRejectedTruncatedPromptVersionPins)) -Message 's63i-hf2b pin manifest must record the a62 crash table as rejected.'
@@ -137,6 +141,12 @@ Assert-True -Condition ($fingerprintPaths -contains 'Dockerfile') -Message 'Fing
 Assert-True -Condition ($fingerprintPaths -contains 'pyproject.toml') -Message 'Fingerprint must include pyproject.toml.'
 Assert-True -Condition ($fingerprintPaths -contains '.dockerignore') -Message 'Fingerprint must include .dockerignore (uv.lock ignored).'
 Assert-True -Condition ($fingerprintPaths -contains 'external\xdisplay\bin\xd_render_cli\main.cpp') -Message 'Fingerprint must include xd_render_cli source, not a cached ELF.'
+Assert-True -Condition ($fingerprintPaths -contains 'docker\strict-ocr\fetch_models.py') -Message 'Fingerprint must include docker/strict-ocr fetch_models.py for prod/s63i-hf2.'
+Assert-True -Condition ($fingerprintPaths -contains 'docker\strict-ocr\model-manifest.json') -Message 'Fingerprint must include docker/strict-ocr model-manifest.json.'
+Assert-True -Condition ($fingerprintPaths -contains 'docker\strict-ocr\LICENSE-APACHE-2.0.txt') -Message 'Fingerprint must include docker/strict-ocr LICENSE.'
+Assert-True -Condition ($fingerprintPaths -contains 'docker\strict-ocr\NOTICE.md') -Message 'Fingerprint must include docker/strict-ocr NOTICE.'
+Assert-True -Condition ((@(Get-ForbiddenLegacyOrchestrationRuntimeFingerprintPaths) -notcontains 'docker\strict-ocr')) -Message 'docker/strict-ocr must not be listed as a forbidden legacy fingerprint path.'
+Assert-True -Condition ((Get-ApprovedS63fSourceArchiveSha256) -eq '68B6E331A6942A9CBDE6FDDFA7579E1AD8227B57C1D05E0D6C724F32A8317278') -Message 'Verified sanitized source archive SHA must be pinned.'
 Assert-True -Condition ($fingerprintPaths -notcontains 'external\xdisplay\bin\xd_render_cli') -Message 'Fingerprint hashes source files, not the Mach-O leftover binary path.'
 Assert-True -Condition ($fingerprintPaths -notcontains 'uv.lock') -Message 'uv.lock must not be a runtime fingerprint input.'
 Assert-True -Condition ((Get-EmbeddingRuntimeFingerprintPaths) -contains 'scripts\embedding_http_service.py') -Message 'Embedding fingerprint must include the copied service script.'
@@ -200,6 +210,11 @@ try {
         foreach ($name in @('main.cpp', 'render_runner.cpp', 'render_runner.h', 'xd_render_cli.pro', 'Makefile')) {
             [System.IO.File]::WriteAllText((Join-Path $cli $name), $name)
         }
+        $strict = Join-Path $SourceRoot 'docker\strict-ocr'
+        New-Item -ItemType Directory -Path $strict -Force | Out-Null
+        foreach ($name in @('LICENSE-APACHE-2.0.txt', 'NOTICE.md', 'fetch_models.py', 'model-manifest.json')) {
+            [System.IO.File]::WriteAllText((Join-Path $strict $name), $name)
+        }
     }
 
     $staleRejected = $false
@@ -222,7 +237,7 @@ try {
     Assert-True -Condition $wrongRevRejected -Message 'SOURCE_REVISION that is not 623b07232 must be rejected (no HEAD, no stale snapshot).'
 
     [System.IO.File]::WriteAllText((Join-Path $testRoot 'backend\source\SOURCE_REVISION.txt'), "623b072320d2e8c68059ec5e7e33958267203a9c`n")
-    [System.IO.File]::WriteAllText((Join-Path $testRoot 'backend\source\SOURCE_TAG.txt'), "prod/s63i-hf2b`n")
+    [System.IO.File]::WriteAllText((Join-Path $testRoot 'backend\source\SOURCE_TAG.txt'), "prod/s63i-hf2`n")
     [System.IO.File]::WriteAllText(
         (Join-Path $testRoot 'backend\source\SOURCE_SUBMODULE.txt'),
         "commit=0c657ad3eac7ece814206bd40fea807ec6568f81`n"
@@ -269,7 +284,7 @@ try {
         Config = [pscustomobject]@{
             Labels = [pscustomobject]@{
                 'xdisplayai.packaging.git-sha' = '623b072320d2e8c68059ec5e7e33958267203a9c'
-                'xdisplayai.packaging.tag' = 'prod/s63i-hf2b'
+                'xdisplayai.packaging.tag' = 'prod/s63i-hf2'
                 'xdisplayai.packaging.runtime-fingerprint' = $fingerprint
             }
         }

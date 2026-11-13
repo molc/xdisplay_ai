@@ -1,15 +1,15 @@
 {
   "packageVersion": "0.1.4",
   "authorCard": "s63i-hf2b",
-  "status": "PACKAGING_SOURCE_PENDING_HASHES",
+  "status": "PACKAGING_SOURCE_PARTIAL_PENDING_CLIENT_AND_IMAGES",
   "backend": {
     "repo": "https://github.com/molc/ai_orchestration",
     "requiredRevisionPrefix": "623b07232",
     "requiredRevisionFull": "623b072320d2e8c68059ec5e7e33958267203a9c",
-    "requiredTag": "prod/s63i-hf2b",
-    "sourceArchiveSha256": null,
-    "sourceArchiveStatus": "PENDING_PARENT_SANITIZED_EXPORT",
-    "appTree": "pending until sanitized export of 623b07232",
+    "requiredTag": "prod/s63i-hf2",
+    "sourceArchiveSha256": "68B6E331A6942A9CBDE6FDDFA7579E1AD8227B57C1D05E0D6C724F32A8317278",
+    "sourceArchiveStatus": "VERIFIED_SANITIZED_EXPORT",
+    "appTree": "1425-file runtime-only sanitized snapshot at 623b07232",
     "noDataMigrations": true,
     "migrations": [
       "0001_init.sql",
@@ -17,7 +17,7 @@
       "0003_orch_runtime.sql"
     ],
     "xdisplaySubmodule": "0c657ad3eac7ece814206bd40fea807ec6568f81",
-    "xdisplaySubmoduleNote": "Retained from verified s63f pin until parent confirms gitlink at 623b07232.",
+    "xdisplaySubmoduleNote": "Confirmed gitlink at 623b07232: 0c657ad3eac7ece814206bd40fea807ec6568f81",
     "forbiddenAppImageSha256": "F3EECC91AB386DE950F175329AB7CCF078435FF9E863E55708F60485BFFC2309",
     "forbiddenAppImageSha256List": [
       "F3EECC91AB386DE950F175329AB7CCF078435FF9E863E55708F60485BFFC2309",
@@ -55,11 +55,14 @@
       "external/xdisplay/bin/xd_render_cli/render_runner.cpp",
       "external/xdisplay/bin/xd_render_cli/render_runner.h",
       "external/xdisplay/bin/xd_render_cli/xd_render_cli.pro",
-      "external/xdisplay/bin/xd_render_cli/Makefile"
+      "external/xdisplay/bin/xd_render_cli/Makefile",
+      "docker/strict-ocr/LICENSE-APACHE-2.0.txt",
+      "docker/strict-ocr/NOTICE.md",
+      "docker/strict-ocr/fetch_models.py",
+      "docker/strict-ocr/model-manifest.json"
     ],
     "forbiddenLegacyFingerprintInputs": [
-      "docker/export_runtime_requirements.py",
-      "docker/strict-ocr"
+      "docker/export_runtime_requirements.py"
     ],
     "companionTags": [
       "orches/orchestration-app:s63i-hf2b-623b07232",
@@ -73,7 +76,10 @@
       "runtimeFingerprint": null,
       "status": "PENDING_LINUX_AMD64_DOCKER_SAVE_AND_INSPECT",
       "note": "Do not copy s63f image 050efd06… / fingerprint 5f1b3896… / tar 514ACD60…."
-    }
+    },
+    "sourceArchiveBytes": 3205603,
+    "sourceArchiveRelativePath": "ai_orchestration-s63i-hf2b-623b07232.sanitized.tar.gz",
+    "runtimeFingerprintNote": "Do not invent fingerprint value; builders compute via Common.ps1 Get-SourceContentFingerprint after this contract. Old 5f1b3896 is incompatible."
   },
   "client": {
     "policy": "retain-word-fix-superset",

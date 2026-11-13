@@ -9,9 +9,9 @@ This is not a product-code change, not a `.21` deploy, and it contains no user A
 ## Authoritative source pin
 
 - Author card: `s63i-hf2b`
-- Tag (installer gate): `prod/s63i-hf2b`
+- Tag (installer gate): `prod/s63i-hf2`
 - `SOURCE_REVISION` (do **not** use any packaging-export branch HEAD): `623b072320d2e8c68059ec5e7e33958267203a9c` (prefix `623b07232`)
-- Source archive: `ai_orchestration-s63i-hf2b-623b07232.tar.gz` — **PENDING** (parent sanitized immutable export). Do not invent a SHA. Do not copy s63f `767E9305…`.
+- Source archive: `ai_orchestration-s63i-hf2b-623b07232.sanitized.tar.gz` — **3205603** bytes, SHA256 `68B6E331A6942A9CBDE6FDDFA7579E1AD8227B57C1D05E0D6C724F32A8317278` (do not commit the tarball).
 
 ## Final Windows-packaged app image (pending)
 
@@ -20,7 +20,7 @@ This is not a product-code change, not a `.21` deploy, and it contains no user A
 | Packaged app image id | **PENDING** |
 | Packaged app image tar SHA256 / bytes | **PENDING** |
 | runtime-fingerprint | **PENDING** |
-| git-sha / tag | `623b072320d2e8c68059ec5e7e33958267203a9c` / `prod/s63i-hf2b` |
+| git-sha / tag | `623b072320d2e8c68059ec5e7e33958267203a9c` / `prod/s63i-hf2` |
 
 ### Forbidden identities (never relabel as this card)
 
@@ -61,4 +61,4 @@ S63I_HF2B_SOURCE_TAR=/path/to/ai_orchestration-s63i-hf2b-623b07232.tar.gz \
   ./rebuild-orches-app-image.sh
 ```
 
-The script refuses to run when `EXPECTED_SOURCE_SHA` is still `PENDING`.
+Rebuild requires this verified source SHA. Do not invent a fingerprint value; compute after this contract with Common.ps1 + strict-ocr inputs.
