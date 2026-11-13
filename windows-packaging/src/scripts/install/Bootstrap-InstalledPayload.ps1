@@ -169,16 +169,16 @@ try {
         Unregister-ResumeTask
         Clear-BootstrapState
         if ($LaunchClient) {
-            Write-Step '本机后端已在 127.0.0.1:18001 就绪，且为本包 s63f 镜像与 prompt 合同，直接启动客户端。'
+            Write-Step '本机后端已在 127.0.0.1:18001 就绪，且为本包 s63i-hf2b 镜像与 prompt 合同，直接启动客户端。'
             Start-XDisplayClient
         }
         else {
-            Write-Step '本机后端已在 127.0.0.1:18001 就绪，且为本包 s63f 镜像与 prompt 合同，无需重复初始化。'
+            Write-Step '本机后端已在 127.0.0.1:18001 就绪，且为本包 s63i-hf2b 镜像与 prompt 合同，无需重复初始化。'
         }
         return
     }
     if (-not $Resume -and $healthReady -and -not $skipAllowed.Ok) {
-        Write-Step ('本机 127.0.0.1:18001 健康，但不是本包 s63f 合同：' + ($skipAllowed.Reasons -join '；') + '。继续导入离线镜像并刷新配置。')
+        Write-Step ('本机 127.0.0.1:18001 健康，但不是本包 s63i-hf2b 合同：' + ($skipAllowed.Reasons -join '；') + '。继续导入离线镜像并刷新配置。')
     }
 
     $prerequisiteResult = & (Join-Path $PSScriptRoot 'Install-OfflinePrerequisites.ps1')

@@ -369,23 +369,20 @@ function Get-SourceContentFingerprint {
 }
 
 function Get-ForbiddenLegacyOrchestrationRuntimeFingerprintPaths {
-    # These paths were an older packaging fingerprint. They do not exist at
-    # prod/s63f / dd6ab3d50 and must not be required to compute or reuse a cache.
+    # Still absent / unused at prod/s63i-hf2. docker/strict-ocr IS required for this card
+    # (see Get-OrchestrationAppRuntimeFingerprintPaths); do not treat the directory as forbidden.
     return @(
-        'docker\export_runtime_requirements.py',
-        'docker\strict-ocr'
+        'docker\export_runtime_requirements.py'
     )
 }
 
 function Get-OrchestrationAppRuntimeFingerprintPaths {
-    # Actual s63f Dockerfile COPYs xd_render_cli sources, app/, and pyproject.toml,
-    # then pip-installs inline deps and playwright==1.56.0 / Chromium 1194.
+    # Approved card s63i-hf2b at verified Git tag prod/s63i-hf2 / 623b07232.
+    # Dockerfile + pyproject changed vs s63f; docker/strict-ocr/* is NEW and must be fingerprinted.
     # uv.lock is listed in .dockerignore and is not used by the image build.
-    # app/data/prompts stay out of this fingerprint because compose bind-mounts
-    # /app from the source snapshot; s63f still requires a new image because these
-    # Dockerfile/renderer inputs changed versus F3EECC91.
-    # Do not hash the export's Mach-O xd_render_cli binary; Dockerfile rm -f's it
-    # and rebuilds a Linux CLI with qmake6. Do not invent a Linux CLI here.
+    # app/data/prompts stay out of this fingerprint because compose bind-mounts /app.
+    # Forbidden previous tars (F3EECC91 / s63f 514ACD60 / cloud 35E5F27E) and fingerprint 5f1b3896 remain incompatible.
+    # Do not invent a fingerprint value here; builders compute it after this contract lands.
     return @(
         'Dockerfile',
         'pyproject.toml',
@@ -394,7 +391,11 @@ function Get-OrchestrationAppRuntimeFingerprintPaths {
         'external\xdisplay\bin\xd_render_cli\render_runner.cpp',
         'external\xdisplay\bin\xd_render_cli\render_runner.h',
         'external\xdisplay\bin\xd_render_cli\xd_render_cli.pro',
-        'external\xdisplay\bin\xd_render_cli\Makefile'
+        'external\xdisplay\bin\xd_render_cli\Makefile',
+        'docker\strict-ocr\LICENSE-APACHE-2.0.txt',
+        'docker\strict-ocr\NOTICE.md',
+        'docker\strict-ocr\fetch_models.py',
+        'docker\strict-ocr\model-manifest.json'
     )
 }
 
@@ -407,7 +408,7 @@ function Get-EmbeddingRuntimeFingerprintPaths {
 
 function Get-S63fAppImageCompanionTags {
     return @(
-        'orches/orchestration-app:s63f-dd6ab3d50',
+        'orches/orchestration-app:s63i-hf2b-623b07232',
         'orches/orchestration-app:latest'
     )
 }

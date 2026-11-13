@@ -10,11 +10,16 @@
     [string]$DistRoot = '',
     [string]$CacheRoot = '',
     [string]$TempRoot = '',
-    [string]$ExpectedClientSha256 = '2A80890DB988157371CF28D24CA23685D7933C4E59630E5A2DCD2363B7DB5600',
+    # Windows client/c-186 SHA/size filled from frozen final receipt; scanStatus remains PENDING_AUDITED_RESCAN.
+    # Assert-ApprovedCardPinsReady still refuses pack until audited full-byte scan verifies and image hashes land.
+    [string]$ExpectedClientSha256 = '17876130AC2901E0665434559CBDCFF897BCEA86A532B4A96379C74D4C3B6AF9',
     [string]$ExpectedConverterSha256 = 'F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36',
-    [long]$ExpectedClientBytes = 675539394,
+    [long]$ExpectedClientBytes = 758893746,
     [long]$ExpectedConverterBytes = 529920,
     [string]$ExpectedInputPinsPath = '',
+    # Mandatory for UseExistingBackendInputs packaging once scan is verified; empty keeps gate closed.
+    [string]$AuditedFullByteScanReportPath = '',
+    [string]$AuditedFullByteScanPolicyPath = '',
     [string]$QmakePath = '',
     [string]$MingwMakePath = '',
     [string]$WinDeployQtPath = '',
@@ -433,9 +438,16 @@ try {
 
         if ($UseExistingBackendInputs) {
             if ([string]::IsNullOrWhiteSpace($ExpectedInputPinsPath)) {
-                $ExpectedInputPinsPath = Join-Path $packagingRoot 'manifests\pins\offline-inputs.s63f.json'
+                $ExpectedInputPinsPath = Join-Path $packagingRoot 'manifests\pins\offline-inputs.s63i-hf2b.json'
             }
             Write-BuildStep 'Using existing backend images/source inputs; no source clone and no image rebuild.'
+            Assert-ApprovedCardPinsReady `
+                -ExpectedClientSha256 $ExpectedClientSha256 `
+                -ExpectedClientBytes $ExpectedClientBytes `
+                -PinManifestPath $ExpectedInputPinsPath `
+                -AuditedFullByteScanReportPath $AuditedFullByteScanReportPath `
+                -AuditedFullByteScanPolicyPath $AuditedFullByteScanPolicyPath `
+                -ReleaseRoot $ClientReleaseDir
             Assert-ExistingBackendInputs `
                 -InputsRoot (Join-Path $packagingRoot 'inputs') `
                 -PinManifestPath $ExpectedInputPinsPath

@@ -1,4 +1,4 @@
-$o=[ordered]@{at=(Get-Date).ToString("o")}
+﻿$o=[ordered]@{at=(Get-Date).ToString("o")}
 $t=Get-ScheduledTask -TaskName "XDisplayAI-ResumeSetup" -ErrorAction SilentlyContinue
 $o.resumeTask=if($t){[string]$t.State}else{"absent"}
 $o.bootstrapState=(Test-Path "C:\ProgramData\XDisplayAI\config\bootstrap-state.json")

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Upload a run's dist to the control host's receiver (ops/host/recv.py), skipping files identical to a previous run.
   Runs detached; progress goes to <Logs>\upload-<Run>-progress.txt (last line DONE or ERROR).

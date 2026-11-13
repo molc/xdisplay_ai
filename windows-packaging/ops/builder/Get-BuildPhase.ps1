@@ -1,4 +1,4 @@
-param([Parameter(Mandatory = $true)][string]$Run, [string]$Logs = 'T:\logs')
+﻿param([Parameter(Mandatory = $true)][string]$Run, [string]$Logs = 'T:\logs')
 $p = Join-Path $Logs "$Run-state.json"
 if (-not (Test-Path $p)) { "PHASE NO_STATE_FILE"; return }
 $j = Get-Content $p -Raw | ConvertFrom-Json

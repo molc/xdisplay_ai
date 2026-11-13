@@ -204,7 +204,7 @@ function Ensure-BackendBrowserSolverPromptPins {
         throw "Backend .env does not exist: $EnvPath"
     }
 
-    $pageHtmlVersion = 'v19'
+    $pageHtmlVersion = 'v20'
     $stylesheetVersion = 'v6'
     if (Get-Command Get-S63fBrowserSolverPageHtmlPromptVersion -ErrorAction SilentlyContinue) {
         $pageHtmlVersion = [string](Get-S63fBrowserSolverPageHtmlPromptVersion)

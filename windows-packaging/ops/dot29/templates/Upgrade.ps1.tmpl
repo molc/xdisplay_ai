@@ -4,7 +4,7 @@ if($env:COMPUTERNAME -ne 'DESKTOP-LLRKFC6'){throw 'Wrong machine: ONLY .29'}
 if([Security.Principal.WindowsIdentity]::GetCurrent().Name -eq 'NT AUTHORITY\SYSTEM' -or (Get-Process -Id $PID).SessionId -eq 0){throw 'Need interactive elevated admin'}
 if(-not([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)){throw 'Elevation required'}
 $share='\\tsclient\results\xdai'
-$logs='C:\Users\Public\XDisplayAI-s63f-upgrade-__RUN__'
+$logs='C:\Users\Public\XDisplayAI-s63i-hf2b-upgrade-__RUN__'
 [void][IO.Directory]::CreateDirectory($share); [void][IO.Directory]::CreateDirectory($logs)
 $r5='C:\Users\Public\XDisplayAI-014-candidate\pkg-__RUN__\XDisplayAI-0.1.4-dev.exe'
 $r5Sha='__BUNDLE_SHA__'
@@ -25,7 +25,7 @@ function PromptContract{
  $public=@{};foreach($line in [IO.File]::ReadAllLines('C:\ProgramData\XDisplayAI\workspace\backend\.env')){if($line -match '^(XDISPLAY_AI_PROMPT_VERSIONS|XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION|XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION|XDISPLAY_AI_STAGED_DRAFTER_ENABLED)=(.*)$'){$public[$matches[1]]=$matches[2].Trim().Trim([char]34).Trim([char]39)}}
  $pairs=@($public['XDISPLAY_AI_PROMPT_VERSIONS'] -split ','|ForEach-Object{$_.Trim()}|Where-Object{$_});$agents=@{};foreach($pair in $pairs){$parts=$pair -split ':',2;if($parts.Count -eq 2){$agents[$parts[0]]=$parts[1]}}
  $names=@('planner','clarifier','diagnoser','explainer','drafter','drafter_dsl','sketch_interpreter','sketch_interpretation_auditor','sketch_layout_auditor','auditor_dsl','intent_extractor','linker_dsl','layout_planner','component_planner','composition_layout_planner','component_slot_type_selector','component_slot_props_planner','page_scene_tweak_planner','fixer','write_action_declarer','nav_declarer','engineering_setting_declarer','write_action_declarer_link','page_set_skeleton_declarer','placement_declarer','read_display_declarer','point_table_column_annotator','repeated_series_declarer','style_token_declarer','strict_region_reader','navigation_target_grouping_judge')
- return [ordered]@{exactly31=($pairs.Count -eq 31 -and $agents.Count -eq 31 -and @(Compare-Object @($names|Sort-Object) @($agents.Keys|Sort-Object)).Count -eq 0);fiveAuthorPins=($agents['intent_extractor'] -eq 'v2.24' -and $agents['read_display_declarer'] -eq 'v1.15' -and $agents['write_action_declarer'] -eq 'v1.10' -and $agents['write_action_declarer_link'] -eq 'v1.8' -and $agents['sketch_interpreter'] -eq 'v4.0');v19v6=($public['XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION'] -eq 'v19' -and $public['XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION'] -eq 'v6');retiredAbsent=(-not $public.ContainsKey('XDISPLAY_AI_STAGED_DRAFTER_ENABLED'));agentCount=$agents.Count}
+ return [ordered]@{exactly31=($pairs.Count -eq 31 -and $agents.Count -eq 31 -and @(Compare-Object @($names|Sort-Object) @($agents.Keys|Sort-Object)).Count -eq 0);fiveAuthorPins=($agents['intent_extractor'] -eq 'v2.24' -and $agents['read_display_declarer'] -eq 'v1.15' -and $agents['write_action_declarer'] -eq 'v1.10' -and $agents['write_action_declarer_link'] -eq 'v1.10' -and $agents['sketch_interpreter'] -eq 'v4.0');v20v6=($public['XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION'] -eq 'v20' -and $public['XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION'] -eq 'v6');retiredAbsent=(-not $public.ContainsKey('XDISPLAY_AI_STAGED_DRAFTER_ENABLED'));agentCount=$agents.Count}
 }
 function LocalBackend{
  $g=[ordered]@{}
@@ -41,14 +41,14 @@ function LocalBackend{
  $appImageId=if($appC.Count){$appC[0].image}else{''}
  $lbl=(NativeDocker ('image inspect '+$appImageId+' --format "{{json .Config.Labels}}"')).stdout
  $labels=@{}; if($lbl.Trim() -and $lbl.Trim() -ne 'null'){ $o=$lbl|ConvertFrom-Json; foreach($p in $o.PSObject.Properties){$labels[$p.Name]=$p.Value} }
- $g.appContainerImageIsS63f=(($labels['xdisplayai.packaging.git-sha'] -eq 'dd6ab3d505827a94cbc9d59d7067fcce14db6fbe') -and ($labels['xdisplayai.packaging.runtime-fingerprint'] -eq '5f1b3896315250c1a62ee3cba769909ffbf6c5f3984f6479cccf6d0e6e168233') -and ($labels['xdisplayai.packaging.tag'] -eq 'prod/s63f'))
+ $g.appContainerImageIsApprovedCard=(($labels['xdisplayai.packaging.git-sha'] -eq '623b072320d2e8c68059ec5e7e33958267203a9c') -and ($labels['xdisplayai.packaging.runtime-fingerprint'] -eq '__PENDING_RUNTIME_FINGERPRINT__') -and ($labels['xdisplayai.packaging.tag'] -eq 'prod/s63i-hf2'))
  $g.appContainerNotOld013Image=(-not $appImageId.StartsWith('sha256:a001031bb9b0'))
- $expected=@{'Xdisplay.exe'='2A80890DB988157371CF28D24CA23685D7933C4E59630E5A2DCD2363B7DB5600';'Converter.exe'='F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36'}
+ $expected=@{'Xdisplay.exe'='__PENDING_WINDOWS_C186_SHA256__';'Converter.exe'='F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36'}
  $hashes=@();foreach($root in @('C:\Program Files\XDisplayAI\seed\client','C:\ProgramData\XDisplayAI\workspace\client')){foreach($name in $expected.Keys){$file=Join-Path $root $name;$hash=if(Test-Path $file){(Get-FileHash $file).Hash}else{''};$hashes+=@{path=$file;sha256=$hash;ok=($hash -eq $expected[$name])}}}
  $g.allFourExePins=(@($hashes|Where-Object{-not $_.ok}).Count -eq 0)
  $vol=(NativeDocker 'volume inspect xdisplayai_postgres_data --format "{{.Name}}|{{.CreatedAt}}|{{.Driver}}"').stdout.Trim()
  $wsRev=if(Test-Path 'C:\ProgramData\XDisplayAI\workspace\backend\SOURCE_REVISION.txt'){([IO.File]::ReadAllText('C:\ProgramData\XDisplayAI\workspace\backend\SOURCE_REVISION.txt') -split '\r?\n')[0].Trim()}else{''}
- $g.workspaceSourceIsS63f=($wsRev -eq 'dd6ab3d505827a94cbc9d59d7067fcce14db6fbe')
+ $g.workspaceSourceIsApprovedCard=($wsRev -eq '623b072320d2e8c68059ec5e7e33958267203a9c')
  return [ordered]@{gates=$g;listeners=$listeners;containers=$containers;appImageId=$appImageId;appLabels=$labels;clientHashes=$hashes;pgVolume=$vol;healthz=$hz;assistant=$ah;workspaceRev=$wsRev}
 }
 function NativeBurn([string]$exe,[string]$action,[string]$tag){
@@ -112,13 +112,13 @@ try{
  Start-Sleep 5
  $bs=[IO.File]::ReadAllText('C:\ProgramData\XDisplayAI\logs\bootstrap.log'); $newTail=if($bsLenBefore){$bs.Substring([Math]::Min([int]$bsLenBefore,$bs.Length))}else{$bs}
  $r.bootstrapNewLines=@($newTail -split '\r?\n'|Where-Object{$_ -match '\[xdisplayai\]|错误|Exception|error'}|Select-Object -First 80)
- $r.gates.bootstrapRefusedHealthOnlySkip=($newTail -match '不是本包 s63f 合同')
+ $r.gates.bootstrapRefusedHealthOnlySkip=($newTail -match '不是本包 s63i-hf2b 合同')
  $r.gates.bootstrapNoError=(-not ($newTail -match 'Exception|错误：|Error:'))
  $after=EnvMaps;$r.configAfterUpgrade=CompareMaps $before $after
  $r.gates.configLiteralsPreserved=(@($r.configAfterUpgrade|Where-Object{(-not $_.managed) -and (-not $_.present -or -not $_.same)}).Count -eq 0)
  $r.gates.sentinelsPreserved=(($after.Values|ForEach-Object{$_.ContainsKey('XDAI_UPGRADE_SENTINEL_RUNTIME')}) -contains $true) -and (($after.Values|ForEach-Object{$_.ContainsKey('XDAI_UPGRADE_SENTINEL_BACKEND')}) -contains $true)
  $r.projectAfter=ProjectManifest $projectRoots;$r.gates.projectsPreserved=((ManifestSig $r.projectAfter) -ceq $r.projectBeforeSig)
- $r.promptAfterUpgrade=PromptContract;$r.gates.promptContract=($r.promptAfterUpgrade.exactly31 -and $r.promptAfterUpgrade.fiveAuthorPins -and $r.promptAfterUpgrade.v19v6 -and $r.promptAfterUpgrade.retiredAbsent)
+ $r.promptAfterUpgrade=PromptContract;$r.gates.promptContract=($r.promptAfterUpgrade.exactly31 -and $r.promptAfterUpgrade.fiveAuthorPins -and $r.promptAfterUpgrade.v20v6 -and $r.promptAfterUpgrade.retiredAbsent)
  $lb=LocalBackend;$r.localAfterUpgrade=$lb
  foreach($k in $lb.gates.Keys){$r.gates[('local_'+$k)]=$lb.gates[$k]}
  $r.gates.pgVolumeSame=($lb.pgVolume -eq $bb.pgVolume)

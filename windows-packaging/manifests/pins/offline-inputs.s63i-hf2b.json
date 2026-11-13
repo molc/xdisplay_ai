@@ -1,0 +1,170 @@
+{
+  "packageVersion": "0.1.4",
+  "authorCard": "s63i-hf2b",
+  "status": "PACKAGING_SOURCE_PARTIAL_PENDING_AUDITED_RESCAN_AND_IMAGES",
+  "backend": {
+    "repo": "https://github.com/molc/ai_orchestration",
+    "requiredRevisionPrefix": "623b07232",
+    "requiredRevisionFull": "623b072320d2e8c68059ec5e7e33958267203a9c",
+    "requiredTag": "prod/s63i-hf2",
+    "sourceArchiveSha256": "68B6E331A6942A9CBDE6FDDFA7579E1AD8227B57C1D05E0D6C724F32A8317278",
+    "sourceArchiveStatus": "VERIFIED_SANITIZED_EXPORT",
+    "appTree": "1425-file runtime-only sanitized snapshot at 623b07232",
+    "noDataMigrations": true,
+    "migrations": [
+      "0001_init.sql",
+      "0002_rag.sql",
+      "0003_orch_runtime.sql"
+    ],
+    "xdisplaySubmodule": "0c657ad3eac7ece814206bd40fea807ec6568f81",
+    "xdisplaySubmoduleNote": "Confirmed gitlink at 623b07232: 0c657ad3eac7ece814206bd40fea807ec6568f81",
+    "forbiddenAppImageSha256": "F3EECC91AB386DE950F175329AB7CCF078435FF9E863E55708F60485BFFC2309",
+    "forbiddenAppImageSha256List": [
+      "F3EECC91AB386DE950F175329AB7CCF078435FF9E863E55708F60485BFFC2309",
+      "514ACD60DF0D7D6FAB00684116F9F863A6A58F161A4C9BAF73CFAD76E0B83A24",
+      "35E5F27EEB4623B816120020116995216CBF2E601CD357ACC676A4384BE9E638"
+    ],
+    "forbiddenAppImageNote": "Never rename previous 0.1.4 / s63f app tars as s63i-hf2b.",
+    "skipBackendImageBuild": "invalid from-source; UseExistingBackendInputs only after parent Docker rebuild-orches-app-image.sh plus companion inspect JSON",
+    "runtimeImage": {
+      "base": "python:3.11-slim-bookworm",
+      "qtBuilder": "qmake6 xd_render_cli.pro && make after rm -f leftover binary; apt qt6-base-dev qmake6 libgl-dev",
+      "pip": true,
+      "playwright": "1.56.0",
+      "chromiumRevision": "1194",
+      "uvLockIgnored": true,
+      "dockerfileCopies": [
+        "external/xdisplay/bin/xd_render_cli",
+        "app",
+        "pyproject.toml"
+      ]
+    },
+    "bindMount": "compose bind-mounts app/ data/ .env at /app; migrations 0001-0003 are separate SQL inputs",
+    "linuxRenderCli": {
+      "exportBinary": {
+        "required": false,
+        "status": "PENDING_SOURCE_ARCHIVE",
+        "note": "Do not invent Mach-O leftover hashes. Dockerfile qt_builder deletes leftover and rebuilds Linux ELF. Do not require a cached Linux ELF."
+      }
+    },
+    "runtimeFingerprintInputs": [
+      "Dockerfile",
+      "pyproject.toml",
+      ".dockerignore",
+      "external/xdisplay/bin/xd_render_cli/main.cpp",
+      "external/xdisplay/bin/xd_render_cli/render_runner.cpp",
+      "external/xdisplay/bin/xd_render_cli/render_runner.h",
+      "external/xdisplay/bin/xd_render_cli/xd_render_cli.pro",
+      "external/xdisplay/bin/xd_render_cli/Makefile",
+      "docker/strict-ocr/LICENSE-APACHE-2.0.txt",
+      "docker/strict-ocr/NOTICE.md",
+      "docker/strict-ocr/fetch_models.py",
+      "docker/strict-ocr/model-manifest.json"
+    ],
+    "forbiddenLegacyFingerprintInputs": [
+      "docker/export_runtime_requirements.py"
+    ],
+    "companionTags": [
+      "orches/orchestration-app:s63i-hf2b-623b07232",
+      "orches/orchestration-app:latest"
+    ],
+    "embeddingPgRedis": "unproven for s63i-hf2b until inspect of Dockerfile.embedding + scripts/embedding_http_service.py / compose image ids; historical tars are not proof",
+    "appImage": {
+      "imageId": null,
+      "tarSha256": null,
+      "tarBytes": null,
+      "runtimeFingerprint": null,
+      "status": "PENDING_LINUX_AMD64_DOCKER_SAVE_AND_INSPECT",
+      "note": "Do not copy s63f image 050efd06… / fingerprint 5f1b3896… / tar 514ACD60…."
+    },
+    "sourceArchiveBytes": 3205603,
+    "sourceArchiveRelativePath": "ai_orchestration-s63i-hf2b-623b07232.sanitized.tar.gz",
+    "runtimeFingerprintNote": "Do not invent fingerprint value; builders compute via Common.ps1 Get-SourceContentFingerprint after this contract. Old 5f1b3896 is incompatible."
+  },
+  "client": {
+    "policy": "retain-word-fix-superset",
+    "notAuthorC180MailBytes": true,
+    "clientTag": "client/c-186",
+    "clientCommit": "1898d30cc036241f5af5283c4dc9d7f95dbb8887",
+    "clientBranch": "codex/int-6001",
+    "displayName": "Xdisplay.exe",
+    "bytes": 758893746,
+    "sha256": "17876130AC2901E0665434559CBDCFF897BCEA86A532B4A96379C74D4C3B6AF9",
+    "status": "WINDOWS_C186_EXE_PINNED_SCAN_PENDING",
+    "scanStatus": "PENDING_AUDITED_RESCAN",
+    "clientScanStatus": "PENDING_AUDITED_RESCAN",
+    "frozenTreeFiles": 2389,
+    "frozenTreeBytes": 1536238861,
+    "frozenTreeManifestSha256": "5A2C4A23E9D7689F09C76281764CE929D26D45CAA23A28D7F6C9FA3058264A1B",
+    "resourceEqualityVerified": true,
+    "fullByteScanPolicy": "manifests/security/release-fullbyte-scan-policy.s63i-hf2b.json",
+    "auditedRescanCommand": "pwsh -NoProfile -File windows-packaging/ci/Invoke-ReleaseFullByteSecretScan.ps1 -ReleaseRoot <FROZEN_FINAL_TREE> -TreeManifestPath <COMPLETE_TREE_MANIFEST.json> -ExpectedFileCount 2389 -OutputPath <NEW_AUDITED_FULLBYTE_REPORT.json>",
+    "forbiddenMacSha1": "50ba545e366058e3f18879aa8afaaa82a208b83c",
+    "forbiddenMacSha256": "AFDE40DBC47A1680A053FA9AD63E0532CD4A893824BB58E162FCDC2AD905E71F",
+    "forbiddenOldWindowsSha256": "2A80890DB988157371CF28D24CA23685D7933C4E59630E5A2DCD2363B7DB5600",
+    "note": "Windows c186 exe pin filled from frozen final receipt. Gate must refuse installer while scanStatus is PENDING_AUDITED_RESCAN, audited report is missing/unverified, and image hashes remain PENDING. Status strings alone cannot authorize packaging. Mac package hashes and the old catalogwrite Windows pin must not be substituted. Empty gitleaks [] is not sufficient.",
+    "fullByteScanReportSchema": "xdisplay-ai.release-fullbyte-secret-scan.v2"
+  },
+  "converter": {
+    "displayName": "Converter.exe",
+    "bytes": 529920,
+    "sha256": "F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36",
+    "note": "c-181 converter white-window lineage retained as Word-fix superset until parent says otherwise."
+  },
+  "promptPins": "planner:v1.2,clarifier:v1.0,diagnoser:v1.0,explainer:v1.0,drafter:v1.0,drafter_dsl:v2.4,sketch_interpreter:v4.0,sketch_interpretation_auditor:v1.0,sketch_layout_auditor:v1.0,auditor_dsl:v1.5,intent_extractor:v2.24,linker_dsl:v1.1,layout_planner:v1.1,component_planner:v1.4,composition_layout_planner:v2.5,component_slot_type_selector:v1.0,component_slot_props_planner:v2.0,page_scene_tweak_planner:v1.0,fixer:v2.2,write_action_declarer:v1.10,nav_declarer:v1.6,engineering_setting_declarer:v1.0,write_action_declarer_link:v1.10,page_set_skeleton_declarer:v1.5,placement_declarer:v1.0,read_display_declarer:v1.15,point_table_column_annotator:v1.1,repeated_series_declarer:v1.2,style_token_declarer:v1.2,strict_region_reader:v1.0,navigation_target_grouping_judge:v1.0",
+  "authorAgentPromptPins": "intent_extractor:v2.24,read_display_declarer:v1.15,write_action_declarer:v1.10,write_action_declarer_link:v1.10,sketch_interpreter:v4.0",
+  "browserSolverPageHtmlPromptVersion": "v20",
+  "browserSolverEngineeringStylesheetContractVersion": "v6",
+  "rejectedTruncatedPromptPins": "intent_extractor:v2.24,PAGE_HTML:v20,read_display_declarer:v1.15,write_action_declarer:v1.10,write_action_declarer_link:v1.10,sketch_interpreter:v4.0,STYLESHEET:v6",
+  "promptPinNote": "Author-card pins are version overlays on the full registered-agent map. PAGE_HTML/STYLESHEET are Settings fields, not prompt_versions agents. Seeding only the seven-entry card as XDISPLAY_AI_PROMPT_VERSIONS fails validate_prompt_version_pins.",
+  "retiredEnvKeys": [
+    "XDISPLAY_AI_STAGED_DRAFTER_ENABLED"
+  ],
+  "files": [
+    {
+      "relativePath": "prerequisites/docker-desktop/Docker Desktop Installer.exe",
+      "sizeBytes": 628979632,
+      "sha256": "820438E75C16E44B393079154BEA7D27958A15845C23A635B1A1F6F586B2ED44"
+    },
+    {
+      "relativePath": "prerequisites/vcredist/VC_redist.x64.exe",
+      "sizeBytes": 18731856,
+      "sha256": "843068991DAAA1F73AD9F6239BCE4D0F6A07A51F18C37EA2A867E9BECA71295C"
+    },
+    {
+      "relativePath": "prerequisites/wsl/wsl_update_x64.msi",
+      "sizeBytes": 258990080,
+      "sha256": "A611DDACEE689D2FB1FB5319E58AF7F3998864D86CDCE632EADD8E61614A0F9D"
+    },
+    {
+      "relativePath": "backend/images/orches_orchestration-app_latest.tar",
+      "sizeBytes": null,
+      "sha256": null,
+      "assertSha256": false,
+      "status": "PENDING"
+    },
+    {
+      "relativePath": "backend/images/orches_embedding-http_latest.tar",
+      "sizeBytes": null,
+      "sha256": null,
+      "assertSha256": false,
+      "status": "PENDING"
+    },
+    {
+      "relativePath": "backend/images/pgvector_pgvector_pg15.tar",
+      "sizeBytes": null,
+      "sha256": null,
+      "assertSha256": false,
+      "status": "PENDING"
+    },
+    {
+      "relativePath": "backend/images/redis_7.tar",
+      "sizeBytes": null,
+      "sha256": null,
+      "assertSha256": false,
+      "status": "PENDING"
+    }
+  ],
+  "historicalPrereqPinsFile": "offline-inputs.0.1.4.json",
+  "packagingExport": "packaging-export/s63i-hf2b-623b07232"
+}

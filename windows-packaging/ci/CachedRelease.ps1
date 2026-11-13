@@ -5,7 +5,10 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '..\src\scripts\common\InstallerCorrectness.ps1')
 
 function Get-PinnedCatalogwriteClientSha256 {
-    return '2A80890DB988157371CF28D24CA23685D7933C4E59630E5A2DCD2363B7DB5600'
+    # Verified Windows client/c-186 exe pin from frozen final receipt (resource equality verified).
+    # Do not substitute Mac c186 SHA afde40db… or old catalogwrite 2A80890D….
+    # clientScanStatus remains PENDING_AUDITED_RESCAN until audited full-byte scan verifies.
+    return '17876130AC2901E0665434559CBDCFF897BCEA86A532B4A96379C74D4C3B6AF9'
 }
 
 function Get-PinnedConverterSha256 {
@@ -13,11 +16,263 @@ function Get-PinnedConverterSha256 {
 }
 
 function Get-PinnedCatalogwriteClientBytes {
-    return [long]675539394
+    return [long]758893746
+}
+
+function Get-PinnedClientScanStatus {
+    # Audited occurrence-aware full-byte scan has not been re-run on the frozen tree yet.
+    return 'PENDING_AUDITED_RESCAN'
+}
+
+function Get-VerifiedAuditedFullByteScanStatus {
+    return 'VERIFIED_AUDITED_FULLBYTE'
+}
+
+function Get-AuditedFullByteScanReportSchema {
+    return 'xdisplay-ai.release-fullbyte-secret-scan.v2'
+}
+
+function Get-AuditedFullByteScanPolicyRelativePath {
+    return 'manifests/security/release-fullbyte-scan-policy.s63i-hf2b.json'
+}
+
+function Get-PinnedFrozenTreeFileCount {
+    return 2389
+}
+
+function Get-PinnedFrozenTreeManifestSha256 {
+    return '5A2C4A23E9D7689F09C76281764CE929D26D45CAA23A28D7F6C9FA3058264A1B'
+}
+
+function Assert-AuditedFullByteScanReport {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$ReportPath,
+        [Parameter(Mandatory = $true)]
+        [string]$PolicyPath,
+        [Parameter(Mandatory = $true)]
+        [string]$ExpectedClientSha256,
+        [Parameter(Mandatory = $true)]
+        [long]$ExpectedClientBytes,
+        [string]$ReleaseRoot = '',
+        [string]$ExpectedTreeManifestSha256 = (Get-PinnedFrozenTreeManifestSha256),
+        [int]$ExpectedFileCount = (Get-PinnedFrozenTreeFileCount)
+    )
+
+    if ([string]::IsNullOrWhiteSpace($ReportPath) -or -not (Test-Path -LiteralPath $ReportPath -PathType Leaf)) {
+        throw 'Mandatory audited full-byte scan report is missing; status/pin strings alone cannot authorize packaging'
+    }
+    if ([string]::IsNullOrWhiteSpace($PolicyPath) -or -not (Test-Path -LiteralPath $PolicyPath -PathType Leaf)) {
+        throw "Audited full-byte scan policy missing: $PolicyPath"
+    }
+
+    $reportRaw = [System.IO.File]::ReadAllBytes($ReportPath)
+    $reportSha = (Get-FileHash -Path $ReportPath -Algorithm SHA256).Hash.ToUpperInvariant()
+    $report = [System.Text.Encoding]::UTF8.GetString($reportRaw) | ConvertFrom-Json
+    $policySha = (Get-FileHash -Path $PolicyPath -Algorithm SHA256).Hash.ToUpperInvariant()
+    $scannerPath = Join-Path $PSScriptRoot 'release_fullbyte_secret_scan.py'
+    if (-not (Test-Path -LiteralPath $scannerPath -PathType Leaf)) {
+        throw "Audited scanner module missing: $scannerPath"
+    }
+    $scannerSha = (Get-FileHash -Path $scannerPath -Algorithm SHA256).Hash.ToUpperInvariant()
+
+    $problems = New-Object System.Collections.Generic.List[string]
+    $schema = Get-AuditedFullByteScanReportSchema
+    if ([string]$report.schema -ne $schema) {
+        $problems.Add("audited report schema '$($report.schema)' is not $schema")
+    }
+    if (-not [bool]$report.ok -or [string]$report.status -ne 'PASS') {
+        $problems.Add("audited report is not PASS (status=$($report.status); ok=$($report.ok))")
+    }
+    if ([string]$report.policySha256 -ne $policySha) {
+        $problems.Add('audited report policySha256 does not match active policy file hash')
+    }
+    if ([string]$report.scannerModule -ne 'release_fullbyte_secret_scan.py') {
+        $problems.Add('audited report scannerModule mismatch')
+    }
+    if ([string]$report.scannerSha256 -ne $scannerSha) {
+        $problems.Add('audited report scannerSha256 does not match checked-in scanner')
+    }
+    if (@($report.remainingFindings).Count -gt 0) {
+        $problems.Add('audited report still has remainingFindings')
+    }
+    if (@($report.unusedExceptions).Count -gt 0) {
+        $problems.Add('audited report still has unusedExceptions')
+    }
+    if ([int]$report.filesScanned -ne [int]$ExpectedFileCount) {
+        $problems.Add("audited report filesScanned $($report.filesScanned) != expected $ExpectedFileCount")
+    }
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedTreeManifestSha256)) {
+        if ([string]$report.treeManifestSha256 -ne $ExpectedTreeManifestSha256.ToUpperInvariant()) {
+            $problems.Add('audited report treeManifestSha256 does not match pinned frozen tree manifest')
+        }
+    }
+    if (-not [string]::IsNullOrWhiteSpace($ReleaseRoot)) {
+        if (-not (Test-Path -LiteralPath $ReleaseRoot -PathType Container)) {
+            $problems.Add("release root missing for report binding: $ReleaseRoot")
+        }
+        else {
+            $exePath = Join-Path $ReleaseRoot 'Xdisplay.exe'
+            if (-not (Test-Path -LiteralPath $exePath -PathType Leaf)) {
+                $problems.Add('release root missing Xdisplay.exe for audited report binding')
+            }
+            else {
+                $exeItem = Get-Item -LiteralPath $exePath
+                $exeSha = (Get-FileHash -Path $exePath -Algorithm SHA256).Hash.ToUpperInvariant()
+                if ([long]$exeItem.Length -ne [long]$ExpectedClientBytes) {
+                    $problems.Add('release Xdisplay.exe size does not match pinned client bytes')
+                }
+                if ($exeSha -ne (Convert-ToNormalizedSha256 -Value $ExpectedClientSha256)) {
+                    $problems.Add('release Xdisplay.exe SHA256 does not match pinned client hash')
+                }
+            }
+        }
+    }
+    if ($problems.Count -gt 0) {
+        throw ("Audited full-byte scan report rejected ($reportSha). " + ($problems -join '; '))
+    }
+
+    return [pscustomobject]@{
+        ok = $true
+        reportPath = $ReportPath
+        reportSha256 = $reportSha
+        policySha256 = $policySha
+        scannerSha256 = $scannerSha
+        filesScanned = [int]$report.filesScanned
+    }
 }
 
 function Get-PinnedConverterBytes {
     return [long]529920
+}
+
+function Get-PinnedClientGitCommit {
+    return '1898d30cc036241f5af5283c4dc9d7f95dbb8887'
+}
+
+function Get-PinnedClientTag {
+    return 'client/c-186'
+}
+
+function Get-ForbiddenMacClientSha256 {
+    return 'AFDE40DBC47A1680A053FA9AD63E0532CD4A893824BB58E162FCDC2AD905E71F'
+}
+
+function Assert-ApprovedCardPinsReady {
+    param(
+        [string]$ExpectedClientSha256 = (Get-PinnedCatalogwriteClientSha256),
+        [long]$ExpectedClientBytes = (Get-PinnedCatalogwriteClientBytes),
+        [Parameter(Mandatory = $true)]
+        [AllowEmptyString()]
+        [string]$PinManifestPath,
+        [string]$ExpectedClientScanStatus = (Get-PinnedClientScanStatus),
+        [string]$AuditedFullByteScanReportPath = '',
+        [string]$AuditedFullByteScanPolicyPath = '',
+        [string]$ReleaseRoot = '',
+        [switch]$SkipAuditedReportVerification
+    )
+
+    $problems = New-Object System.Collections.Generic.List[string]
+    if ([string]::IsNullOrWhiteSpace($ExpectedClientSha256) -or [string]::Equals($ExpectedClientSha256, 'PENDING', [StringComparison]::OrdinalIgnoreCase)) {
+        $problems.Add('Windows client/c-186 SHA256 is pending; refusing to pack or qualify without the real Windows release hash')
+    }
+    if ($ExpectedClientBytes -le 0) {
+        $problems.Add('Windows client/c-186 sizeBytes is pending')
+    }
+    $forbiddenMac = Convert-ToNormalizedSha256 -Value (Get-ForbiddenMacClientSha256)
+    if (-not [string]::IsNullOrWhiteSpace($ExpectedClientSha256) -and [string]::Equals((Convert-ToNormalizedSha256 -Value $ExpectedClientSha256), $forbiddenMac, [StringComparison]::Ordinal)) {
+        $problems.Add('Refusing Mac c186 package SHA as the Windows client pin')
+    }
+
+    if ([string]::IsNullOrWhiteSpace($PinManifestPath) -or -not (Test-Path -LiteralPath $PinManifestPath -PathType Leaf)) {
+        $problems.Add('PinManifestPath is mandatory; omitting it cannot bypass pending image/scan checks')
+    }
+    else {
+        $manifest = Get-Content -LiteralPath $PinManifestPath -Raw | ConvertFrom-Json
+        if ($null -ne $manifest.backend) {
+            $sourceSha = [string]$manifest.backend.sourceArchiveSha256
+            if ([string]::IsNullOrWhiteSpace($sourceSha) -or [string]::Equals($sourceSha, 'PENDING', [StringComparison]::OrdinalIgnoreCase)) {
+                $problems.Add('backend.sourceArchiveSha256 is pending in the pin manifest')
+            }
+            if ($null -ne $manifest.backend.appImage) {
+                $appSha = [string]$manifest.backend.appImage.tarSha256
+                $fp = [string]$manifest.backend.appImage.runtimeFingerprint
+                if ([string]::IsNullOrWhiteSpace($appSha)) {
+                    $problems.Add('backend.appImage.tarSha256 is pending')
+                }
+                if ([string]::IsNullOrWhiteSpace($fp)) {
+                    $problems.Add('backend.appImage.runtimeFingerprint is pending')
+                }
+            }
+            else {
+                $problems.Add('backend.appImage pin is missing')
+            }
+        }
+        if ($null -ne $manifest.client) {
+            $clientSha = [string]$manifest.client.sha256
+            if ([string]::IsNullOrWhiteSpace($clientSha)) {
+                $problems.Add('client.sha256 is pending in the pin manifest')
+            }
+        }
+        if ($null -ne $manifest.files) {
+            foreach ($entry in @($manifest.files)) {
+                $entryProps = @($entry.PSObject.Properties.Name)
+                if ($entryProps -contains 'status') {
+                    $status = [string]$entry.status
+                    if ([string]::Equals($status, 'PENDING', [StringComparison]::OrdinalIgnoreCase)) {
+                        $problems.Add("pin file $($entry.relativePath) hash is PENDING")
+                    }
+                }
+                $sha = ''
+                if ($entryProps -contains 'sha256') {
+                    $sha = [string]$entry.sha256
+                }
+                $assertSha = $true
+                if ($entryProps -contains 'assertSha256') {
+                    $assertSha = [bool]$entry.assertSha256
+                }
+                if ([string]::IsNullOrWhiteSpace($sha) -and -not $assertSha) {
+                    $problems.Add("pin file $($entry.relativePath) sha256 is pending")
+                }
+            }
+        }
+    }
+
+    # Status strings / pin markers alone never authorize packaging.
+    $verifiedScan = Get-VerifiedAuditedFullByteScanStatus
+    $statusLooksVerified = [string]::Equals([string]$ExpectedClientScanStatus, $verifiedScan, [StringComparison]::OrdinalIgnoreCase)
+    if ($SkipAuditedReportVerification) {
+        $problems.Add('SkipAuditedReportVerification is not allowed for packaging authorization')
+    }
+    if ([string]::IsNullOrWhiteSpace($AuditedFullByteScanReportPath)) {
+        $problems.Add('mandatory AuditedFullByteScanReportPath is missing; VERIFIED status strings/pins cannot authorize packaging')
+    }
+    else {
+        if ([string]::IsNullOrWhiteSpace($AuditedFullByteScanPolicyPath)) {
+            $packagingRoot = Split-Path -Parent $PSScriptRoot
+            $AuditedFullByteScanPolicyPath = Join-Path $packagingRoot (Get-AuditedFullByteScanPolicyRelativePath)
+        }
+        try {
+            Assert-AuditedFullByteScanReport `
+                -ReportPath $AuditedFullByteScanReportPath `
+                -PolicyPath $AuditedFullByteScanPolicyPath `
+                -ExpectedClientSha256 $ExpectedClientSha256 `
+                -ExpectedClientBytes $ExpectedClientBytes `
+                -ReleaseRoot $ReleaseRoot `
+                -ExpectedTreeManifestSha256 (Get-PinnedFrozenTreeManifestSha256) `
+                -ExpectedFileCount (Get-PinnedFrozenTreeFileCount) | Out-Null
+        }
+        catch {
+            $problems.Add([string]$_.Exception.Message)
+            if ($statusLooksVerified) {
+                $problems.Add('VERIFIED status string is insufficient when audited report verification fails')
+            }
+        }
+    }
+
+    if ($problems.Count -gt 0) {
+        throw ("Approved card pins are incomplete for $(Get-ApprovedBackendCardName) / $(Get-PinnedClientTag). " + ($problems -join '; '))
+    }
 }
 
 function Get-RequiredCachedClientReleaseRelativePaths {
@@ -560,7 +815,7 @@ function Get-DockerInspectImageDocument {
     )
 
     if (-not (Test-Path -LiteralPath $Path -PathType Leaf)) {
-        throw "Missing Docker inspect companion $Path. Rebuild the s63f app image with the sanctioned recipe and write docker inspect JSON next to the tar. A renamed F3EECC91 tar is not proof."
+        throw "Missing Docker inspect companion $Path. Rebuild the $(Get-ApprovedBackendCardName) app image with the sanctioned recipe and write docker inspect JSON next to the tar. A renamed F3EECC91 / s63f 514ACD60 tar is not proof."
     }
 
     $parsed = Get-Content -LiteralPath $Path -Raw | ConvertFrom-Json
@@ -609,7 +864,7 @@ function Assert-S63fMigrationSet {
     $unexpected = @($actual | Where-Object { $expected -notcontains $_ })
     $missing = @($expected | Where-Object { $actual -notcontains $_ })
     if ($missing.Count -gt 0 -or $unexpected.Count -gt 0) {
-        throw "s63f ships db/migrations $($expected -join ', ') only (no new data migration). Found: $($actual -join ', ')."
+        throw "$(Get-ApprovedBackendCardName) ships db/migrations $($expected -join ', ') only (no new data migration). Found: $($actual -join ', ')."
     }
 }
 
@@ -622,7 +877,7 @@ function Assert-S63fXdRenderCliSourcePresent {
     foreach ($relativePath in @(Get-OrchestrationAppRuntimeFingerprintPaths)) {
         $absolutePath = Get-InputsRelativePath -Root $SourceRoot -RelativePath $relativePath
         if (-not (Test-Path -LiteralPath $absolutePath)) {
-            throw "s63f runtime fingerprint input is missing: $relativePath. docker/export_runtime_requirements.py and docker/strict-ocr are not part of this tree."
+            throw "$(Get-ApprovedBackendCardName) runtime fingerprint input is missing: $relativePath. docker/export_runtime_requirements.py is not an input; docker/strict-ocr runtime files are required at prod/s63i-hf2."
         }
     }
 
@@ -651,7 +906,7 @@ function Assert-S63fAppImageCompanionInspect {
     $tag = (Get-DockerInspectLabelValue -Image $image -LabelName 'xdisplayai.packaging.tag').Trim()
     $fingerprintLabel = (Get-DockerInspectLabelValue -Image $image -LabelName 'xdisplayai.packaging.runtime-fingerprint').Trim()
     if (-not $gitSha.StartsWith((Get-ApprovedBackendRevisionPrefix), [StringComparison]::OrdinalIgnoreCase)) {
-        throw "App image inspect git-sha '$gitSha' is not s63f tip $(Get-ApprovedBackendRevisionPrefix). Do not reuse F3EECC91."
+        throw "App image inspect git-sha '$gitSha' is not $(Get-ApprovedBackendCardName) tip $(Get-ApprovedBackendRevisionPrefix). Do not reuse F3EECC91 / s63f 514ACD60."
     }
     $revisionMatchesInspect = [string]::Equals($gitSha, $ExpectedRevision, [StringComparison]::OrdinalIgnoreCase) -or
         $gitSha.StartsWith($ExpectedRevision, [StringComparison]::OrdinalIgnoreCase) -or
@@ -695,12 +950,13 @@ function Assert-SkipBackendImageBuildFromSource {
 
     if ($SkipBackendImageBuild -and -not $UseExistingBackendInputs) {
         throw (
-            'SkipBackendImageBuild is invalid for s63f from-source packaging. ' +
-            'docker/export_runtime_requirements.py and docker/strict-ocr do not exist at prod/s63f. ' +
-            'The app image must be built from Dockerfile (qt_builder qmake6 + pip + playwright 1.56 Chromium 1194). ' +
+            "SkipBackendImageBuild is invalid for $(Get-ApprovedBackendCardName) from-source packaging. " +
+            "docker/export_runtime_requirements.py is not an input at $(Get-ApprovedBackendTag). " +
+            'docker/strict-ocr runtime inputs are required and must be included in the runtime fingerprint. ' +
+            'The app image must be built from Dockerfile (qt_builder qmake6 + pip + playwright 1.56 Chromium 1194 + strict-ocr). ' +
             'Do not require a cached Linux xd_render_cli ELF; Dockerfile rm -f of the Mach-O leftover and rebuilds it. ' +
             'Parent Docker builder runs the sanctioned rebuild-orches-app-image.sh, then Windows packaging uses -UseExistingBackendInputs with companion inspect JSON. ' +
-            'Do not reuse F3EECC91.'
+            'Do not reuse F3EECC91 / s63f 514ACD60 / cloud 35E5F27E / fingerprint 5f1b3896.'
         )
     }
 }
@@ -764,16 +1020,16 @@ function Assert-ExistingBackendInputs {
 
     $revisionFile = Get-InputsRelativePath -Root $InputsRoot -RelativePath 'backend/source/SOURCE_REVISION.txt'
     if (-not (Test-Path -LiteralPath $revisionFile -PathType Leaf)) {
-        throw "s63f backend source snapshot is missing SOURCE_REVISION.txt under $InputsRoot. Refusing to treat an unproven tree as dd6ab3d50."
+        throw "$(Get-ApprovedBackendCardName) backend source snapshot is missing SOURCE_REVISION.txt under $InputsRoot. Refusing to treat an unproven tree as $(Get-ApprovedBackendRevisionPrefix)."
     }
     $revision = ([System.IO.File]::ReadAllText($revisionFile)).Trim()
     if (-not $revision.StartsWith($requiredPrefix, [StringComparison]::OrdinalIgnoreCase)) {
-        throw "Backend SOURCE_REVISION '$revision' is not the author-approved s63f tip $requiredPrefix (tag prod/s63f). HEAD and stale snapshots are rejected."
+        throw "Backend SOURCE_REVISION '$revision' is not the author-approved $(Get-ApprovedBackendCardName) tip $requiredPrefix (tag $(Get-ApprovedBackendTag)). HEAD and stale snapshots are rejected."
     }
 
     $tagFile = Get-InputsRelativePath -Root $InputsRoot -RelativePath 'backend/source/SOURCE_TAG.txt'
     if (-not (Test-Path -LiteralPath $tagFile -PathType Leaf)) {
-        throw 's63f backend source snapshot is missing SOURCE_TAG.txt (expected prod/s63f).'
+        throw "$(Get-ApprovedBackendCardName) backend source snapshot is missing SOURCE_TAG.txt (expected $(Get-ApprovedBackendTag))."
     }
     $tag = ([System.IO.File]::ReadAllText($tagFile)).Trim()
     if ($tag -ne (Get-ApprovedBackendTag)) {
@@ -782,7 +1038,7 @@ function Assert-ExistingBackendInputs {
 
     $submoduleFile = Get-InputsRelativePath -Root $InputsRoot -RelativePath 'backend/source/SOURCE_SUBMODULE.txt'
     if (-not (Test-Path -LiteralPath $submoduleFile -PathType Leaf)) {
-        throw 's63f backend source snapshot is missing SOURCE_SUBMODULE.txt.'
+        throw "$(Get-ApprovedBackendCardName) backend source snapshot is missing SOURCE_SUBMODULE.txt."
     }
     $submoduleText = [System.IO.File]::ReadAllText($submoduleFile)
     if ($submoduleText -notmatch [regex]::Escape((Get-ApprovedXdisplaySubmoduleCommit))) {
@@ -794,21 +1050,33 @@ function Assert-ExistingBackendInputs {
 
     $dockerfile = Get-Content -LiteralPath (Get-InputsRelativePath -Root $sourceRoot -RelativePath 'Dockerfile') -Raw
     if ($dockerfile -notmatch 'PLAYWRIGHT_VERSION=1\.56\.0' -or $dockerfile -notmatch 'CHROMIUM_REVISION=1194') {
-        throw 's63f Dockerfile must pin playwright 1.56.0 and Chromium revision 1194.'
+        throw "$(Get-ApprovedBackendCardName) Dockerfile must pin playwright 1.56.0 and Chromium revision 1194."
     }
     if ($dockerfile -notmatch 'qmake6 xd_render_cli\.pro' -or $dockerfile -notmatch 'rm -f xd_render_cli') {
-        throw 's63f Dockerfile must rebuild Linux xd_render_cli in qt_builder (rm -f leftover binary, qmake6, make). Do not require a cached ELF.'
+        throw "$(Get-ApprovedBackendCardName) Dockerfile must rebuild Linux xd_render_cli in qt_builder (rm -f leftover binary, qmake6, make). Do not require a cached ELF."
     }
     $dockerIgnore = Get-Content -LiteralPath (Get-InputsRelativePath -Root $sourceRoot -RelativePath '.dockerignore') -Raw
     if ($dockerIgnore -notmatch '(?m)^uv\.lock$') {
-        throw 's63f .dockerignore must ignore uv.lock; image build uses pip from Dockerfile, not uv.lock.'
+        throw "$(Get-ApprovedBackendCardName) .dockerignore must ignore uv.lock; image build uses pip from Dockerfile, not uv.lock."
     }
 
     $appTarPath = Get-InputsRelativePath -Root $InputsRoot -RelativePath 'backend/images/orches_orchestration-app_latest.tar'
     $actualAppSha = Convert-ToNormalizedSha256 -Value (Get-FileHash -Path $appTarPath -Algorithm SHA256).Hash
-    $forbiddenNormalized = Convert-ToNormalizedSha256 -Value $forbiddenAppSha
-    if ([string]::Equals($actualAppSha, $forbiddenNormalized, [StringComparison]::Ordinal)) {
-        throw "App image $appTarPath SHA256 $actualAppSha is the forbidden previous 0.1.4 tar F3EECC91... — it is not proven s63f. Do not rename the old tar; rebuild from dd6ab3d50 / prod/s63f."
+    $forbiddenList = @(Get-ForbiddenAppImageSha256List)
+    if (-not [string]::IsNullOrWhiteSpace($forbiddenAppSha)) {
+        $forbiddenList = @($forbiddenAppSha) + @($forbiddenList)
+    }
+    if ($null -ne $manifest.backend -and ($manifest.backend.PSObject.Properties.Name -contains 'forbiddenAppImageSha256List') -and $null -ne $manifest.backend.forbiddenAppImageSha256List) {
+        $forbiddenList = @($forbiddenList) + @($manifest.backend.forbiddenAppImageSha256List | ForEach-Object { [string]$_ })
+    }
+    foreach ($forbidden in @($forbiddenList | Select-Object -Unique)) {
+        if ([string]::IsNullOrWhiteSpace([string]$forbidden)) {
+            continue
+        }
+        $forbiddenNormalized = Convert-ToNormalizedSha256 -Value ([string]$forbidden)
+        if ([string]::Equals($actualAppSha, $forbiddenNormalized, [StringComparison]::Ordinal)) {
+            throw "App image $appTarPath SHA256 $actualAppSha is a forbidden previous image identity — it is not proven $(Get-ApprovedBackendCardName). Do not rename an old tar; rebuild from $(Get-ApprovedBackendRevisionPrefix) / $(Get-ApprovedBackendTag)."
+        }
     }
 
     Assert-S63fAppImageCompanionInspect `
@@ -825,6 +1093,7 @@ function Assert-ExistingBackendInputs {
         if ($entry.PSObject.Properties.Name -contains 'assertSha256') {
             $assertSha = [bool]$entry.assertSha256
         }
+        # Pending/null sha256 entries are skipped here; Assert-ApprovedCardPinsReady fails the pack/qualify path.
         if (-not $assertSha -or [string]::IsNullOrWhiteSpace([string]$entry.sha256)) {
             continue
         }

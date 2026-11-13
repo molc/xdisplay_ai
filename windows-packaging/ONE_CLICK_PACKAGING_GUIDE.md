@@ -15,7 +15,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\xdisplay_ai\windows-
   -ConverterReleaseDir "P:\converter-fix-10b7\bin" `
   -ExpectedClientSha256 "2A80890DB988157371CF28D24CA23685D7933C4E59630E5A2DCD2363B7DB5600" `
   -ExpectedConverterSha256 "F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36" `
-  -ExpectedInputPinsPath "C:\xdisplay_ai\windows-packaging\manifests\pins\offline-inputs.s63f.json" `
+  -ExpectedInputPinsPath "C:\xdisplay_ai\windows-packaging\manifests\pins\offline-inputs.s63i-hf2b.json" `
   -WorkRoot "<SCRATCH_ROOT>"
 ```
 

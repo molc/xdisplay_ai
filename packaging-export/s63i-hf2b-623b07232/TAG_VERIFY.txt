@@ -1,0 +1,19 @@
+FACT: verified Git tag pointing at this commit is prod/s63i-hf2 (NOT prod/s63i-hf2b).
+Card / pack / companion image name remains s63i-hf2b; that name is not a Git tag.
+
+Mac checkout evidence:
+        git tag --points-at 623b072320d2e8c68059ec5e7e33958267203a9c
+        → prod/s63i-hf2
+
+Installer / image label xdisplayai.packaging.tag must be:
+        prod/s63i-hf2
+
+required full commit:
+        623b072320d2e8c68059ec5e7e33958267203a9c
+
+author card prefix 623b07232 matches this full SHA.
+Live .21 was observed at this commit; do not deploy, restart, or alter .21 from packaging work.
+
+Do not invent a prod/s63i-hf2b ref.
+Do not use branch HEAD, s63f tip dd6ab3d50, or any later commit.
+Do not copy s63f docker-save identities (514ACD60…, 35E5F27E…, F3EECC91…, image 050efd06…, fingerprint 5f1b3896…).

@@ -1,4 +1,4 @@
-$ErrorActionPreference='Stop'
+﻿$ErrorActionPreference='Stop'
 $ProgressPreference='SilentlyContinue'
 if($env:COMPUTERNAME -ne 'DESKTOP-LLRKFC6'){throw 'Wrong machine: ONLY .29'}
 if([Security.Principal.WindowsIdentity]::GetCurrent().Name -eq 'NT AUTHORITY\SYSTEM' -or (Get-Process -Id $PID).SessionId -eq 0){throw 'Need interactive elevated admin'}

@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Start one packaging run on the Windows builder (win11-wsl2-builder) and record its state as JSON.
 .DESCRIPTION
@@ -21,7 +21,7 @@ param(
     [string]$ExpectedConverterSha256 = '',
     [string]$ClientReleaseDir = '',
     [string]$ConverterReleaseDir = 'P:\converter-fix-10b7\bin',
-    [string]$BackendCommit = 'dd6ab3d505827a94cbc9d59d7067fcce14db6fbe',
+    [string]$BackendCommit = '623b072320d2e8c68059ec5e7e33958267203a9c',
     [string]$PinsPath = '',
     [hashtable]$RequiredFileHashes = @{},
     [int]$LimitSeconds = 10800,
@@ -29,13 +29,15 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $commit8 = $SourceCommit.Substring(0, 8).ToLower()
-if (-not $WorkRoot) { $WorkRoot = "T:\work\014-s63f-$commit8-$Run" }
+if (-not $WorkRoot) { $WorkRoot = "T:\work\014-c186-s63i-hf2b-$commit8-$Run" }
 if (-not $ClientReleaseDir) { $ClientReleaseDir = Join-Path $SourceRoot 'inputs\client\xdisplay-win64' }
-if (-not $PinsPath) { $PinsPath = Join-Path $SourceRoot 'manifests\pins\offline-inputs.s63f.json' }
+if (-not $PinsPath) { $PinsPath = Join-Path $SourceRoot 'manifests\pins\offline-inputs.s63i-hf2b.json' }
 $cached = Get-Content (Join-Path $SourceRoot 'ci\CachedRelease.ps1') -Raw
 if (-not $ExpectedClientSha256) { $ExpectedClientSha256 = [regex]::Match($cached, "Get-PinnedCatalogwriteClientSha256\s*\{\s*return\s*'([0-9A-Fa-f]{64})'").Groups[1].Value }
 if (-not $ExpectedConverterSha256) { $ExpectedConverterSha256 = [regex]::Match($cached, "Get-PinnedConverterSha256\s*\{\s*return\s*'([0-9A-Fa-f]{64})'").Groups[1].Value }
-if (-not $ExpectedClientSha256 -or -not $ExpectedConverterSha256) { throw 'Could not read the pinned client/converter SHA256 from ci/CachedRelease.ps1' }
+if (-not $ExpectedClientSha256 -or -not $ExpectedConverterSha256) {
+    throw 'Windows client/c-186 SHA256 is pending (or converter pin missing) in ci/CachedRelease.ps1. Refusing to start a native build without the real Windows release hash. Do not substitute Mac afde40db….'
+}
 
 $statePath = Join-Path $Logs "$Run-state.json"
 $report = Join-Path $Logs "$Run-product-report.json"

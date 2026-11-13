@@ -1,4 +1,4 @@
-<# After Invoke-VerifyPass.ps1 succeeded, push the refreshed small files (manifest, release-status, pins) to the receiver. #>
+﻿<# After Invoke-VerifyPass.ps1 succeeded, push the refreshed small files (manifest, release-status, pins) to the receiver. #>
 param([Parameter(Mandatory = $true)][string]$Run, [Parameter(Mandatory = $true)][string]$ReceiverUrl, [string]$Logs = 'T:\logs')
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Net.Http

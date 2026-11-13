@@ -22,47 +22,48 @@ function Assert-True {
 
 $tmpl = Get-Content -LiteralPath (Join-Path $PackagingRoot 'src\templates\env\backend.env.tmpl') -Raw
 Assert-True -Condition ($tmpl -notmatch 'XDISPLAY_AI_STAGED_DRAFTER_ENABLED') -Message 'Seed backend.env must not ship retired XDISPLAY_AI_STAGED_DRAFTER_ENABLED.'
-Assert-True -Condition ($tmpl -match 'XDISPLAY_AI_PROMPT_VERSIONS=') -Message 'Seed backend.env must pin s63f prompt versions.'
+Assert-True -Condition ($tmpl -match 'XDISPLAY_AI_PROMPT_VERSIONS=') -Message 'Seed backend.env must pin approved-card prompt versions.'
 $promptLineMatch = [regex]::Match($tmpl, '(?m)^XDISPLAY_AI_PROMPT_VERSIONS=(?<value>[^\r\n]*)\s*$')
 Assert-True -Condition $promptLineMatch.Success -Message 'Seed backend.env must have a single XDISPLAY_AI_PROMPT_VERSIONS assignment.'
 $generatedPromptTable = [string]$promptLineMatch.Groups['value'].Value
-Assert-True -Condition ($generatedPromptTable -eq (Get-S63fRegisteredPromptVersionTable)) -Message 'Seed XDISPLAY_AI_PROMPT_VERSIONS must be the full s63f registered-agent table with author version overlays.'
+Assert-True -Condition ($generatedPromptTable -eq (Get-S63fRegisteredPromptVersionTable)) -Message 'Seed XDISPLAY_AI_PROMPT_VERSIONS must be the full approved-card registered-agent table with author version overlays.'
 Assert-True -Condition ($generatedPromptTable -ne (Get-S63fRejectedTruncatedPromptVersionPins)) -Message 'Seed must not ship the truncated seven-entry author-card table that crashed native a62.'
 $generatedPromptProblems = @(Get-PromptVersionTableStartupProblems -EffectiveTable $generatedPromptTable -DefaultTable (Get-S63fSettingsDefaultPromptVersionTable))
 Assert-True -Condition ($generatedPromptProblems.Count -eq 0) -Message ('Generated prompt table must pass registry-shape checks: ' + ($generatedPromptProblems -join '; '))
-Assert-True -Condition ($generatedPromptTable -match 'intent_extractor:v2.24') -Message 's63f seed must pin intent_extractor v2.24.'
-Assert-True -Condition ($generatedPromptTable -match 'read_display_declarer:v1.15') -Message 's63f seed must pin read_display_declarer v1.15.'
-Assert-True -Condition ($generatedPromptTable -match 'write_action_declarer:v1.10') -Message 's63f seed must pin write_action_declarer v1.10.'
-Assert-True -Condition ($generatedPromptTable -match 'write_action_declarer_link:v1.8') -Message 's63f seed must pin write_action_declarer_link v1.8.'
-Assert-True -Condition ($generatedPromptTable -match 'sketch_interpreter:v4.0') -Message 's63f seed must pin sketch_interpreter v4.0.'
-Assert-True -Condition ($generatedPromptTable -match 'planner:v1.2') -Message 's63f seed must keep planner in the registered-agent map.'
-Assert-True -Condition ($generatedPromptTable -match 'navigation_target_grouping_judge:v1.0') -Message 's63f seed must keep navigation_target_grouping_judge in the registered-agent map.'
+Assert-True -Condition ($generatedPromptTable -match 'intent_extractor:v2.24') -Message 'approved-card seed must pin intent_extractor v2.24.'
+Assert-True -Condition ($generatedPromptTable -match 'read_display_declarer:v1.15') -Message 'approved-card seed must pin read_display_declarer v1.15.'
+Assert-True -Condition ($generatedPromptTable -match 'write_action_declarer:v1.10') -Message 'approved-card seed must pin write_action_declarer v1.10.'
+Assert-True -Condition ($generatedPromptTable -match 'write_action_declarer_link:v1.10') -Message 'approved-card seed must pin write_action_declarer_link v1.10.'
+Assert-True -Condition ($generatedPromptTable -match 'sketch_interpreter:v4.0') -Message 'approved-card seed must pin sketch_interpreter v4.0.'
+Assert-True -Condition ($generatedPromptTable -match 'planner:v1.2') -Message 'approved-card seed must keep planner in the registered-agent map.'
+Assert-True -Condition ($generatedPromptTable -match 'navigation_target_grouping_judge:v1.0') -Message 'approved-card seed must keep navigation_target_grouping_judge in the registered-agent map.'
 Assert-True -Condition ($generatedPromptTable -notmatch 'PAGE_HTML') -Message 'PAGE_HTML is not a prompt_versions agent; it must not appear in XDISPLAY_AI_PROMPT_VERSIONS.'
 Assert-True -Condition ($generatedPromptTable -notmatch 'STYLESHEET') -Message 'STYLESHEET is not a prompt_versions agent; it must not appear in XDISPLAY_AI_PROMPT_VERSIONS.'
-Assert-True -Condition ($tmpl -match '(?m)^XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION=v19\s*$') -Message 's63f seed must pin PAGE_HTML v19 on XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION.'
-Assert-True -Condition ($tmpl -match '(?m)^XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION=v6\s*$') -Message 's63f seed must pin STYLESHEET v6 on XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION.'
-Assert-True -Condition ($tmpl -match 'XDISPLAY_AI_SKETCH_VISION_TIMEOUT_SECONDS=90') -Message 's63f seed must keep 90s sketch vision timeout.'
+Assert-True -Condition ($tmpl -match '(?m)^XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION=v20\s*$') -Message 'approved-card seed must pin PAGE_HTML v20 on XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION.'
+Assert-True -Condition ($tmpl -match '(?m)^XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION=v6\s*$') -Message 'approved-card seed must pin STYLESHEET v6 on XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION.'
+Assert-True -Condition ($tmpl -match 'XDISPLAY_AI_SKETCH_VISION_TIMEOUT_SECONDS=90') -Message 'approved-card seed must keep 90s sketch vision timeout.'
 $truncatedProblems = @(Get-PromptVersionTableStartupProblems -EffectiveTable (Get-S63fRejectedTruncatedPromptVersionPins) -DefaultTable (Get-S63fSettingsDefaultPromptVersionTable))
 Assert-True -Condition ($truncatedProblems.Count -ge 28) -Message 'The a62 crash table must still fail registry-shape checks (missing 26 agents plus PAGE_HTML/STYLESHEET aliases).'
 Assert-True -Condition (($truncatedProblems -join ' ') -match 'PAGE_HTML') -Message 'Registry-shape checks must reject PAGE_HTML as a non-directory agent alias.'
 Assert-True -Condition (($truncatedProblems -join ' ') -match 'STYLESHEET') -Message 'Registry-shape checks must reject STYLESHEET as a non-directory agent alias.'
 
-Assert-True -Condition ((Get-ApprovedBackendRevisionPrefix) -eq 'dd6ab3d50') -Message 'Approved backend tip is dd6ab3d50 / prod/s63f, not HEAD.'
-Assert-True -Condition ((Get-ApprovedBackendRevisionFull) -eq 'dd6ab3d505827a94cbc9d59d7067fcce14db6fbe') -Message 'Approved backend full revision is dd6ab3d505827a94cbc9d59d7067fcce14db6fbe.'
-Assert-True -Condition ((Get-ApprovedBackendTag) -eq 'prod/s63f') -Message 'Approved backend tag must be prod/s63f.'
+Assert-True -Condition ((Get-ApprovedBackendRevisionPrefix) -eq '623b07232') -Message 'Approved backend tip is 623b07232 / prod/s63i-hf2, not HEAD.'
+Assert-True -Condition ((Get-ApprovedBackendRevisionFull) -eq '623b072320d2e8c68059ec5e7e33958267203a9c') -Message 'Approved backend full revision is 623b072320d2e8c68059ec5e7e33958267203a9c.'
+Assert-True -Condition ((Get-ApprovedBackendTag) -eq 'prod/s63i-hf2') -Message 'Approved backend Git tag must be prod/s63i-hf2 (card name s63i-hf2b is not a Git tag).'
+Assert-True -Condition ((Get-ApprovedBackendTag) -ne 'prod/s63i-hf2b') -Message 'Must not accept invented Git tag prod/s63i-hf2b.'
 Assert-True -Condition ((Get-ApprovedXdisplaySubmoduleCommit) -eq '0c657ad3eac7ece814206bd40fea807ec6568f81') -Message 'xd_render_cli submodule source is 0c657ad3; Linux ELF is built in qt_builder.'
-Assert-True -Condition ((Get-S63fPlaywrightVersion) -eq '1.56.0') -Message 's63f runtime image pins playwright 1.56.0.'
-Assert-True -Condition ((Get-S63fChromiumRevision) -eq '1194') -Message 's63f runtime image pins Chromium 1194.'
-Assert-True -Condition ((Get-S63fExportMachOXdRenderCliBytes) -eq 50200) -Message 'Sanctioned export Mach-O leftover is 50200 bytes, not a required Linux ELF.'
+Assert-True -Condition ((Get-S63fPlaywrightVersion) -eq '1.56.0') -Message 'approved-card runtime image pins playwright 1.56.0.'
+Assert-True -Condition ((Get-S63fChromiumRevision) -eq '1194') -Message 'approved-card runtime image pins Chromium 1194.'
+Assert-True -Condition ((Get-S63fExportMachOXdRenderCliBytes) -eq 0) -Message 'Mach-O leftover identity is pending until the sanitized source archive exists; it must not be a required Linux ELF pin.'
 Assert-True `
-    -Condition ((Get-S63fExportMachOXdRenderCliSha256) -eq '58618EC212229AC900E48304922AFD50EDFFD0F54CB325DCFA60F34382A606EA') `
-    -Message 'Sanctioned export Mach-O leftover hash is 58618EC2..., not a cached Linux ELF pin.'
+    -Condition ([string]::IsNullOrWhiteSpace((Get-S63fExportMachOXdRenderCliSha256))) `
+    -Message 'Mach-O leftover SHA is pending; do not invent or require a cached Linux ELF pin.'
 Assert-True `
     -Condition ((Get-ForbiddenS63fAppImageSha256) -eq 'F3EECC91AB386DE950F175329AB7CCF078435FF9E863E55708F60485BFFC2309') `
     -Message 'The previous 0.1.4 app tar F3EECC91... must be forbidden as an s63f image.'
 Assert-True `
     -Condition ((((Get-S63fMigrationFileNames) -join ',') -eq '0001_init.sql,0002_rag.sql,0003_orch_runtime.sql')) `
-    -Message 's63f ships migrations 0001-0003 only; no new data migration.'
+    -Message 'approved card ships migrations 0001-0003 only; no new data migration.'
 
 $retired = @(Get-RetiredBackendEnvKeys)
 Assert-True -Condition ($retired -contains 'XDISPLAY_AI_STAGED_DRAFTER_ENABLED') -Message 'Retired staged-drafter key must be listed for explicit migration.'
@@ -92,29 +93,81 @@ finally {
     Remove-Item -LiteralPath $envRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-$pinPath = Join-Path $PackagingRoot 'manifests\pins\offline-inputs.s63f.json'
-Assert-True -Condition (Test-Path -LiteralPath $pinPath) -Message 's63f pin manifest is missing.'
+$pinPath = Join-Path $PackagingRoot 'manifests\pins\offline-inputs.s63i-hf2b.json'
+Assert-True -Condition (Test-Path -LiteralPath $pinPath) -Message 's63i-hf2b pin manifest is missing.'
 $pins = Get-Content -LiteralPath $pinPath -Raw | ConvertFrom-Json
-Assert-True -Condition ($pins.backend.requiredRevisionPrefix -eq 'dd6ab3d50') -Message 's63f pin manifest must require dd6ab3d50, not HEAD.'
-Assert-True -Condition ($pins.backend.forbiddenAppImageSha256 -eq 'F3EECC91AB386DE950F175329AB7CCF078435FF9E863E55708F60485BFFC2309') -Message 's63f pin manifest must forbid the previous app tar hash.'
-Assert-True -Condition ($pins.promptPins -eq (Get-S63fRegisteredPromptVersionTable)) -Message 's63f pin manifest promptPins must be the full registered-agent table, not the truncated author-card replacement.'
-Assert-True -Condition ($pins.rejectedTruncatedPromptPins -eq (Get-S63fRejectedTruncatedPromptVersionPins)) -Message 's63f pin manifest must record the a62 crash table as rejected.'
-Assert-True -Condition ($pins.browserSolverPageHtmlPromptVersion -eq 'v19') -Message 's63f pin manifest must pin PAGE_HTML on the browser-solver Settings field.'
-Assert-True -Condition ($pins.browserSolverEngineeringStylesheetContractVersion -eq 'v6') -Message 's63f pin manifest must pin STYLESHEET on the engineering stylesheet Settings field.'
+Assert-True -Condition ($pins.backend.requiredRevisionPrefix -eq '623b07232') -Message 's63i-hf2b pin manifest must require 623b07232, not HEAD.'
+Assert-True -Condition ($pins.backend.requiredTag -eq 'prod/s63i-hf2') -Message 'Pin manifest requiredTag must be verified Git tag prod/s63i-hf2, not an invented hf2b tag.'
+Assert-True -Condition ($pins.backend.sourceArchiveSha256 -eq '68B6E331A6942A9CBDE6FDDFA7579E1AD8227B57C1D05E0D6C724F32A8317278') -Message 'Pin manifest must record verified sanitized source archive SHA.'
+Assert-True -Condition ($pins.backend.runtimeFingerprintInputs -contains 'docker/strict-ocr/fetch_models.py') -Message 'Pin manifest fingerprint inputs must include strict-ocr fetch_models.py.'
+Assert-True -Condition ($pins.backend.forbiddenAppImageSha256 -eq 'F3EECC91AB386DE950F175329AB7CCF078435FF9E863E55708F60485BFFC2309') -Message 's63i-hf2b pin manifest must forbid the previous app tar hash.'
+Assert-True -Condition ($pins.promptPins -eq (Get-S63fRegisteredPromptVersionTable)) -Message 's63i-hf2b pin manifest promptPins must be the full registered-agent table, not the truncated author-card replacement.'
+Assert-True -Condition ($pins.rejectedTruncatedPromptPins -eq (Get-S63fRejectedTruncatedPromptVersionPins)) -Message 's63i-hf2b pin manifest must record the a62 crash table as rejected.'
+Assert-True -Condition ($pins.browserSolverPageHtmlPromptVersion -eq 'v20') -Message 's63i-hf2b pin manifest must pin PAGE_HTML v20 on the browser-solver Settings field.'
+Assert-True -Condition ($pins.browserSolverEngineeringStylesheetContractVersion -eq 'v6') -Message 's63i-hf2b pin manifest must pin STYLESHEET on the engineering stylesheet Settings field.'
 Assert-True -Condition ($pins.client.notAuthorC180MailBytes -eq $true) -Message 'Client pins must be recorded as Word-fix supersets, not literal c180 mail bytes.'
-Assert-True -Condition ($pins.client.sha256 -eq '2A80890DB988157371CF28D24CA23685D7933C4E59630E5A2DCD2363B7DB5600') -Message 'Word-fix catalogwrite client SHA must be retained.'
+Assert-True -Condition ([string]$pins.client.sha256 -eq '17876130AC2901E0665434559CBDCFF897BCEA86A532B4A96379C74D4C3B6AF9') -Message 'Windows c186 client SHA must be the verified frozen exe pin.'
+Assert-True -Condition ([long]$pins.client.bytes -eq 758893746) -Message 'Windows c186 client bytes must be the verified frozen exe size.'
+Assert-True -Condition ([string]$pins.client.scanStatus -eq 'PENDING_AUDITED_RESCAN') -Message 'Client scanStatus must remain PENDING_AUDITED_RESCAN until audited full-byte rescan.'
 Assert-True -Condition ($pins.converter.sha256 -eq 'F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36') -Message 'Word-fix Converter SHA must be retained.'
 Assert-True -Condition ($pins.backend.linuxRenderCli.exportBinary.required -eq $false) -Message 'Mach-O leftover must not be a required Linux ELF pin.'
 Assert-True -Condition ($pins.backend.runtimeImage.playwright -eq '1.56.0') -Message 'Pin manifest must record playwright 1.56.0.'
 Assert-True -Condition ($pins.backend.skipBackendImageBuild -match 'invalid') -Message 'Pin manifest must record SkipBackendImageBuild as invalid from-source.'
 
+$pendingPinsRejected = $false
+$pendingPinMessage = ''
+try {
+    Assert-ApprovedCardPinsReady -PinManifestPath $pinPath
+}
+catch {
+    $pendingPinsRejected = $true
+    $pendingPinMessage = [string]$_.Exception.Message
+}
+Assert-True -Condition $pendingPinsRejected -Message 'Assert-ApprovedCardPinsReady must fail closed while audited scan / image hashes are pending.'
+Assert-True -Condition ($pendingPinMessage -match 'mandatory AuditedFullByteScanReportPath' -or $pendingPinMessage -match 'audited full-byte scan report') -Message 'Gate refusal must require a mandatory audited report path.'
+Assert-True -Condition ($pendingPinMessage -match 'PENDING' -and $pendingPinMessage -match 'backend/images') -Message 'Gate refusal must still cite pending image hashes.'
+
+$statusOnlyRejected = $false
+$statusOnlyMessage = ''
+try {
+    Assert-ApprovedCardPinsReady `
+        -PinManifestPath $pinPath `
+        -ExpectedClientScanStatus (Get-VerifiedAuditedFullByteScanStatus) `
+        -AuditedFullByteScanReportPath ''
+}
+catch {
+    $statusOnlyRejected = $true
+    $statusOnlyMessage = [string]$_.Exception.Message
+}
+Assert-True -Condition $statusOnlyRejected -Message 'VERIFIED status string alone must not authorize packaging.'
+Assert-True -Condition ($statusOnlyMessage -match 'mandatory AuditedFullByteScanReportPath' -or $statusOnlyMessage -match 'status strings/pins cannot authorize') -Message 'Status-only bypass must be rejected explicitly.'
+
+$omittedManifestRejected = $false
+$omittedManifestMessage = ''
+try {
+    Assert-ApprovedCardPinsReady -PinManifestPath '' -AuditedFullByteScanReportPath ''
+}
+catch {
+    $omittedManifestRejected = $true
+    $omittedManifestMessage = [string]$_.Exception.Message
+}
+Assert-True -Condition $omittedManifestRejected -Message 'Omitting PinManifestPath must fail closed.'
+Assert-True -Condition ($omittedManifestMessage -match 'PinManifestPath is mandatory') -Message "Empty PinManifestPath must be rejected as mandatory bypass; got: $omittedManifestMessage"
+
+Assert-True -Condition ((Get-PinnedClientTag) -eq 'client/c-186') -Message 'Pinned client tag must be client/c-186.'
+Assert-True -Condition ((Get-PinnedClientGitCommit) -eq '1898d30cc036241f5af5283c4dc9d7f95dbb8887') -Message 'Pinned client commit must be c-186 1898d30c.'
+Assert-True -Condition ((Get-PinnedCatalogwriteClientSha256) -eq '17876130AC2901E0665434559CBDCFF897BCEA86A532B4A96379C74D4C3B6AF9') -Message 'Pinned Windows c186 exe SHA must be filled.'
+Assert-True -Condition ((Get-PinnedCatalogwriteClientBytes) -eq 758893746) -Message 'Pinned Windows c186 exe bytes must be filled.'
+Assert-True -Condition ((Get-PinnedClientScanStatus) -eq 'PENDING_AUDITED_RESCAN') -Message 'Pinned client scan status must remain PENDING_AUDITED_RESCAN.'
+Assert-True -Condition ((Get-ForbiddenMacClientSha256) -eq 'AFDE40DBC47A1680A053FA9AD63E0532CD4A893824BB58E162FCDC2AD905E71F') -Message 'Mac c186 SHA must be recorded as forbidden for Windows pins.'
+
 $entrypoint = Get-Content -LiteralPath (Join-Path $PackagingRoot 'build-offline-package.ps1') -Raw
-Assert-True -Condition ($entrypoint -match 'offline-inputs\.s63f\.json') -Message 'Cached installer rebuild must default to the s63f pin manifest, not the stale F3EECC91 0.1.4 pins.'
-Assert-True -Condition ($entrypoint -match 'Assert-S63fBackendInputs' -or $entrypoint -match 'forbiddenAppImageSha256' -or $entrypoint -match 'Assert-ExistingBackendInputs') -Message 'Cached mode must keep s63f source/image gates.'
+Assert-True -Condition ($entrypoint -match 'offline-inputs\.s63i-hf2b\.json') -Message 'Cached installer rebuild must default to the s63i-hf2b pin manifest, not the stale F3EECC91 / s63f pins.'
+Assert-True -Condition ($entrypoint -match 'Assert-S63fBackendInputs' -or $entrypoint -match 'forbiddenAppImageSha256' -or $entrypoint -match 'Assert-ExistingBackendInputs') -Message 'Cached mode must keep approved-card source/image gates.'
 
 $prepareInputs = Get-Content -LiteralPath (Join-Path $PackagingRoot 'ci\prepare-inputs.ps1') -Raw
-Assert-True -Condition ($prepareInputs -match 'SOURCE_REVISION.txt') -Message 'Backend source snapshot must record SOURCE_REVISION.txt for s63f provenance.'
-Assert-True -Condition ($prepareInputs -match 'SkipBackendImageBuild is invalid for s63f') -Message 'prepare-inputs must refuse unproven SkipBackendImageBuild instead of tagging an old runtime-cache.'
+Assert-True -Condition ($prepareInputs -match 'SOURCE_REVISION.txt') -Message 'Backend source snapshot must record SOURCE_REVISION.txt for approved-card provenance.'
+Assert-True -Condition ($prepareInputs -match 'Get-ApprovedBackendCardName' -or $prepareInputs -match 'SkipBackendImageBuild is invalid') -Message 'prepare-inputs must refuse unproven SkipBackendImageBuild instead of tagging an old runtime-cache.'
 Assert-True -Condition ($entrypoint -match 'Assert-SkipBackendImageBuildFromSource') -Message 'Cached entrypoint must refuse SkipBackendImageBuild unless UseExistingBackendInputs follows a sanctioned rebuild.'
 
 $fingerprintPaths = @(Get-OrchestrationAppRuntimeFingerprintPaths)
@@ -125,6 +178,12 @@ Assert-True -Condition ($fingerprintPaths -contains 'Dockerfile') -Message 'Fing
 Assert-True -Condition ($fingerprintPaths -contains 'pyproject.toml') -Message 'Fingerprint must include pyproject.toml.'
 Assert-True -Condition ($fingerprintPaths -contains '.dockerignore') -Message 'Fingerprint must include .dockerignore (uv.lock ignored).'
 Assert-True -Condition ($fingerprintPaths -contains 'external\xdisplay\bin\xd_render_cli\main.cpp') -Message 'Fingerprint must include xd_render_cli source, not a cached ELF.'
+Assert-True -Condition ($fingerprintPaths -contains 'docker\strict-ocr\fetch_models.py') -Message 'Fingerprint must include docker/strict-ocr fetch_models.py for prod/s63i-hf2.'
+Assert-True -Condition ($fingerprintPaths -contains 'docker\strict-ocr\model-manifest.json') -Message 'Fingerprint must include docker/strict-ocr model-manifest.json.'
+Assert-True -Condition ($fingerprintPaths -contains 'docker\strict-ocr\LICENSE-APACHE-2.0.txt') -Message 'Fingerprint must include docker/strict-ocr LICENSE.'
+Assert-True -Condition ($fingerprintPaths -contains 'docker\strict-ocr\NOTICE.md') -Message 'Fingerprint must include docker/strict-ocr NOTICE.'
+Assert-True -Condition ((@(Get-ForbiddenLegacyOrchestrationRuntimeFingerprintPaths) -notcontains 'docker\strict-ocr')) -Message 'docker/strict-ocr must not be listed as a forbidden legacy fingerprint path.'
+Assert-True -Condition ((Get-ApprovedS63fSourceArchiveSha256) -eq '68B6E331A6942A9CBDE6FDDFA7579E1AD8227B57C1D05E0D6C724F32A8317278') -Message 'Verified sanitized source archive SHA must be pinned.'
 Assert-True -Condition ($fingerprintPaths -notcontains 'external\xdisplay\bin\xd_render_cli') -Message 'Fingerprint hashes source files, not the Mach-O leftover binary path.'
 Assert-True -Condition ($fingerprintPaths -notcontains 'uv.lock') -Message 'uv.lock must not be a runtime fingerprint input.'
 Assert-True -Condition ((Get-EmbeddingRuntimeFingerprintPaths) -contains 'scripts\embedding_http_service.py') -Message 'Embedding fingerprint must include the copied service script.'
@@ -136,7 +195,7 @@ try {
 catch {
     $skipFromSourceRejected = $_.Exception.Message -match 'SkipBackendImageBuild is invalid'
 }
-Assert-True -Condition $skipFromSourceRejected -Message 'From-source SkipBackendImageBuild must fail closed for s63f.'
+Assert-True -Condition $skipFromSourceRejected -Message 'From-source SkipBackendImageBuild must fail closed for the approved card.'
 Assert-SkipBackendImageBuildFromSource -SkipBackendImageBuild $false -UseExistingBackendInputs $false
 Assert-SkipBackendImageBuildFromSource -SkipBackendImageBuild $true -UseExistingBackendInputs $true
 
@@ -188,6 +247,11 @@ try {
         foreach ($name in @('main.cpp', 'render_runner.cpp', 'render_runner.h', 'xd_render_cli.pro', 'Makefile')) {
             [System.IO.File]::WriteAllText((Join-Path $cli $name), $name)
         }
+        $strict = Join-Path $SourceRoot 'docker\strict-ocr'
+        New-Item -ItemType Directory -Path $strict -Force | Out-Null
+        foreach ($name in @('LICENSE-APACHE-2.0.txt', 'NOTICE.md', 'fetch_models.py', 'model-manifest.json')) {
+            [System.IO.File]::WriteAllText((Join-Path $strict $name), $name)
+        }
     }
 
     $staleRejected = $false
@@ -195,9 +259,9 @@ try {
         Assert-ExistingBackendInputs -InputsRoot $testRoot -PinManifestPath $pinPath | Out-Null
     }
     catch {
-        $staleRejected = $_.Exception.Message -match 'F3EECC91' -or $_.Exception.Message -match 'SOURCE_REVISION' -or $_.Exception.Message -match 's63f'
+        $staleRejected = $_.Exception.Message -match 'F3EECC91' -or $_.Exception.Message -match 'SOURCE_REVISION' -or $_.Exception.Message -match 's63i-hf2b' -or $_.Exception.Message -match 's63f'
     }
-    Assert-True -Condition $staleRejected -Message 's63f input gate must fail closed without SOURCE_REVISION and without a rebuilt app image.'
+    Assert-True -Condition $staleRejected -Message 'approved-card input gate must fail closed without SOURCE_REVISION and without a rebuilt app image.'
 
     [System.IO.File]::WriteAllText((Join-Path $testRoot 'backend\source\SOURCE_REVISION.txt'), "deadbeef`n")
     $wrongRevRejected = $false
@@ -205,12 +269,12 @@ try {
         Assert-ExistingBackendInputs -InputsRoot $testRoot -PinManifestPath $pinPath | Out-Null
     }
     catch {
-        $wrongRevRejected = $_.Exception.Message -match 'dd6ab3d50'
+        $wrongRevRejected = $_.Exception.Message -match '623b07232'
     }
-    Assert-True -Condition $wrongRevRejected -Message 'SOURCE_REVISION that is not dd6ab3d50 must be rejected (no HEAD, no stale snapshot).'
+    Assert-True -Condition $wrongRevRejected -Message 'SOURCE_REVISION that is not 623b07232 must be rejected (no HEAD, no stale snapshot).'
 
-    [System.IO.File]::WriteAllText((Join-Path $testRoot 'backend\source\SOURCE_REVISION.txt'), "dd6ab3d505827a94cbc9d59d7067fcce14db6fbe`n")
-    [System.IO.File]::WriteAllText((Join-Path $testRoot 'backend\source\SOURCE_TAG.txt'), "prod/s63f`n")
+    [System.IO.File]::WriteAllText((Join-Path $testRoot 'backend\source\SOURCE_REVISION.txt'), "623b072320d2e8c68059ec5e7e33958267203a9c`n")
+    [System.IO.File]::WriteAllText((Join-Path $testRoot 'backend\source\SOURCE_TAG.txt'), "prod/s63i-hf2`n")
     [System.IO.File]::WriteAllText(
         (Join-Path $testRoot 'backend\source\SOURCE_SUBMODULE.txt'),
         "commit=0c657ad3eac7ece814206bd40fea807ec6568f81`n"
@@ -222,9 +286,14 @@ try {
     $staleBytes = [System.Text.Encoding]::ASCII.GetBytes('not-the-old-gigabyte-tar-but-marked-forbidden')
     [System.IO.File]::WriteAllBytes($appTar, $staleBytes)
     $localForbidden = (Get-FileHash -Path $appTar -Algorithm SHA256).Hash
-    $localManifestPath = Join-Path $testRoot 'local-s63f.json'
+    $localManifestPath = Join-Path $testRoot 'local-s63i-hf2b.json'
     $localManifest = Get-Content -LiteralPath $pinPath -Raw | ConvertFrom-Json
     $localManifest.backend.forbiddenAppImageSha256 = $localForbidden
+    # Fixture stubs are 4-byte placeholders; this unit covers SOURCE_REVISION/inspect gates, not prereq byte pins.
+    foreach ($entry in @($localManifest.files)) {
+        if ($null -eq $entry) { continue }
+        $entry | Add-Member -NotePropertyName assertSha256 -NotePropertyValue $false -Force
+    }
     $localManifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $localManifestPath
     $forbiddenRejected = $false
     try {
@@ -233,7 +302,7 @@ try {
     catch {
         $forbiddenRejected = $_.Exception.Message -match 'forbidden' -or $_.Exception.Message -match 'F3EECC91' -or $_.Exception.Message -match 'rename'
     }
-    Assert-True -Condition $forbiddenRejected -Message 'An app image whose hash is the forbidden previous tar must not be accepted as s63f.'
+    Assert-True -Condition $forbiddenRejected -Message 'An app image whose hash is the forbidden previous tar must not be accepted as s63i-hf2b.'
 
     [System.IO.File]::WriteAllBytes($appTar, [byte[]](9, 9, 9, 9, 9))
     $missingInspectRejected = $false
@@ -243,16 +312,16 @@ try {
     catch {
         $missingInspectRejected = $_.Exception.Message -match 'inspect'
     }
-    Assert-True -Condition $missingInspectRejected -Message 's63f app tar requires companion docker inspect JSON; renaming a tar is not proof.'
+    Assert-True -Condition $missingInspectRejected -Message 'approved-card app tar requires companion docker inspect JSON; renaming a tar is not proof.'
 
     $fingerprint = Get-SourceContentFingerprint -Root $sourceRoot -RelativePaths @(Get-OrchestrationAppRuntimeFingerprintPaths)
     $inspectObject = [pscustomobject]@{
         Id = 'sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef'
-        RepoTags = @('orches/orchestration-app:s63f-dd6ab3d50', 'orches/orchestration-app:latest')
+        RepoTags = @('orches/orchestration-app:s63i-hf2b-623b07232', 'orches/orchestration-app:latest')
         Config = [pscustomobject]@{
             Labels = [pscustomobject]@{
-                'xdisplayai.packaging.git-sha' = 'dd6ab3d505827a94cbc9d59d7067fcce14db6fbe'
-                'xdisplayai.packaging.tag' = 'prod/s63f'
+                'xdisplayai.packaging.git-sha' = '623b072320d2e8c68059ec5e7e33958267203a9c'
+                'xdisplayai.packaging.tag' = 'prod/s63i-hf2'
                 'xdisplayai.packaging.runtime-fingerprint' = $fingerprint
             }
         }
@@ -271,5 +340,5 @@ finally {
     Remove-Item -LiteralPath $testRoot -Recurse -Force -ErrorAction SilentlyContinue
 }
 
-Write-Output 'PASS: s63f packaging contract'
+Write-Output 'PASS: s63i-hf2b packaging contract'
 exit 0
