@@ -1,0 +1,14 @@
+{
+  "status": "PRESERVED_ORIGINAL_FAIL_RECEIPT_REFERENCE",
+  "doNotRewrite": true,
+  "windowsReceiptSha256": "CBFED2C99D0BBB17E071108B07D1C9895B21D4461365B9795FCD10FED2801401",
+  "frozenTreeManifestSha256": "5A2C4A23E9D7689F09C76281764CE929D26D45CAA23A28D7F6C9FA3058264A1B",
+  "frozenTreeFiles": 2389,
+  "frozenTreeBytes": 1536238861,
+  "clientExeBytes": 758893746,
+  "clientExeSha256": "17876130AC2901E0665434559CBDCFF897BCEA86A532B4A96379C74D4C3B6AF9",
+  "reviewEvidence": "Parent REVIEW.md five groups / 18 occurrences; empty gitleaks [] insufficient",
+  "policyRelativePath": "manifests/security/release-fullbyte-scan-policy.s63i-hf2b.json",
+  "policySha256AtCommit": "935CA68AF3FA5904BE4B505427346D4BDF6F6A2AAA25FB468A379D1D51D1CC44",
+  "note": "Implementation emits NEW audited scan reports; this reference is metadata only and is not a PASS."
+}

@@ -48,8 +48,9 @@ Assert-True -Condition ($entrypoint -match 'F7C50DB87D082DE31A154A123B05FA3D327A
 Assert-True -Condition ($entrypoint -match '529920') -Message 'Cached release must pin Converter.exe size 529920.'
 Assert-True -Condition ($entrypoint -notmatch 'AFDE40DBC47A1680A053FA9AD63E0532CD4A893824BB58E162FCDC2AD905E71F') -Message 'Entrypoint must not pin the Mac c186 SHA as the Windows client.'
 . (Join-Path $PackagingRoot 'ci\CachedRelease.ps1')
-Assert-True -Condition ([string]::IsNullOrWhiteSpace((Get-PinnedCatalogwriteClientSha256))) -Message 'Windows c186 client SHA must be empty/pending until the real Windows release exists.'
-Assert-True -Condition ((Get-PinnedCatalogwriteClientBytes) -eq 0) -Message 'Windows c186 client bytes must be pending (0) until the real Windows release exists.'
+Assert-True -Condition ((Get-PinnedCatalogwriteClientSha256) -eq '17876130AC2901E0665434559CBDCFF897BCEA86A532B4A96379C74D4C3B6AF9') -Message 'Windows c186 client SHA must be the verified frozen exe pin.'
+Assert-True -Condition ((Get-PinnedCatalogwriteClientBytes) -eq 758893746) -Message 'Windows c186 client bytes must be the verified frozen exe size.'
+Assert-True -Condition ((Get-PinnedClientScanStatus) -eq 'PENDING_AUDITED_RESCAN') -Message 'Client scan status must remain PENDING_AUDITED_RESCAN until audited rescan.'
 Assert-True `
     -Condition ($entrypoint -match 'SkipClientBuild' -and $entrypoint -match 'build-xdisplay-from-source' -and $entrypoint -match 'if \(\$SkipClientBuild') `
     -Message 'SkipClientBuild must short-circuit the unconditional client source rebuild.'

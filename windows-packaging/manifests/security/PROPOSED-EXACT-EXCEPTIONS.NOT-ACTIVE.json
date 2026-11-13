@@ -1,0 +1,593 @@
+{
+  "status": "PROPOSED_NOT_ACTIVE",
+  "gateRemains": "FAIL",
+  "purpose": "Exact proven-public-constant exceptions for review only; not an allowlist for libraries or PEM/private keys",
+  "occurrenceCount": 18,
+  "fileRuleFindingGroups": 5,
+  "exceptions": [
+    {
+      "active": false,
+      "relativePath": "avformat-62.dll",
+      "fileBytes": 22030336,
+      "fileSHA256": "76ff5415f0a3f68e10690623ac1d166c65febfaa2457a887912fbacef4745652",
+      "rule": "provider-token-prefix",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 20368140,
+      "length": 31,
+      "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9",
+      "classification": "LIBSSH_SECURITY_KEY_ECDSA_CERT_ALGORITHM_NAME",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.0/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 290,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.0/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 577,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.0/src/kex.c",
+          "rule": "provider-token-prefix",
+          "line": 108,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Proposal only; explicit review and audited application required"
+      ]
+    },
+    {
+      "active": false,
+      "relativePath": "avformat-62.dll",
+      "fileBytes": 22030336,
+      "fileSHA256": "76ff5415f0a3f68e10690623ac1d166c65febfaa2457a887912fbacef4745652",
+      "rule": "provider-token-prefix",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 20371936,
+      "length": 31,
+      "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9",
+      "classification": "LIBSSH_SECURITY_KEY_ECDSA_CERT_ALGORITHM_NAME",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.0/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 290,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.0/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 577,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.0/src/kex.c",
+          "rule": "provider-token-prefix",
+          "line": 108,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Proposal only; explicit review and audited application required"
+      ]
+    },
+    {
+      "active": false,
+      "relativePath": "avformat-62.dll",
+      "fileBytes": 22030336,
+      "fileSHA256": "76ff5415f0a3f68e10690623ac1d166c65febfaa2457a887912fbacef4745652",
+      "rule": "provider-token-prefix",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 20383616,
+      "length": 31,
+      "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9",
+      "classification": "LIBSSH_SECURITY_KEY_ECDSA_CERT_ALGORITHM_NAME",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.0/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 290,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.0/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 577,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.0/src/kex.c",
+          "rule": "provider-token-prefix",
+          "line": 108,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Proposal only; explicit review and audited application required"
+      ]
+    },
+    {
+      "active": false,
+      "relativePath": "avformat-62.dll",
+      "fileBytes": 22030336,
+      "fileSHA256": "76ff5415f0a3f68e10690623ac1d166c65febfaa2457a887912fbacef4745652",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 20384176,
+      "length": 31,
+      "matchedBytesSHA256": "8bcac7908eb950419537b91e19adc83ce2c9cbfdacf4f81157fdadfec11f7017",
+      "classification": "NUL_TERMINATED_RSA_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.0/include/libssh/pki_priv.h",
+          "rule": "private-pem-header",
+          "line": 39,
+          "length": 31,
+          "matchedBytesSHA256": "8bcac7908eb950419537b91e19adc83ce2c9cbfdacf4f81157fdadfec11f7017"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Proposal only; explicit review and audited application required"
+      ]
+    },
+    {
+      "active": false,
+      "relativePath": "avformat-62.dll",
+      "fileBytes": 22030336,
+      "fileSHA256": "76ff5415f0a3f68e10690623ac1d166c65febfaa2457a887912fbacef4745652",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 20384208,
+      "length": 30,
+      "matchedBytesSHA256": "33ea101ddbe7c33be8f143a2779736d0264a4f4c8f323331a4aa9a1f72d8ab2a",
+      "classification": "NUL_TERMINATED_EC_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.0/include/libssh/pki_priv.h",
+          "rule": "private-pem-header",
+          "line": 41,
+          "length": 30,
+          "matchedBytesSHA256": "33ea101ddbe7c33be8f143a2779736d0264a4f4c8f323331a4aa9a1f72d8ab2a"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Proposal only; explicit review and audited application required"
+      ]
+    },
+    {
+      "active": false,
+      "relativePath": "avformat-62.dll",
+      "fileBytes": 22030336,
+      "fileSHA256": "76ff5415f0a3f68e10690623ac1d166c65febfaa2457a887912fbacef4745652",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 20385184,
+      "length": 35,
+      "matchedBytesSHA256": "03d104c669e3c7b6be7f989db8b12c8b910d3be8c1e2a73c9369d3cc0ba803b5",
+      "classification": "NUL_TERMINATED_OPENSSH_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.0/include/libssh/pki_priv.h",
+          "rule": "private-pem-header",
+          "line": 43,
+          "length": 35,
+          "matchedBytesSHA256": "03d104c669e3c7b6be7f989db8b12c8b910d3be8c1e2a73c9369d3cc0ba803b5"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Proposal only; explicit review and audited application required"
+      ]
+    },
+    {
+      "active": false,
+      "relativePath": "avformat-62.dll",
+      "fileBytes": 22030336,
+      "fileSHA256": "76ff5415f0a3f68e10690623ac1d166c65febfaa2457a887912fbacef4745652",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 20389984,
+      "length": 35,
+      "matchedBytesSHA256": "03d104c669e3c7b6be7f989db8b12c8b910d3be8c1e2a73c9369d3cc0ba803b5",
+      "classification": "NUL_TERMINATED_OPENSSH_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.0/include/libssh/pki_priv.h",
+          "rule": "private-pem-header",
+          "line": 43,
+          "length": 35,
+          "matchedBytesSHA256": "03d104c669e3c7b6be7f989db8b12c8b910d3be8c1e2a73c9369d3cc0ba803b5"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Proposal only; explicit review and audited application required"
+      ]
+    },
+    {
+      "active": false,
+      "relativePath": "ffmpeg.exe",
+      "fileBytes": 148103168,
+      "fileSHA256": "36a59b638b49f8e6c622f4de7c4c8aaf8442f30138a58882ee2af3f410e5fd5c",
+      "rule": "provider-token-prefix",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 137597644,
+      "length": 31,
+      "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9",
+      "classification": "LIBSSH_SECURITY_KEY_ECDSA_CERT_ALGORITHM_NAME",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.1/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 290,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.1/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 577,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.1/src/kex.c",
+          "rule": "provider-token-prefix",
+          "line": 108,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Proposal only; explicit review and audited application required"
+      ]
+    },
+    {
+      "active": false,
+      "relativePath": "ffmpeg.exe",
+      "fileBytes": 148103168,
+      "fileSHA256": "36a59b638b49f8e6c622f4de7c4c8aaf8442f30138a58882ee2af3f410e5fd5c",
+      "rule": "provider-token-prefix",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 137600960,
+      "length": 31,
+      "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9",
+      "classification": "LIBSSH_SECURITY_KEY_ECDSA_CERT_ALGORITHM_NAME",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.1/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 290,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.1/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 577,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.1/src/kex.c",
+          "rule": "provider-token-prefix",
+          "line": 108,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Proposal only; explicit review and audited application required"
+      ]
+    },
+    {
+      "active": false,
+      "relativePath": "ffmpeg.exe",
+      "fileBytes": 148103168,
+      "fileSHA256": "36a59b638b49f8e6c622f4de7c4c8aaf8442f30138a58882ee2af3f410e5fd5c",
+      "rule": "provider-token-prefix",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 137613968,
+      "length": 31,
+      "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9",
+      "classification": "LIBSSH_SECURITY_KEY_ECDSA_CERT_ALGORITHM_NAME",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.1/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 290,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.1/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 577,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.1/src/kex.c",
+          "rule": "provider-token-prefix",
+          "line": 108,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Proposal only; explicit review and audited application required"
+      ]
+    },
+    {
+      "active": false,
+      "relativePath": "ffmpeg.exe",
+      "fileBytes": 148103168,
+      "fileSHA256": "36a59b638b49f8e6c622f4de7c4c8aaf8442f30138a58882ee2af3f410e5fd5c",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 137614496,
+      "length": 31,
+      "matchedBytesSHA256": "8bcac7908eb950419537b91e19adc83ce2c9cbfdacf4f81157fdadfec11f7017",
+      "classification": "NUL_TERMINATED_RSA_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.1/include/libssh/pki_priv.h",
+          "rule": "private-pem-header",
+          "line": 39,
+          "length": 31,
+          "matchedBytesSHA256": "8bcac7908eb950419537b91e19adc83ce2c9cbfdacf4f81157fdadfec11f7017"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Proposal only; explicit review and audited application required"
+      ]
+    },
+    {
+      "active": false,
+      "relativePath": "ffmpeg.exe",
+      "fileBytes": 148103168,
+      "fileSHA256": "36a59b638b49f8e6c622f4de7c4c8aaf8442f30138a58882ee2af3f410e5fd5c",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 137614528,
+      "length": 30,
+      "matchedBytesSHA256": "33ea101ddbe7c33be8f143a2779736d0264a4f4c8f323331a4aa9a1f72d8ab2a",
+      "classification": "NUL_TERMINATED_EC_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.1/include/libssh/pki_priv.h",
+          "rule": "private-pem-header",
+          "line": 41,
+          "length": 30,
+          "matchedBytesSHA256": "33ea101ddbe7c33be8f143a2779736d0264a4f4c8f323331a4aa9a1f72d8ab2a"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Proposal only; explicit review and audited application required"
+      ]
+    },
+    {
+      "active": false,
+      "relativePath": "ffmpeg.exe",
+      "fileBytes": 148103168,
+      "fileSHA256": "36a59b638b49f8e6c622f4de7c4c8aaf8442f30138a58882ee2af3f410e5fd5c",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 137615600,
+      "length": 35,
+      "matchedBytesSHA256": "03d104c669e3c7b6be7f989db8b12c8b910d3be8c1e2a73c9369d3cc0ba803b5",
+      "classification": "NUL_TERMINATED_OPENSSH_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.1/include/libssh/pki_priv.h",
+          "rule": "private-pem-header",
+          "line": 43,
+          "length": 35,
+          "matchedBytesSHA256": "03d104c669e3c7b6be7f989db8b12c8b910d3be8c1e2a73c9369d3cc0ba803b5"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Proposal only; explicit review and audited application required"
+      ]
+    },
+    {
+      "active": false,
+      "relativePath": "ffmpeg.exe",
+      "fileBytes": 148103168,
+      "fileSHA256": "36a59b638b49f8e6c622f4de7c4c8aaf8442f30138a58882ee2af3f410e5fd5c",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 137617728,
+      "length": 35,
+      "matchedBytesSHA256": "03d104c669e3c7b6be7f989db8b12c8b910d3be8c1e2a73c9369d3cc0ba803b5",
+      "classification": "NUL_TERMINATED_OPENSSH_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.1/include/libssh/pki_priv.h",
+          "rule": "private-pem-header",
+          "line": 43,
+          "length": 35,
+          "matchedBytesSHA256": "03d104c669e3c7b6be7f989db8b12c8b910d3be8c1e2a73c9369d3cc0ba803b5"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Proposal only; explicit review and audited application required"
+      ]
+    },
+    {
+      "active": false,
+      "relativePath": "Qt5Network.dll",
+      "fileBytes": 2699096,
+      "fileSHA256": "7660849b5647d0cd1c893fd0f977474df7b968bfae17cec79dbc77359f4e01f3",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 1410968,
+      "length": 27,
+      "matchedBytesSHA256": "3021d90eb9437b2d8f30e8363695c4418b5e5f1870801b5c317e9398ee0f572d",
+      "classification": "NUL_TERMINATED_PKCS8_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "qt-5.15.2-qsslkey_p.cpp",
+          "rule": "private-pem-header",
+          "line": 120,
+          "length": 27,
+          "matchedBytesSHA256": "3021d90eb9437b2d8f30e8363695c4418b5e5f1870801b5c317e9398ee0f572d"
+        },
+        {
+          "sourceFile": "qt-5.15.2-qsslkey_p.cpp",
+          "rule": "private-pem-header",
+          "line": 130,
+          "length": 27,
+          "matchedBytesSHA256": "3021d90eb9437b2d8f30e8363695c4418b5e5f1870801b5c317e9398ee0f572d"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Proposal only; explicit review and audited application required"
+      ]
+    },
+    {
+      "active": false,
+      "relativePath": "Qt5Network.dll",
+      "fileBytes": 2699096,
+      "fileSHA256": "7660849b5647d0cd1c893fd0f977474df7b968bfae17cec79dbc77359f4e01f3",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 1411096,
+      "length": 27,
+      "matchedBytesSHA256": "3021d90eb9437b2d8f30e8363695c4418b5e5f1870801b5c317e9398ee0f572d",
+      "classification": "NUL_TERMINATED_PKCS8_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "qt-5.15.2-qsslkey_p.cpp",
+          "rule": "private-pem-header",
+          "line": 120,
+          "length": 27,
+          "matchedBytesSHA256": "3021d90eb9437b2d8f30e8363695c4418b5e5f1870801b5c317e9398ee0f572d"
+        },
+        {
+          "sourceFile": "qt-5.15.2-qsslkey_p.cpp",
+          "rule": "private-pem-header",
+          "line": 130,
+          "length": 27,
+          "matchedBytesSHA256": "3021d90eb9437b2d8f30e8363695c4418b5e5f1870801b5c317e9398ee0f572d"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Proposal only; explicit review and audited application required"
+      ]
+    },
+    {
+      "active": false,
+      "relativePath": "Qt5Network.dll",
+      "fileBytes": 2699096,
+      "fileSHA256": "7660849b5647d0cd1c893fd0f977474df7b968bfae17cec79dbc77359f4e01f3",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 1411160,
+      "length": 30,
+      "matchedBytesSHA256": "33ea101ddbe7c33be8f143a2779736d0264a4f4c8f323331a4aa9a1f72d8ab2a",
+      "classification": "NUL_TERMINATED_EC_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "qt-5.15.2-qsslkey_p.cpp",
+          "rule": "private-pem-header",
+          "line": 118,
+          "length": 30,
+          "matchedBytesSHA256": "33ea101ddbe7c33be8f143a2779736d0264a4f4c8f323331a4aa9a1f72d8ab2a"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Proposal only; explicit review and audited application required"
+      ]
+    },
+    {
+      "active": false,
+      "relativePath": "Qt5Network.dll",
+      "fileBytes": 2699096,
+      "fileSHA256": "7660849b5647d0cd1c893fd0f977474df7b968bfae17cec79dbc77359f4e01f3",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 1411288,
+      "length": 31,
+      "matchedBytesSHA256": "8bcac7908eb950419537b91e19adc83ce2c9cbfdacf4f81157fdadfec11f7017",
+      "classification": "NUL_TERMINATED_RSA_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "qt-5.15.2-qsslkey_p.cpp",
+          "rule": "private-pem-header",
+          "line": 114,
+          "length": 31,
+          "matchedBytesSHA256": "8bcac7908eb950419537b91e19adc83ce2c9cbfdacf4f81157fdadfec11f7017"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Proposal only; explicit review and audited application required"
+      ]
+    }
+  ]
+}

@@ -10,11 +10,11 @@
     [string]$DistRoot = '',
     [string]$CacheRoot = '',
     [string]$TempRoot = '',
-    # Windows client/c-186 SHA/size are PENDING until parent supplies the real Windows release hashes.
-    # Empty defaults fail closed via Assert-ApprovedCardPinsReady (do not use Mac afde40db… or old 2A80890D…).
-    [string]$ExpectedClientSha256 = '',
+    # Windows client/c-186 SHA/size filled from frozen final receipt; scanStatus remains PENDING_AUDITED_RESCAN.
+    # Assert-ApprovedCardPinsReady still refuses pack until audited full-byte scan verifies and image hashes land.
+    [string]$ExpectedClientSha256 = '17876130AC2901E0665434559CBDCFF897BCEA86A532B4A96379C74D4C3B6AF9',
     [string]$ExpectedConverterSha256 = 'F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36',
-    [long]$ExpectedClientBytes = 0,
+    [long]$ExpectedClientBytes = 758893746,
     [long]$ExpectedConverterBytes = 529920,
     [string]$ExpectedInputPinsPath = '',
     [string]$QmakePath = '',

@@ -5,9 +5,10 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '..\src\scripts\common\InstallerCorrectness.ps1')
 
 function Get-PinnedCatalogwriteClientSha256 {
-    # PENDING: Windows client/c-186 release SHA256 is not available yet.
+    # Verified Windows client/c-186 exe pin from frozen final receipt (resource equality verified).
     # Do not substitute Mac c186 SHA afde40db… or old catalogwrite 2A80890D….
-    return ''
+    # clientScanStatus remains PENDING_AUDITED_RESCAN until audited full-byte scan verifies.
+    return '17876130AC2901E0665434559CBDCFF897BCEA86A532B4A96379C74D4C3B6AF9'
 }
 
 function Get-PinnedConverterSha256 {
@@ -15,7 +16,16 @@ function Get-PinnedConverterSha256 {
 }
 
 function Get-PinnedCatalogwriteClientBytes {
-    return [long]0
+    return [long]758893746
+}
+
+function Get-PinnedClientScanStatus {
+    # Audited occurrence-aware full-byte scan has not been re-run on the frozen tree yet.
+    return 'PENDING_AUDITED_RESCAN'
+}
+
+function Get-VerifiedAuditedFullByteScanStatus {
+    return 'VERIFIED_AUDITED_FULLBYTE'
 }
 
 function Get-PinnedConverterBytes {
@@ -38,7 +48,8 @@ function Assert-ApprovedCardPinsReady {
     param(
         [string]$ExpectedClientSha256 = (Get-PinnedCatalogwriteClientSha256),
         [long]$ExpectedClientBytes = (Get-PinnedCatalogwriteClientBytes),
-        [string]$PinManifestPath = ''
+        [string]$PinManifestPath = '',
+        [string]$ExpectedClientScanStatus = (Get-PinnedClientScanStatus)
     )
 
     $problems = New-Object System.Collections.Generic.List[string]
@@ -51,6 +62,10 @@ function Assert-ApprovedCardPinsReady {
     $forbiddenMac = Convert-ToNormalizedSha256 -Value (Get-ForbiddenMacClientSha256)
     if (-not [string]::IsNullOrWhiteSpace($ExpectedClientSha256) -and [string]::Equals((Convert-ToNormalizedSha256 -Value $ExpectedClientSha256), $forbiddenMac, [StringComparison]::Ordinal)) {
         $problems.Add('Refusing Mac c186 package SHA as the Windows client pin')
+    }
+    $verifiedScan = Get-VerifiedAuditedFullByteScanStatus
+    if (-not [string]::Equals([string]$ExpectedClientScanStatus, $verifiedScan, [StringComparison]::OrdinalIgnoreCase)) {
+        $problems.Add("client audited full-byte secret scan is pending ($ExpectedClientScanStatus); refusing installer while scan is not $verifiedScan")
     }
     if (-not [string]::IsNullOrWhiteSpace($PinManifestPath) -and (Test-Path -LiteralPath $PinManifestPath -PathType Leaf)) {
         $manifest = Get-Content -LiteralPath $PinManifestPath -Raw | ConvertFrom-Json
@@ -77,6 +92,35 @@ function Assert-ApprovedCardPinsReady {
             $clientSha = [string]$manifest.client.sha256
             if ([string]::IsNullOrWhiteSpace($clientSha)) {
                 $problems.Add('client.sha256 is pending in the pin manifest')
+            }
+            $scanStatus = [string]$manifest.client.scanStatus
+            if ([string]::IsNullOrWhiteSpace($scanStatus)) {
+                $scanStatus = [string]$manifest.client.clientScanStatus
+            }
+            if (-not [string]::Equals($scanStatus, $verifiedScan, [StringComparison]::OrdinalIgnoreCase)) {
+                $problems.Add("client.scanStatus is pending ($scanStatus); audited full-byte rescan required before pack")
+            }
+        }
+        if ($null -ne $manifest.files) {
+            foreach ($entry in @($manifest.files)) {
+                $entryProps = @($entry.PSObject.Properties.Name)
+                if ($entryProps -contains 'status') {
+                    $status = [string]$entry.status
+                    if ([string]::Equals($status, 'PENDING', [StringComparison]::OrdinalIgnoreCase)) {
+                        $problems.Add("pin file $($entry.relativePath) hash is PENDING")
+                    }
+                }
+                $sha = ''
+                if ($entryProps -contains 'sha256') {
+                    $sha = [string]$entry.sha256
+                }
+                $assertSha = $true
+                if ($entryProps -contains 'assertSha256') {
+                    $assertSha = [bool]$entry.assertSha256
+                }
+                if ([string]::IsNullOrWhiteSpace($sha) -and -not $assertSha) {
+                    $problems.Add("pin file $($entry.relativePath) sha256 is pending")
+                }
             }
         }
     }

@@ -106,22 +106,31 @@ Assert-True -Condition ($pins.rejectedTruncatedPromptPins -eq (Get-S63fRejectedT
 Assert-True -Condition ($pins.browserSolverPageHtmlPromptVersion -eq 'v20') -Message 's63i-hf2b pin manifest must pin PAGE_HTML v20 on the browser-solver Settings field.'
 Assert-True -Condition ($pins.browserSolverEngineeringStylesheetContractVersion -eq 'v6') -Message 's63i-hf2b pin manifest must pin STYLESHEET on the engineering stylesheet Settings field.'
 Assert-True -Condition ($pins.client.notAuthorC180MailBytes -eq $true) -Message 'Client pins must be recorded as Word-fix supersets, not literal c180 mail bytes.'
-Assert-True -Condition ([string]::IsNullOrWhiteSpace([string]$pins.client.sha256)) -Message 'Windows c186 client SHA must remain pending until the real Windows release hash exists.'
+Assert-True -Condition ([string]$pins.client.sha256 -eq '17876130AC2901E0665434559CBDCFF897BCEA86A532B4A96379C74D4C3B6AF9') -Message 'Windows c186 client SHA must be the verified frozen exe pin.'
+Assert-True -Condition ([long]$pins.client.bytes -eq 758893746) -Message 'Windows c186 client bytes must be the verified frozen exe size.'
+Assert-True -Condition ([string]$pins.client.scanStatus -eq 'PENDING_AUDITED_RESCAN') -Message 'Client scanStatus must remain PENDING_AUDITED_RESCAN until audited full-byte rescan.'
 Assert-True -Condition ($pins.converter.sha256 -eq 'F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36') -Message 'Word-fix Converter SHA must be retained.'
 Assert-True -Condition ($pins.backend.linuxRenderCli.exportBinary.required -eq $false) -Message 'Mach-O leftover must not be a required Linux ELF pin.'
 Assert-True -Condition ($pins.backend.runtimeImage.playwright -eq '1.56.0') -Message 'Pin manifest must record playwright 1.56.0.'
 Assert-True -Condition ($pins.backend.skipBackendImageBuild -match 'invalid') -Message 'Pin manifest must record SkipBackendImageBuild as invalid from-source.'
 
 $pendingPinsRejected = $false
+$pendingPinMessage = ''
 try {
     Assert-ApprovedCardPinsReady -PinManifestPath $pinPath
 }
 catch {
-    $pendingPinsRejected = $_.Exception.Message -match 'pending' -or $_.Exception.Message -match 'incomplete'
+    $pendingPinsRejected = $true
+    $pendingPinMessage = [string]$_.Exception.Message
 }
-Assert-True -Condition $pendingPinsRejected -Message 'Assert-ApprovedCardPinsReady must fail closed while Windows c186 / image hashes are pending.'
+Assert-True -Condition $pendingPinsRejected -Message 'Assert-ApprovedCardPinsReady must fail closed while audited scan / image hashes are pending.'
+Assert-True -Condition ($pendingPinMessage -match 'PENDING_AUDITED_RESCAN' -or $pendingPinMessage -match 'audited full-byte') -Message 'Gate refusal must cite pending audited full-byte scan.'
+Assert-True -Condition ($pendingPinMessage -match 'PENDING' -and $pendingPinMessage -match 'backend/images') -Message 'Gate refusal must still cite pending image hashes.'
 Assert-True -Condition ((Get-PinnedClientTag) -eq 'client/c-186') -Message 'Pinned client tag must be client/c-186.'
 Assert-True -Condition ((Get-PinnedClientGitCommit) -eq '1898d30cc036241f5af5283c4dc9d7f95dbb8887') -Message 'Pinned client commit must be c-186 1898d30c.'
+Assert-True -Condition ((Get-PinnedCatalogwriteClientSha256) -eq '17876130AC2901E0665434559CBDCFF897BCEA86A532B4A96379C74D4C3B6AF9') -Message 'Pinned Windows c186 exe SHA must be filled.'
+Assert-True -Condition ((Get-PinnedCatalogwriteClientBytes) -eq 758893746) -Message 'Pinned Windows c186 exe bytes must be filled.'
+Assert-True -Condition ((Get-PinnedClientScanStatus) -eq 'PENDING_AUDITED_RESCAN') -Message 'Pinned client scan status must remain PENDING_AUDITED_RESCAN.'
 Assert-True -Condition ((Get-ForbiddenMacClientSha256) -eq 'AFDE40DBC47A1680A053FA9AD63E0532CD4A893824BB58E162FCDC2AD905E71F') -Message 'Mac c186 SHA must be recorded as forbidden for Windows pins.'
 
 $entrypoint = Get-Content -LiteralPath (Join-Path $PackagingRoot 'build-offline-package.ps1') -Raw

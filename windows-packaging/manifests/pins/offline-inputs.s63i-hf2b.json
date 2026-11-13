@@ -1,7 +1,7 @@
 {
   "packageVersion": "0.1.4",
   "authorCard": "s63i-hf2b",
-  "status": "PACKAGING_SOURCE_PARTIAL_PENDING_CLIENT_AND_IMAGES",
+  "status": "PACKAGING_SOURCE_PARTIAL_PENDING_AUDITED_RESCAN_AND_IMAGES",
   "backend": {
     "repo": "https://github.com/molc/ai_orchestration",
     "requiredRevisionPrefix": "623b07232",
@@ -88,13 +88,21 @@
     "clientCommit": "1898d30cc036241f5af5283c4dc9d7f95dbb8887",
     "clientBranch": "codex/int-6001",
     "displayName": "Xdisplay.exe",
-    "bytes": null,
-    "sha256": null,
-    "status": "PENDING_WINDOWS_C186_RELEASE_HASHES",
+    "bytes": 758893746,
+    "sha256": "17876130AC2901E0665434559CBDCFF897BCEA86A532B4A96379C74D4C3B6AF9",
+    "status": "WINDOWS_C186_EXE_PINNED_SCAN_PENDING",
+    "scanStatus": "PENDING_AUDITED_RESCAN",
+    "clientScanStatus": "PENDING_AUDITED_RESCAN",
+    "frozenTreeFiles": 2389,
+    "frozenTreeBytes": 1536238861,
+    "frozenTreeManifestSha256": "5A2C4A23E9D7689F09C76281764CE929D26D45CAA23A28D7F6C9FA3058264A1B",
+    "resourceEqualityVerified": true,
+    "fullByteScanPolicy": "manifests/security/release-fullbyte-scan-policy.s63i-hf2b.json",
+    "auditedRescanCommand": "pwsh -NoProfile -File windows-packaging/ci/Invoke-ReleaseFullByteSecretScan.ps1 -ReleaseRoot <FROZEN_FINAL_TREE> -OutputPath <NEW_AUDITED_REPORT.json>",
     "forbiddenMacSha1": "50ba545e366058e3f18879aa8afaaa82a208b83c",
     "forbiddenMacSha256": "AFDE40DBC47A1680A053FA9AD63E0532CD4A893824BB58E162FCDC2AD905E71F",
     "forbiddenOldWindowsSha256": "2A80890DB988157371CF28D24CA23685D7933C4E59630E5A2DCD2363B7DB5600",
-    "note": "Windows c186 release hashes are not available yet. Mac package hashes and the old catalogwrite Windows pin must not be substituted."
+    "note": "Windows c186 exe pin filled from frozen final receipt. Gate must refuse installer while scanStatus is PENDING_AUDITED_RESCAN and image hashes remain PENDING. Mac package hashes and the old catalogwrite Windows pin must not be substituted. Empty gitleaks [] is not sufficient."
   },
   "converter": {
     "displayName": "Converter.exe",

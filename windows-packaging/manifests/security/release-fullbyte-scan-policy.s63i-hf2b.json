@@ -1,0 +1,683 @@
+{
+  "status": "ACTIVE_REVIEWED_PUBLIC_CONSTANT_EXCEPTIONS",
+  "policyId": "xdisplay-ai-s63i-hf2b-release-fullbyte-scan-v1",
+  "authorCard": "s63i-hf2b",
+  "clientTag": "client/c-186",
+  "clientCommit": "1898d30cc036241f5af5283c4dc9d7f95dbb8887",
+  "purpose": "Occurrence-aware exact public-constant exceptions only; not a filename/library/global allowlist; not authorization to suppress real keys",
+  "gateBehavior": "FAIL_CLOSED",
+  "occurrenceCount": 18,
+  "fileRuleFindingGroups": 5,
+  "rules": [
+    {
+      "id": "provider-token-prefix",
+      "description": "Binary match of sk- plus contiguous [A-Za-z0-9_-] run (stops before @ and other separators)"
+    },
+    {
+      "id": "private-pem-header",
+      "description": "Exact private PEM header literals only; complete PEM body+footer is never exempt"
+    }
+  ],
+  "failClosedOn": [
+    "additional_occurrence",
+    "changed_file_hash",
+    "unused_exception",
+    "duplicated_or_ambiguous_exception",
+    "failed_policy_evidence_checks",
+    "complete_pem_body_or_key",
+    "real_provider_token",
+    "scan_error"
+  ],
+  "explicitlyNotAllowed": [
+    "filename_allowlist",
+    "library_allowlist",
+    "global_pattern_allowlist",
+    "backend_companion_snakeoil_complete_pem",
+    "empty_gitleaks_array_as_gate_pass"
+  ],
+  "gitleaks": {
+    "independent": true,
+    "note": "Empty gitleaks [] is not sufficient for release gate pass; this full-byte audited scanner remains authoritative for binary occurrences."
+  },
+  "limitations": {
+    "ffmpegUnsignedDistributorProvenance": "NOT_PROVEN",
+    "note": "Review demonstrated public-constant literals in avformat-62.dll / ffmpeg.exe / Qt5Network.dll against official libssh/Qt source digests. Full FFmpeg unsigned distributor/publisher checksum or reproducible-build attestation remains unverified; this policy does not claim overall binary trust or secret-free attestation beyond the 18 bounded occurrences."
+  },
+  "preservedOriginalFailReceipt": {
+    "doNotRewrite": true,
+    "windowsReceiptRelativeHint": "T:\\c186-client-inputs-1898d30c-20261112\\final-release-receipt.json",
+    "windowsReceiptSha256": "CBFED2C99D0BBB17E071108B07D1C9895B21D4461365B9795FCD10FED2801401",
+    "frozenTreeManifestSha256": "5A2C4A23E9D7689F09C76281764CE929D26D45CAA23A28D7F6C9FA3058264A1B",
+    "frozenTreeFiles": 2389,
+    "frozenTreeBytes": 1536238861,
+    "note": "Original FAIL receipt stays preserved; audited rescans must emit a NEW report."
+  },
+  "frozenClientExePin": {
+    "displayName": "Xdisplay.exe",
+    "bytes": 758893746,
+    "sha256": "17876130AC2901E0665434559CBDCFF897BCEA86A532B4A96379C74D4C3B6AF9",
+    "scanStatusAtPinTime": "PENDING_AUDITED_RESCAN"
+  },
+  "exceptions": [
+    {
+      "active": true,
+      "relativePath": "avformat-62.dll",
+      "fileBytes": 22030336,
+      "fileSHA256": "76ff5415f0a3f68e10690623ac1d166c65febfaa2457a887912fbacef4745652",
+      "rule": "provider-token-prefix",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 20368140,
+      "length": 31,
+      "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9",
+      "classification": "LIBSSH_SECURITY_KEY_ECDSA_CERT_ALGORITHM_NAME",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.0/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 290,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.0/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 577,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.0/src/kex.c",
+          "rule": "provider-token-prefix",
+          "line": 108,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Complete PEM body/key at or after this header is never exempt",
+        "Unused, duplicated, or ambiguous exceptions fail closed",
+        "Changed file hash or additional occurrence fails closed"
+      ]
+    },
+    {
+      "active": true,
+      "relativePath": "avformat-62.dll",
+      "fileBytes": 22030336,
+      "fileSHA256": "76ff5415f0a3f68e10690623ac1d166c65febfaa2457a887912fbacef4745652",
+      "rule": "provider-token-prefix",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 20371936,
+      "length": 31,
+      "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9",
+      "classification": "LIBSSH_SECURITY_KEY_ECDSA_CERT_ALGORITHM_NAME",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.0/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 290,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.0/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 577,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.0/src/kex.c",
+          "rule": "provider-token-prefix",
+          "line": 108,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Complete PEM body/key at or after this header is never exempt",
+        "Unused, duplicated, or ambiguous exceptions fail closed",
+        "Changed file hash or additional occurrence fails closed"
+      ]
+    },
+    {
+      "active": true,
+      "relativePath": "avformat-62.dll",
+      "fileBytes": 22030336,
+      "fileSHA256": "76ff5415f0a3f68e10690623ac1d166c65febfaa2457a887912fbacef4745652",
+      "rule": "provider-token-prefix",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 20383616,
+      "length": 31,
+      "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9",
+      "classification": "LIBSSH_SECURITY_KEY_ECDSA_CERT_ALGORITHM_NAME",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.0/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 290,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.0/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 577,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.0/src/kex.c",
+          "rule": "provider-token-prefix",
+          "line": 108,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Complete PEM body/key at or after this header is never exempt",
+        "Unused, duplicated, or ambiguous exceptions fail closed",
+        "Changed file hash or additional occurrence fails closed"
+      ]
+    },
+    {
+      "active": true,
+      "relativePath": "avformat-62.dll",
+      "fileBytes": 22030336,
+      "fileSHA256": "76ff5415f0a3f68e10690623ac1d166c65febfaa2457a887912fbacef4745652",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 20384176,
+      "length": 31,
+      "matchedBytesSHA256": "8bcac7908eb950419537b91e19adc83ce2c9cbfdacf4f81157fdadfec11f7017",
+      "classification": "NUL_TERMINATED_RSA_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.0/include/libssh/pki_priv.h",
+          "rule": "private-pem-header",
+          "line": 39,
+          "length": 31,
+          "matchedBytesSHA256": "8bcac7908eb950419537b91e19adc83ce2c9cbfdacf4f81157fdadfec11f7017"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Complete PEM body/key at or after this header is never exempt",
+        "Unused, duplicated, or ambiguous exceptions fail closed",
+        "Changed file hash or additional occurrence fails closed"
+      ]
+    },
+    {
+      "active": true,
+      "relativePath": "avformat-62.dll",
+      "fileBytes": 22030336,
+      "fileSHA256": "76ff5415f0a3f68e10690623ac1d166c65febfaa2457a887912fbacef4745652",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 20384208,
+      "length": 30,
+      "matchedBytesSHA256": "33ea101ddbe7c33be8f143a2779736d0264a4f4c8f323331a4aa9a1f72d8ab2a",
+      "classification": "NUL_TERMINATED_EC_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.0/include/libssh/pki_priv.h",
+          "rule": "private-pem-header",
+          "line": 41,
+          "length": 30,
+          "matchedBytesSHA256": "33ea101ddbe7c33be8f143a2779736d0264a4f4c8f323331a4aa9a1f72d8ab2a"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Complete PEM body/key at or after this header is never exempt",
+        "Unused, duplicated, or ambiguous exceptions fail closed",
+        "Changed file hash or additional occurrence fails closed"
+      ]
+    },
+    {
+      "active": true,
+      "relativePath": "avformat-62.dll",
+      "fileBytes": 22030336,
+      "fileSHA256": "76ff5415f0a3f68e10690623ac1d166c65febfaa2457a887912fbacef4745652",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 20385184,
+      "length": 35,
+      "matchedBytesSHA256": "03d104c669e3c7b6be7f989db8b12c8b910d3be8c1e2a73c9369d3cc0ba803b5",
+      "classification": "NUL_TERMINATED_OPENSSH_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.0/include/libssh/pki_priv.h",
+          "rule": "private-pem-header",
+          "line": 43,
+          "length": 35,
+          "matchedBytesSHA256": "03d104c669e3c7b6be7f989db8b12c8b910d3be8c1e2a73c9369d3cc0ba803b5"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Complete PEM body/key at or after this header is never exempt",
+        "Unused, duplicated, or ambiguous exceptions fail closed",
+        "Changed file hash or additional occurrence fails closed"
+      ]
+    },
+    {
+      "active": true,
+      "relativePath": "avformat-62.dll",
+      "fileBytes": 22030336,
+      "fileSHA256": "76ff5415f0a3f68e10690623ac1d166c65febfaa2457a887912fbacef4745652",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 20389984,
+      "length": 35,
+      "matchedBytesSHA256": "03d104c669e3c7b6be7f989db8b12c8b910d3be8c1e2a73c9369d3cc0ba803b5",
+      "classification": "NUL_TERMINATED_OPENSSH_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.0/include/libssh/pki_priv.h",
+          "rule": "private-pem-header",
+          "line": 43,
+          "length": 35,
+          "matchedBytesSHA256": "03d104c669e3c7b6be7f989db8b12c8b910d3be8c1e2a73c9369d3cc0ba803b5"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Complete PEM body/key at or after this header is never exempt",
+        "Unused, duplicated, or ambiguous exceptions fail closed",
+        "Changed file hash or additional occurrence fails closed"
+      ]
+    },
+    {
+      "active": true,
+      "relativePath": "ffmpeg.exe",
+      "fileBytes": 148103168,
+      "fileSHA256": "36a59b638b49f8e6c622f4de7c4c8aaf8442f30138a58882ee2af3f410e5fd5c",
+      "rule": "provider-token-prefix",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 137597644,
+      "length": 31,
+      "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9",
+      "classification": "LIBSSH_SECURITY_KEY_ECDSA_CERT_ALGORITHM_NAME",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.1/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 290,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.1/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 577,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.1/src/kex.c",
+          "rule": "provider-token-prefix",
+          "line": 108,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Complete PEM body/key at or after this header is never exempt",
+        "Unused, duplicated, or ambiguous exceptions fail closed",
+        "Changed file hash or additional occurrence fails closed"
+      ]
+    },
+    {
+      "active": true,
+      "relativePath": "ffmpeg.exe",
+      "fileBytes": 148103168,
+      "fileSHA256": "36a59b638b49f8e6c622f4de7c4c8aaf8442f30138a58882ee2af3f410e5fd5c",
+      "rule": "provider-token-prefix",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 137600960,
+      "length": 31,
+      "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9",
+      "classification": "LIBSSH_SECURITY_KEY_ECDSA_CERT_ALGORITHM_NAME",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.1/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 290,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.1/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 577,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.1/src/kex.c",
+          "rule": "provider-token-prefix",
+          "line": 108,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Complete PEM body/key at or after this header is never exempt",
+        "Unused, duplicated, or ambiguous exceptions fail closed",
+        "Changed file hash or additional occurrence fails closed"
+      ]
+    },
+    {
+      "active": true,
+      "relativePath": "ffmpeg.exe",
+      "fileBytes": 148103168,
+      "fileSHA256": "36a59b638b49f8e6c622f4de7c4c8aaf8442f30138a58882ee2af3f410e5fd5c",
+      "rule": "provider-token-prefix",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 137613968,
+      "length": 31,
+      "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9",
+      "classification": "LIBSSH_SECURITY_KEY_ECDSA_CERT_ALGORITHM_NAME",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.1/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 290,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.1/src/pki.c",
+          "rule": "provider-token-prefix",
+          "line": 577,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        },
+        {
+          "sourceFile": "libssh-0.11.1/src/kex.c",
+          "rule": "provider-token-prefix",
+          "line": 108,
+          "length": 31,
+          "matchedBytesSHA256": "3ba30ddc57c5e012f28276fa224e3485067a139cd220da03b730060afb01b2b9"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Complete PEM body/key at or after this header is never exempt",
+        "Unused, duplicated, or ambiguous exceptions fail closed",
+        "Changed file hash or additional occurrence fails closed"
+      ]
+    },
+    {
+      "active": true,
+      "relativePath": "ffmpeg.exe",
+      "fileBytes": 148103168,
+      "fileSHA256": "36a59b638b49f8e6c622f4de7c4c8aaf8442f30138a58882ee2af3f410e5fd5c",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 137614496,
+      "length": 31,
+      "matchedBytesSHA256": "8bcac7908eb950419537b91e19adc83ce2c9cbfdacf4f81157fdadfec11f7017",
+      "classification": "NUL_TERMINATED_RSA_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.1/include/libssh/pki_priv.h",
+          "rule": "private-pem-header",
+          "line": 39,
+          "length": 31,
+          "matchedBytesSHA256": "8bcac7908eb950419537b91e19adc83ce2c9cbfdacf4f81157fdadfec11f7017"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Complete PEM body/key at or after this header is never exempt",
+        "Unused, duplicated, or ambiguous exceptions fail closed",
+        "Changed file hash or additional occurrence fails closed"
+      ]
+    },
+    {
+      "active": true,
+      "relativePath": "ffmpeg.exe",
+      "fileBytes": 148103168,
+      "fileSHA256": "36a59b638b49f8e6c622f4de7c4c8aaf8442f30138a58882ee2af3f410e5fd5c",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 137614528,
+      "length": 30,
+      "matchedBytesSHA256": "33ea101ddbe7c33be8f143a2779736d0264a4f4c8f323331a4aa9a1f72d8ab2a",
+      "classification": "NUL_TERMINATED_EC_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.1/include/libssh/pki_priv.h",
+          "rule": "private-pem-header",
+          "line": 41,
+          "length": 30,
+          "matchedBytesSHA256": "33ea101ddbe7c33be8f143a2779736d0264a4f4c8f323331a4aa9a1f72d8ab2a"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Complete PEM body/key at or after this header is never exempt",
+        "Unused, duplicated, or ambiguous exceptions fail closed",
+        "Changed file hash or additional occurrence fails closed"
+      ]
+    },
+    {
+      "active": true,
+      "relativePath": "ffmpeg.exe",
+      "fileBytes": 148103168,
+      "fileSHA256": "36a59b638b49f8e6c622f4de7c4c8aaf8442f30138a58882ee2af3f410e5fd5c",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 137615600,
+      "length": 35,
+      "matchedBytesSHA256": "03d104c669e3c7b6be7f989db8b12c8b910d3be8c1e2a73c9369d3cc0ba803b5",
+      "classification": "NUL_TERMINATED_OPENSSH_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.1/include/libssh/pki_priv.h",
+          "rule": "private-pem-header",
+          "line": 43,
+          "length": 35,
+          "matchedBytesSHA256": "03d104c669e3c7b6be7f989db8b12c8b910d3be8c1e2a73c9369d3cc0ba803b5"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Complete PEM body/key at or after this header is never exempt",
+        "Unused, duplicated, or ambiguous exceptions fail closed",
+        "Changed file hash or additional occurrence fails closed"
+      ]
+    },
+    {
+      "active": true,
+      "relativePath": "ffmpeg.exe",
+      "fileBytes": 148103168,
+      "fileSHA256": "36a59b638b49f8e6c622f4de7c4c8aaf8442f30138a58882ee2af3f410e5fd5c",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 137617728,
+      "length": 35,
+      "matchedBytesSHA256": "03d104c669e3c7b6be7f989db8b12c8b910d3be8c1e2a73c9369d3cc0ba803b5",
+      "classification": "NUL_TERMINATED_OPENSSH_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "libssh-0.11.1/include/libssh/pki_priv.h",
+          "rule": "private-pem-header",
+          "line": 43,
+          "length": 35,
+          "matchedBytesSHA256": "03d104c669e3c7b6be7f989db8b12c8b910d3be8c1e2a73c9369d3cc0ba803b5"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Complete PEM body/key at or after this header is never exempt",
+        "Unused, duplicated, or ambiguous exceptions fail closed",
+        "Changed file hash or additional occurrence fails closed"
+      ]
+    },
+    {
+      "active": true,
+      "relativePath": "Qt5Network.dll",
+      "fileBytes": 2699096,
+      "fileSHA256": "7660849b5647d0cd1c893fd0f977474df7b968bfae17cec79dbc77359f4e01f3",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 1410968,
+      "length": 27,
+      "matchedBytesSHA256": "3021d90eb9437b2d8f30e8363695c4418b5e5f1870801b5c317e9398ee0f572d",
+      "classification": "NUL_TERMINATED_PKCS8_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "qt-5.15.2-qsslkey_p.cpp",
+          "rule": "private-pem-header",
+          "line": 120,
+          "length": 27,
+          "matchedBytesSHA256": "3021d90eb9437b2d8f30e8363695c4418b5e5f1870801b5c317e9398ee0f572d"
+        },
+        {
+          "sourceFile": "qt-5.15.2-qsslkey_p.cpp",
+          "rule": "private-pem-header",
+          "line": 130,
+          "length": 27,
+          "matchedBytesSHA256": "3021d90eb9437b2d8f30e8363695c4418b5e5f1870801b5c317e9398ee0f572d"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Complete PEM body/key at or after this header is never exempt",
+        "Unused, duplicated, or ambiguous exceptions fail closed",
+        "Changed file hash or additional occurrence fails closed"
+      ]
+    },
+    {
+      "active": true,
+      "relativePath": "Qt5Network.dll",
+      "fileBytes": 2699096,
+      "fileSHA256": "7660849b5647d0cd1c893fd0f977474df7b968bfae17cec79dbc77359f4e01f3",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 1411096,
+      "length": 27,
+      "matchedBytesSHA256": "3021d90eb9437b2d8f30e8363695c4418b5e5f1870801b5c317e9398ee0f572d",
+      "classification": "NUL_TERMINATED_PKCS8_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "qt-5.15.2-qsslkey_p.cpp",
+          "rule": "private-pem-header",
+          "line": 120,
+          "length": 27,
+          "matchedBytesSHA256": "3021d90eb9437b2d8f30e8363695c4418b5e5f1870801b5c317e9398ee0f572d"
+        },
+        {
+          "sourceFile": "qt-5.15.2-qsslkey_p.cpp",
+          "rule": "private-pem-header",
+          "line": 130,
+          "length": 27,
+          "matchedBytesSHA256": "3021d90eb9437b2d8f30e8363695c4418b5e5f1870801b5c317e9398ee0f572d"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Complete PEM body/key at or after this header is never exempt",
+        "Unused, duplicated, or ambiguous exceptions fail closed",
+        "Changed file hash or additional occurrence fails closed"
+      ]
+    },
+    {
+      "active": true,
+      "relativePath": "Qt5Network.dll",
+      "fileBytes": 2699096,
+      "fileSHA256": "7660849b5647d0cd1c893fd0f977474df7b968bfae17cec79dbc77359f4e01f3",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 1411160,
+      "length": 30,
+      "matchedBytesSHA256": "33ea101ddbe7c33be8f143a2779736d0264a4f4c8f323331a4aa9a1f72d8ab2a",
+      "classification": "NUL_TERMINATED_EC_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "qt-5.15.2-qsslkey_p.cpp",
+          "rule": "private-pem-header",
+          "line": 118,
+          "length": 30,
+          "matchedBytesSHA256": "33ea101ddbe7c33be8f143a2779736d0264a4f4c8f323331a4aa9a1f72d8ab2a"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Complete PEM body/key at or after this header is never exempt",
+        "Unused, duplicated, or ambiguous exceptions fail closed",
+        "Changed file hash or additional occurrence fails closed"
+      ]
+    },
+    {
+      "active": true,
+      "relativePath": "Qt5Network.dll",
+      "fileBytes": 2699096,
+      "fileSHA256": "7660849b5647d0cd1c893fd0f977474df7b968bfae17cec79dbc77359f4e01f3",
+      "rule": "private-pem-header",
+      "offsetBasis": "ZERO_BASED_FILE_BYTE_OFFSET",
+      "offset": 1411288,
+      "length": 31,
+      "matchedBytesSHA256": "8bcac7908eb950419537b91e19adc83ce2c9cbfdacf4f81157fdadfec11f7017",
+      "classification": "NUL_TERMINATED_RSA_PEM_HEADER_CONSTANT",
+      "publicSourceProof": [
+        {
+          "sourceFile": "qt-5.15.2-qsslkey_p.cpp",
+          "rule": "private-pem-header",
+          "line": 114,
+          "length": 31,
+          "matchedBytesSHA256": "8bcac7908eb950419537b91e19adc83ce2c9cbfdacf4f81157fdadfec11f7017"
+        }
+      ],
+      "conditions": [
+        "Exact whole-file SHA256 and byte size must match",
+        "Exact rule, offset, length and matched-byte SHA256 must match",
+        "No other occurrence/file/rule is exempt",
+        "Complete PEM body/key at or after this header is never exempt",
+        "Unused, duplicated, or ambiguous exceptions fail closed",
+        "Changed file hash or additional occurrence fails closed"
+      ]
+    }
+  ]
+}
