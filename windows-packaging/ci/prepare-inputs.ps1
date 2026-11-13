@@ -406,7 +406,7 @@ function Build-BackendImagesFromSource {
         $sourceRevision = ([System.IO.File]::ReadAllText($revisionFile)).Trim()
     }
     if (-not $sourceRevision.StartsWith((Get-ApprovedBackendRevisionPrefix), [StringComparison]::OrdinalIgnoreCase)) {
-        throw "Backend SOURCE_REVISION '$sourceRevision' is not s63f $(Get-ApprovedBackendRevisionPrefix). HEAD is rejected. Do not skip the image rebuild."
+        throw "Backend SOURCE_REVISION '$sourceRevision' is not $(Get-ApprovedBackendCardName) $(Get-ApprovedBackendRevisionPrefix). HEAD is rejected. Do not skip the image rebuild."
     }
 
     $imageBuilds = @(
@@ -471,7 +471,7 @@ function Build-BackendImagesFromSource {
             )
             if ($cacheDecision -ne 'reuse' -or -not $s63fLabelsOk) {
                 throw (
-                    "SkipBackendImageBuild is invalid for s63f：$($imageBuild.ImageRef). " +
+                    "SkipBackendImageBuild is invalid for $(Get-ApprovedBackendCardName)：$($imageBuild.ImageRef). " +
                     "expectedFingerprint=$runtimeFingerprint cachedFingerprint=$cachedFingerprint " +
                     "git-sha=$cachedGitSha tag=$cachedTag. " +
                     'docker/export_runtime_requirements.py and docker/strict-ocr do not exist. ' +
@@ -479,7 +479,7 @@ function Build-BackendImagesFromSource {
                     'Do not require a cached Linux xd_render_cli ELF. Do not reuse F3EECC91.'
                 )
             }
-            Write-Step "s63f runtime-cache labels matched; tagging proven image：$($imageBuild.ImageRef)"
+            Write-Step "$(Get-ApprovedBackendCardName) runtime-cache labels matched; tagging proven image：$($imageBuild.ImageRef)"
         }
         elseif ($cacheDecision -eq 'refresh') {
             Write-Step "运行时依赖缓存缺失或指纹不匹配，完整构建：$($imageBuild.RuntimeImageRef)"

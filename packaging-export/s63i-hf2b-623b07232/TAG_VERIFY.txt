@@ -1,0 +1,12 @@
+FACT: packaging card pin is s63i-hf2b at full SHA below.
+Tag name used by installer gates: prod/s63i-hf2b
+(Do not invent annotated-tag object type; parent must confirm remote refs/tags when exporting the immutable source archive.)
+
+required full commit:
+        623b072320d2e8c68059ec5e7e33958267203a9c
+
+author card prefix 623b07232 matches this full SHA.
+Live .21 was observed at this commit; do not deploy, restart, or alter .21 from packaging work.
+
+Do not use branch HEAD of codex/page-engineering-redesign, s63f tip dd6ab3d50, or any later commit.
+Do not copy s63f docker-save identities (514ACD60…, 35E5F27E…, F3EECC91…, image 050efd06…, fingerprint 5f1b3896…).

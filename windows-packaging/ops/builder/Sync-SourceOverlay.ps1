@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Patch the builder's source tree with files served by the control host, verify their SHA256, then run the source
   unit tests into <Logs>\<Run>-unit-tests.log (Invoke-NativeBuild.ps1 waits for its "EXIT 0" line).

@@ -25,8 +25,8 @@ $staleImage = Test-BackendImageMatchesS63fContract `
     -RuntimeFingerprint '' `
     -ExpectedFingerprint '5f1b3896deadbeef' `
     -ImageId 'sha256:a001031bb9b0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
-Assert-True -Condition (-not $staleImage.Ok) -Message 'Unlabeled 0.1.3 orchestration-app:latest a001031bb9b0 must not match the s63f image contract.'
-Assert-True -Condition (($staleImage.Reasons -join ' ') -match 'dd6ab3d50') -Message 'Stale image reasons must name the required s63f revision prefix.'
+Assert-True -Condition (-not $staleImage.Ok) -Message 'Unlabeled 0.1.3 orchestration-app:latest a001031bb9b0 must not match the approved-card image contract.'
+Assert-True -Condition (($staleImage.Reasons -join ' ') -match '623b07232') -Message 'Stale image reasons must name the required approved-card revision prefix.'
 
 $s63fImage = Test-BackendImageMatchesS63fContract `
     -GitSha (Get-ApprovedBackendRevisionFull) `
@@ -34,7 +34,7 @@ $s63fImage = Test-BackendImageMatchesS63fContract `
     -RuntimeFingerprint '5f1b3896aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' `
     -ExpectedFingerprint '5f1b3896aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' `
     -ImageId 'sha256:s63f'
-Assert-True -Condition $s63fImage.Ok -Message 'Labeled s63f git-sha/tag/fingerprint must match the package image contract.'
+Assert-True -Condition $s63fImage.Ok -Message 'Labeled approved-card git-sha/tag/fingerprint must match the package image contract.'
 
 $wrongFingerprint = Test-BackendImageMatchesS63fContract `
     -GitSha (Get-ApprovedBackendRevisionFull) `
@@ -60,7 +60,7 @@ $goodEnv = [ordered]@{
     XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION = (Get-S63fBrowserSolverEngineeringStylesheetContractVersion)
 }
 $goodPrompt = Test-BackendPromptContractFromEnvEntries -Entries $goodEnv
-Assert-True -Condition $goodPrompt.Ok -Message 'Full 31-agent table plus v19/v6 Settings keys must satisfy the prompt contract.'
+Assert-True -Condition $goodPrompt.Ok -Message 'Full 31-agent table plus v20/v6 Settings keys must satisfy the prompt contract.'
 Assert-True -Condition ($goodPrompt.AgentCount -eq 31) -Message 'Prompt contract must count all 31 registered agents.'
 
 $dot29Skip = Test-LocalBackendSkipAllowed -HealthReady $true -ImageContract $staleImage -PromptContract $stalePrompt
@@ -89,5 +89,5 @@ Assert-True -Condition ($backendInstall -match 'ConvertTo-PostgresQueryProbeResu
 Assert-True -Condition ($backendInstall -match 'to_regclass\(''public.offline_migration_history''\)') -Message 'offline_migration_history to_regclass gate must not regress.'
 Assert-True -Condition ($backendInstall -notmatch 'force-recreate.*postgres') -Message 'Do not force-recreate postgres when refreshing a stale app image.'
 
-Write-Output 'PASS: upgrade-from-healthy-older-backend must refresh s63f image and prompt contract'
+Write-Output 'PASS: upgrade-from-healthy-older-backend must refresh approved-card image and prompt contract'
 exit 0

@@ -10,9 +10,11 @@
     [string]$DistRoot = '',
     [string]$CacheRoot = '',
     [string]$TempRoot = '',
-    [string]$ExpectedClientSha256 = '2A80890DB988157371CF28D24CA23685D7933C4E59630E5A2DCD2363B7DB5600',
+    # Windows client/c-186 SHA/size are PENDING until parent supplies the real Windows release hashes.
+    # Empty defaults fail closed via Assert-ApprovedCardPinsReady (do not use Mac afde40db… or old 2A80890D…).
+    [string]$ExpectedClientSha256 = '',
     [string]$ExpectedConverterSha256 = 'F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36',
-    [long]$ExpectedClientBytes = 675539394,
+    [long]$ExpectedClientBytes = 0,
     [long]$ExpectedConverterBytes = 529920,
     [string]$ExpectedInputPinsPath = '',
     [string]$QmakePath = '',
@@ -433,9 +435,13 @@ try {
 
         if ($UseExistingBackendInputs) {
             if ([string]::IsNullOrWhiteSpace($ExpectedInputPinsPath)) {
-                $ExpectedInputPinsPath = Join-Path $packagingRoot 'manifests\pins\offline-inputs.s63f.json'
+                $ExpectedInputPinsPath = Join-Path $packagingRoot 'manifests\pins\offline-inputs.s63i-hf2b.json'
             }
             Write-BuildStep 'Using existing backend images/source inputs; no source clone and no image rebuild.'
+            Assert-ApprovedCardPinsReady `
+                -ExpectedClientSha256 $ExpectedClientSha256 `
+                -ExpectedClientBytes $ExpectedClientBytes `
+                -PinManifestPath $ExpectedInputPinsPath
             Assert-ExistingBackendInputs `
                 -InputsRoot (Join-Path $packagingRoot 'inputs') `
                 -PinManifestPath $ExpectedInputPinsPath

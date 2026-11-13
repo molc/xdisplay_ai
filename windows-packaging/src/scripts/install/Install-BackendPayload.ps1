@@ -273,7 +273,7 @@ function Sync-StaleAppContainersToLoadedImages {
         return
     }
 
-    Write-Step ('运行中的 orchestration-app 不是本包 s63f 镜像（' + ($package.Image.Reasons -join '；') + '）。强制重建 app/embedding-worker，保留 postgres/redis 数据卷。')
+    Write-Step ('运行中的 orchestration-app 不是本包 s63i-hf2b 镜像（' + ($package.Image.Reasons -join '；') + '）。强制重建 app/embedding-worker，保留 postgres/redis 数据卷。')
     Invoke-Compose -Arguments @('up', '-d', '--no-deps', '--force-recreate', 'orchestration-app')
     if ($LASTEXITCODE -ne 0) {
         throw "强制重建 orchestration-app 失败，退出码：$LASTEXITCODE"

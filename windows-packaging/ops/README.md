@@ -34,7 +34,7 @@
    - `ci/CachedRelease.ps1`：`Get-PinnedCatalogwriteClientSha256` / `Get-PinnedCatalogwriteClientBytes`（Converter 同理）；
    - `build-offline-package.ps1` 的默认参数 `-ExpectedClientSha256` / `-ExpectedConverterSha256`；
    - `tests/Test-S63fPackagingContract.ps1`、`tests/Test-CachedReleasePackaging.ps1` 里引用的常量（跑单测会告诉你哪一行）。
-   - `manifests/pins/offline-inputs.s63f.json` / `offline-inputs.0.1.4.json` 若记录了客户端 SHA 也要同步。
+   - `manifests/pins/offline-inputs.s63i-hf2b.json`（当前卡）/ 历史 `offline-inputs.s63f.json` / `offline-inputs.0.1.4.json` 若记录了客户端 SHA 也要同步。Windows c186 SHA 未齐前禁止打包。
 3. 如果官方资源（键盘模板、图片）变了而 `Xdisplay.exe` 没变：升级时工作目录是否同步由**种子指纹**决定，指纹覆盖 `Xdisplay.exe` + 五个 `keypage.json` + `logo_tricolor.png`（`InstallerCorrectness.ps1 Get-WorkspaceFingerprintRelativePaths`）。改了别的资源文件又希望升级覆盖到客户机，就把它加进这个列表并补单测。
 4. **第三方运行时**（与 exe 同目录、不在客户端仓里）：`Simulator.exe`、ffmpeg 五个 DLL（`avcodec-62/avformat-62/avutil-60/swresample-6/swscale-9`）、`ffmpeg.exe`、`optipng.exe` 取自官方 `Xdisplay_2.4.4_20261027` 包，SHA256/字节数钉在 `ci/CachedRelease.ps1 Get-PinnedThirdPartyRuntimeFiles`，资格检查时逐个核对；换官方包版本就改这张表。构建期还有"导入闭包"门：`Xdisplay.exe` / `Simulator.exe` / `Converter.exe` 导入的每个非系统 DLL 都必须在树里（r10/r11 漏 ffmpeg 的教训）。
 5. 版本号不变时（0.1.4 内多次 rN）无需动 `manifests/bundle.json`；要升到 0.1.5 时改 `bundle.json` 并检查 `tests/Test-InstallerCorrectness.ps1` 末尾对版本的断言。
@@ -49,7 +49,7 @@
 | 冻结：第三方运行时 | Simulator.exe、ffmpeg 五 DLL、ffmpeg.exe、optipng.exe、Qt 运行时布局 | `ci/CachedRelease.ps1 Get-PinnedThirdPartyRuntimeFiles` + 导入闭包门 | 换官方包版本时改钉表 |
 | 守卫：Word 修法源码 | PR #1（client/c-185）改过的 21 个 `src/` 文件 | `word-fix-guard.json` `sourceFiles`；控制端 `ops/host/word-fix-guard.py --check <客户端提交>` 做祖先检查 + 文件哈希 + "Word 修法新增行是否还在" | 允许改（AI 侧功能会碰 `widget_main.cpp` 等），但 `--check` 一报 DRIFT 就必须在 .29 重走对应 Word 项，并把结论写进验收记录 |
 | 跟线：客户端二进制 | `Xdisplay.exe`（含 AI 侧） | 构建提交号 + SHA 钉（`Get-PinnedCatalogwriteClientSha256`） | 从合并线重编；编前先 `--check` |
-| 跟线：后端 | s63f 镜像与源码快照 | `manifests/pins/offline-inputs.s63f.json` + 镜像三标签 | 父流程导出后整体换钉 |
+| 跟线：后端 | s63i-hf2b 镜像与源码快照 | `manifests/pins/offline-inputs.s63i-hf2b.json` + 镜像三标签 | 父流程导出后整体换钉；缺哈希则拒绝打包 |
 | 冻结：安装器 | `src/scripts/**`、WiX、ci | 本仓提交 + 单测 + .29 两场景 | 只修缺陷 |
 
 打包前的固定动作：`python3 ops/host/word-fix-guard.py --check <要打的客户端提交>`。2026-11-12 对 `int-6001` 顶端 `48c8102b` 的结果：资源 287/287 未动；21 个守卫源码文件里 9 个有改动，7 个修法行全在（黄），`dialog_tool_image.cpp` 与 `image_library_mutation_v1.cpp` 经逐行核对是等价/增强重写（owner 参数；c-301 H 修正 c-182 的误删回归），已登记为已评审重写，守卫绿。守卫判定：祖先断裂 / 资源漂移 / 修法行丢失且未评审 → 红；改了但修法行全在 → 黄。
@@ -61,10 +61,10 @@
 1. 父流程（`backend-export/<tag>/rebuild-orches-app-image.sh`，需要有 Docker 的机器）产出：四个镜像 tar（`orches_orchestration-app_latest.tar`、`orches_embedding-http_latest.tar`、`pgvector_pgvector_pg15.tar`、`redis_7.tar`）、源码快照（含 `SOURCE_REVISION.txt`、`app/main.py`、`external/xdisplay/bin/xd_render_cli/*`、`Dockerfile`、`pyproject.toml`、`.dockerignore`）、`compose/upstream/docker-compose.yml`、`migrations/*.sql`。放到 builder 的 `inputs\backend\{images,source,compose\upstream,migrations}`。
 2. **app 镜像必须带三个标签**，否则 `ci/CachedRelease.ps1` 会在构建时拒绝、安装器在客户机上会永远判"不是本包"：
    - `xdisplayai.packaging.git-sha` = 快照修订（前缀与 `Get-ApprovedBackendRevisionPrefix` 一致）；
-   - `xdisplayai.packaging.tag` = `Get-ApprovedBackendTag`（当前 `prod/s63f`）；
+   - `xdisplayai.packaging.tag` = `Get-ApprovedBackendTag`（当前 `prod/s63i-hf2b`）；
    - `xdisplayai.packaging.runtime-fingerprint` = `ci/Common.ps1 Get-SourceContentFingerprint` 对 `Get-OrchestrationAppRuntimeFingerprintPaths`（8 个文件）的值。安装器端用 `Get-PathContentFingerprint -IncludeInputRows` 算同一个值（r11 修的 `bf74d56d`/`d203e24`，单测 `Test-InstallerCorrectness.ps1` 把两者钉在一起，别拆）。
-   - 伴随 tag：`orches/orchestration-app:s63f-<rev>` 与 `:latest`（`ci/Common.ps1 Get-S63fAppImageCompanionTags`）。
-3. 修订变了就改：`manifests/pins/offline-inputs.s63f.json`（`requiredRevisionPrefix/Full`、`requiredTag`、`sourceArchiveSha256`、`forbiddenAppImageSha256` 指向上一版 app 镜像）；`src/scripts/common/InstallerCorrectness.ps1` 的 `Get-ApprovedBackendRevisionPrefix` / `Get-ApprovedBackendTag`；`ci/Common.ps1` 的伴随 tag；`.29` 场景脚本里 `LocalBackend` 门校验的 git-sha / 指纹常量（模板 `dot29/templates/Upgrade.ps1.tmpl` 与 `Fresh.ps1.tmpl` 内搜 `dd6ab3d5`、`5f1b3896`）。
+   - 伴随 tag：`orches/orchestration-app:s63i-hf2b-623b07232` 与 `:latest`（`ci/Common.ps1 Get-S63fAppImageCompanionTags`）。
+3. 修订变了就改：`manifests/pins/offline-inputs.s63i-hf2b.json`（`requiredRevisionPrefix/Full`、`requiredTag`、`sourceArchiveSha256`、`forbiddenAppImageSha256` 指向上一版 app 镜像；哈希未齐标 PENDING 且打包失败关闭）；`src/scripts/common/InstallerCorrectness.ps1` 的 `Get-ApprovedBackendRevisionPrefix` / `Get-ApprovedBackendTag`；`ci/Common.ps1` 的伴随 tag；`.29` 场景脚本里 `LocalBackend` 门校验的 git-sha / 指纹常量（模板 `dot29/templates/Upgrade.ps1.tmpl` 与 `Fresh.ps1.tmpl` 内搜 `623b07232`、runtime-fingerprint PENDING）。
 4. prompt 钉：`XDISPLAY_AI_PROMPT_VERSIONS` 的 31 个代理钉与五个作者钉由 `src/scripts/update/PromptPinMigration.ps1` 的注册表生成（`tests/Test-PromptPinMigration.ps1`、`Test-GeneratedPromptRegistry.ps1`），后端改了 prompt 版本时改那里，升级会自动补种、删退役键。
 5. 迁移 SQL 只能追加（`0004_*.sql`…），安装器按 `offline_migration_history` 跳过已执行的。
 

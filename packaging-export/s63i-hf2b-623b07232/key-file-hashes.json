@@ -1,0 +1,15 @@
+{
+  "kind": "s63i-hf2b-key-file-hashes",
+  "status": "PENDING_SOURCE_ARCHIVE",
+  "note": "Do not invent hashes for prompt files or source paths not present in this packaging-source export. Parent fills this after the sanitized 623b07232 archive exists.",
+  "requiredPromptContract": {
+    "PAGE_HTML": "v20",
+    "STYLESHEET": "v6",
+    "write_action_declarer_link": "v1.10",
+    "write_action_declarer": "v1.10",
+    "intent_extractor": "v2.24",
+    "read_display_declarer": "v1.15",
+    "sketch_interpreter": "v4.0"
+  },
+  "files": {}
+}

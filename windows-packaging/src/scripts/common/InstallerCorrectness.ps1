@@ -327,7 +327,7 @@ function Get-PathContentFingerprint {
         [string[]]$RelativePaths,
         # ci/Common.ps1 Get-SourceContentFingerprint (which labels the app image at build time) adds an
         # "input\0<path>" row per requested path in addition to the "file\0<path>\0<sha256>" rows. The installer's
-        # expected s63f runtime fingerprint must be byte-identical to that payload, otherwise the running image never
+        # expected approved-card runtime fingerprint must be byte-identical to that payload, otherwise the running image never
         # "matches the package" and every bootstrap run re-imports the offline images instead of taking the
         # health-only skip. Workspace seed fingerprints keep the legacy row set (they are compared against themselves).
         [switch]$IncludeInputRows
@@ -413,16 +413,20 @@ function Get-RetiredBackendEnvKeys {
     return @('XDISPLAY_AI_STAGED_DRAFTER_ENABLED')
 }
 
+function Get-ApprovedBackendCardName {
+    return 's63i-hf2b'
+}
+
 function Get-ApprovedBackendRevisionPrefix {
-    return 'dd6ab3d50'
+    return '623b07232'
 }
 
 function Get-ApprovedBackendRevisionFull {
-    return 'dd6ab3d505827a94cbc9d59d7067fcce14db6fbe'
+    return '623b072320d2e8c68059ec5e7e33958267203a9c'
 }
 
 function Get-ApprovedBackendTag {
-    return 'prod/s63f'
+    return 'prod/s63i-hf2b'
 }
 
 function Get-S63fPackagingGitShaLabelName {
@@ -502,7 +506,8 @@ function Test-BackendImageMatchesS63fContract {
     if ([string]::IsNullOrWhiteSpace($gitShaText) -or -not $gitShaText.StartsWith($requiredPrefix, [StringComparison]::OrdinalIgnoreCase)) {
         $shown = if ([string]::IsNullOrWhiteSpace($gitShaText)) { 'missing' } else { $gitShaText }
         $imageShown = if ([string]::IsNullOrWhiteSpace($ImageId)) { '' } else { " image=$ImageId" }
-        $reasons.Add("orchestration-app git-sha $shown is not s63f $requiredPrefix$imageShown")
+        $card = Get-ApprovedBackendCardName
+        $reasons.Add("orchestration-app git-sha $shown is not $card $requiredPrefix$imageShown")
     }
     if (-not [string]::Equals($tagText, $requiredTag, [StringComparison]::OrdinalIgnoreCase)) {
         $shown = if ([string]::IsNullOrWhiteSpace($tagText)) { 'missing' } else { $tagText }
@@ -515,7 +520,7 @@ function Test-BackendImageMatchesS63fContract {
         }
     }
     elseif ([string]::IsNullOrWhiteSpace($fingerprintText) -and [string]::IsNullOrWhiteSpace($gitShaText)) {
-        $reasons.Add('running orchestration-app has no s63f packaging labels')
+        $reasons.Add("running orchestration-app has no $(Get-ApprovedBackendCardName) packaging labels")
     }
 
     return [pscustomobject]@{
@@ -633,10 +638,10 @@ function Test-LocalBackendSkipAllowed {
     }
 
     if ($HealthReady -and -not $imageOk) {
-        $reasons.Add('HTTP 200 must not skip offline image load when the running app image is not this package s63f')
+        $reasons.Add("HTTP 200 must not skip offline image load when the running app image is not this package $(Get-ApprovedBackendCardName)")
     }
     if ($HealthReady -and -not $promptOk) {
-        $reasons.Add('HTTP 200 must not skip prompt/config initialization when the s63f prompt contract is stale')
+        $reasons.Add("HTTP 200 must not skip prompt/config initialization when the $(Get-ApprovedBackendCardName) prompt contract is stale")
     }
 
     return [pscustomobject]@{
@@ -650,11 +655,26 @@ function Get-ApprovedXdisplaySubmoduleCommit {
 }
 
 function Get-ApprovedS63fSourceArchiveSha256 {
-    return '767E9305A7C9C6B57CE9220A971C9F1BE0F8102E46F9A8C67444203253B76A84'
+    # Compatibility alias name retained. Source archive SHA for s63i-hf2b is pending parent export.
+    return ''
+}
+
+function Test-ApprovedSourceArchiveSha256Ready {
+    $value = [string](Get-ApprovedS63fSourceArchiveSha256)
+    return -not [string]::IsNullOrWhiteSpace($value) -and -not [string]::Equals($value, 'PENDING', [StringComparison]::OrdinalIgnoreCase)
 }
 
 function Get-ForbiddenS63fAppImageSha256 {
+    # Primary forbidden previous 0.1.4 tar; also refuse s63f packaged / cloud identities via Get-ForbiddenAppImageSha256List.
     return 'F3EECC91AB386DE950F175329AB7CCF078435FF9E863E55708F60485BFFC2309'
+}
+
+function Get-ForbiddenAppImageSha256List {
+    return @(
+        'F3EECC91AB386DE950F175329AB7CCF078435FF9E863E55708F60485BFFC2309',
+        '514ACD60DF0D7D6FAB00684116F9F863A6A58F161A4C9BAF73CFAD76E0B83A24',
+        '35E5F27EEB4623B816120020116995216CBF2E601CD357ACC676A4384BE9E638'
+    )
 }
 
 function Get-S63fPlaywrightVersion {
@@ -674,11 +694,12 @@ function Get-S63fMigrationFileNames {
 }
 
 function Get-S63fExportMachOXdRenderCliSha256 {
-    return '58618EC212229AC900E48304922AFD50EDFFD0F54CB325DCFA60F34382A606EA'
+    # PENDING until sanitized 623b07232 source archive is present. Not required for packaging (Dockerfile rebuilds Linux ELF).
+    return ''
 }
 
 function Get-S63fExportMachOXdRenderCliBytes {
-    return [long]50200
+    return [long]0
 }
 
 function ConvertTo-PromptVersionMap {
@@ -724,12 +745,13 @@ function ConvertFrom-PromptVersionMap {
 }
 
 function Get-S63fSettingsDefaultPromptVersionTable {
-    # Exact s63f Settings.prompt_versions default (app/config.py at dd6ab3d50).
-    return 'planner:v1.2,clarifier:v1.0,diagnoser:v1.0,explainer:v1.0,drafter:v1.0,drafter_dsl:v2.4,sketch_interpreter:v4.0,sketch_interpretation_auditor:v1.0,sketch_layout_auditor:v1.0,auditor_dsl:v1.5,intent_extractor:v2.24,linker_dsl:v1.1,layout_planner:v1.1,component_planner:v1.4,composition_layout_planner:v2.5,component_slot_type_selector:v1.0,component_slot_props_planner:v2.0,page_scene_tweak_planner:v1.0,fixer:v2.2,write_action_declarer:v1.10,nav_declarer:v1.6,engineering_setting_declarer:v1.0,write_action_declarer_link:v1.8,page_set_skeleton_declarer:v1.5,placement_declarer:v1.0,read_display_declarer:v1.15,point_table_column_annotator:v1.1,repeated_series_declarer:v1.2,style_token_declarer:v1.2,strict_region_reader:v1.0,navigation_target_grouping_judge:v1.0'
+    # Full registered-agent Settings.prompt_versions default for the approved card (31 agents).
+    # Card overlays: write_action_declarer_link v1.10 (was v1.8 on s63f).
+    return 'planner:v1.2,clarifier:v1.0,diagnoser:v1.0,explainer:v1.0,drafter:v1.0,drafter_dsl:v2.4,sketch_interpreter:v4.0,sketch_interpretation_auditor:v1.0,sketch_layout_auditor:v1.0,auditor_dsl:v1.5,intent_extractor:v2.24,linker_dsl:v1.1,layout_planner:v1.1,component_planner:v1.4,composition_layout_planner:v2.5,component_slot_type_selector:v1.0,component_slot_props_planner:v2.0,page_scene_tweak_planner:v1.0,fixer:v2.2,write_action_declarer:v1.10,nav_declarer:v1.6,engineering_setting_declarer:v1.0,write_action_declarer_link:v1.10,page_set_skeleton_declarer:v1.5,placement_declarer:v1.0,read_display_declarer:v1.15,point_table_column_annotator:v1.1,repeated_series_declarer:v1.2,style_token_declarer:v1.2,strict_region_reader:v1.0,navigation_target_grouping_judge:v1.0'
 }
 
 function Get-S63fAuthorAgentPromptPins {
-    return 'intent_extractor:v2.24,read_display_declarer:v1.15,write_action_declarer:v1.10,write_action_declarer_link:v1.8,sketch_interpreter:v4.0'
+    return 'intent_extractor:v2.24,read_display_declarer:v1.15,write_action_declarer:v1.10,write_action_declarer_link:v1.10,sketch_interpreter:v4.0'
 }
 
 function Get-S63fNonAgentPromptPinNames {
@@ -737,12 +759,13 @@ function Get-S63fNonAgentPromptPinNames {
 }
 
 function Get-S63fRejectedTruncatedPromptVersionPins {
-    # Exact a62 native crash table: author-card pins written as the entire XDISPLAY_AI_PROMPT_VERSIONS value.
-    return 'intent_extractor:v2.24,PAGE_HTML:v19,read_display_declarer:v1.15,write_action_declarer:v1.10,write_action_declarer_link:v1.8,sketch_interpreter:v4.0,STYLESHEET:v6'
+    # Exact a62 native crash shape: author-card pins written as the entire XDISPLAY_AI_PROMPT_VERSIONS value.
+    # Versions follow the current card (PAGE_HTML v20 / link v1.10) so the rejection fixture stays current.
+    return 'intent_extractor:v2.24,PAGE_HTML:v20,read_display_declarer:v1.15,write_action_declarer:v1.10,write_action_declarer_link:v1.10,sketch_interpreter:v4.0,STYLESHEET:v6'
 }
 
 function Get-S63fBrowserSolverPageHtmlPromptVersion {
-    return 'v19'
+    return 'v20'
 }
 
 function Get-S63fBrowserSolverEngineeringStylesheetContractVersion {

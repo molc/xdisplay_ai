@@ -8,7 +8,7 @@ def load(name):
 up, post, fresh = load('upgrade-__RUN__-state.json'), load('postresume-__RUN__-state.json'), load('fresh-__RUN__-state.json')
 steady = load('steady-__RUN__.json')
 fresh_ok = bool(fresh and fresh.get('outcome') == 'SCENARIO1_FRESH_PASS')
-steady_ok = bool(steady and steady.get('exit') == 0 and float(steady.get('seconds') or 1e9) < 90 and any('且为本包 s63f 镜像与 prompt 合同' in l for l in steady.get('lines', [])))
+steady_ok = bool(steady and steady.get('exit') == 0 and float(steady.get('seconds') or 1e9) < 90 and any('且为本包 s63i-hf2b 镜像与 prompt 合同' in l for l in steady.get('lines', [])))
 def g(d, k): return bool(d and d.get('gates', {}).get(k))
 old_ok = bool((post and post.get('outcome') == 'SCENARIO2_UPGRADE_PASS') or (up and up.get('outcome') == 'SCENARIO2_UPGRADE_PASS'))
 src = post if (post and post.get('outcome') == 'SCENARIO2_UPGRADE_PASS') else up   # __RUN__ is expected to upgrade without a reboot, so the gates live in upgrade-__RUN__-state.json
@@ -17,7 +17,7 @@ ev = {
   "generatedAtUtc": datetime.datetime.utcnow().isoformat() + "Z",
   "machine": "DESKTOP-LLRKFC6 = 172.19.103.29, Dell Vostro 3890, Windows 11 IoT Enterprise LTSC 26100 (physical)",
   "candidate": {"bundle": "XDisplayAI-0.1.4-dev.exe", "bundleSha256": "__BUNDLE_SHA__",
-                 "packagingCommit": "__PACKAGING_COMMIT__ (r10 + installer runtime fingerprint identical to the ci image label, so a healthy s63f stack takes the health-only skip)", "appImageTarSha256": "514ACD60DF0D7D6FAB00684116F9F863A6A58F161A4C9BAF73CFAD76E0B83A24"},
+                 "packagingCommit": "__PACKAGING_COMMIT__ (s63i-hf2b; installer runtime fingerprint must match the ci image label so a healthy approved-card stack takes the health-only skip)", "appImageTarSha256": "__PENDING_APP_IMAGE_TAR_SHA256__"},
   "freshOfflineRebootResume": {
      "status": "pass" if fresh_ok else "fail",
      "localBackend": g(fresh,'local_localDockerListener') and g(fresh,'local_explicitLocalLinuxEngine') and g(fresh,'local_no18001Portproxy'),
@@ -35,8 +35,8 @@ ev = {
      "status": "pass" if old_ok else "fail",
      "configSentinel": g(src,'sentinelsPreserved'),
      "projects": g(src,'projectsPreserved'),
-     "dbVolumes": g(src,'pgVolumeSame') and (g(src,'migrationHistoryIntact') if rebooted else (g(src,'local_appContainerImageIsS63f') and g(src,'local_bothHealth200'))),
-     "note": ("0.1.3 (delivered 2026-11-08 package) → 0.1.4 __RUN__ on .29; " + ("MSI exit 0 with reboot pending; after reboot+logon the resume task completed the upgrade." if rebooted else "MSI exit 0, no reboot requested (pending-reboot check narrowed in 58f4c5cf), backend refreshed in place; .env seeded into the s63f prompt contract; sentinel config lines, projects and the postgres volume preserved.")),
+     "dbVolumes": g(src,'pgVolumeSame') and (g(src,'migrationHistoryIntact') if rebooted else (g(src,'local_appContainerImageIsApprovedCard') and g(src,'local_bothHealth200'))),
+     "note": ("0.1.3 (delivered 2026-11-08 package) → 0.1.4 __RUN__ on .29; " + ("MSI exit 0 with reboot pending; after reboot+logon the resume task completed the upgrade." if rebooted else "MSI exit 0, no reboot requested (pending-reboot check narrowed in 58f4c5cf), backend refreshed in place; .env seeded into the s63i-hf2b prompt contract; sentinel config lines, projects and the postgres volume preserved.")),
      "evidence": "upgrade-__RUN__-state.json, upgrade-__RUN__-bootstrap.log" + (", postresume-__RUN__-state.json" if rebooted else "")}
 }
 out = share / 'windows-pass-dot29.json'

@@ -97,7 +97,7 @@ try {
     $browserResult = Ensure-BackendBrowserSolverPromptPins -EnvPath $browserPath
     Assert-Equal -Expected $true -Actual $browserResult.Changed -Message 'Missing browser-solver PAGE_HTML/STYLESHEET keys must be added.'
     $browserContent = [IO.File]::ReadAllText($browserPath)
-    if ($browserContent -notmatch 'XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION=v19') { throw 'PAGE_HTML must be seeded as XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION.' }
+    if ($browserContent -notmatch 'XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION=v20') { throw 'PAGE_HTML must be seeded as XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION.' }
     if ($browserContent -notmatch 'XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION=v6') { throw 'STYLESHEET must be seeded as XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION.' }
 
     Write-Host 'Prompt pin migration tests passed.'

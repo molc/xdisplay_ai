@@ -1,0 +1,24 @@
+{
+  "kind": "s63i-hf2b-orchestration-app-docker-save",
+  "status": "PENDING_NOT_BUILT",
+  "source": {
+    "tag": "prod/s63i-hf2b",
+    "fullCommit": "623b072320d2e8c68059ec5e7e33958267203a9c",
+    "sourceArchiveSha256": null
+  },
+  "image": {
+    "id": null,
+    "tarSha256": null,
+    "tarBytes": null,
+    "runtimeFingerprint": null,
+    "repoTags": [
+      "orches/orchestration-app:latest",
+      "orches/orchestration-app:s63i-hf2b-623b07232"
+    ]
+  },
+  "forbiddenReuse": [
+    "F3EECC91AB386DE950F175329AB7CCF078435FF9E863E55708F60485BFFC2309",
+    "514ACD60DF0D7D6FAB00684116F9F863A6A58F161A4C9BAF73CFAD76E0B83A24",
+    "35E5F27EEB4623B816120020116995216CBF2E601CD357ACC676A4384BE9E638"
+  ]
+}

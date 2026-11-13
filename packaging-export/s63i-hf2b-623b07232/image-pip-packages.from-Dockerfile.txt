@@ -1,0 +1,27 @@
+# Historical pip list from the previously verified Dockerfile recipe.
+# PENDING: parent must re-extract from Dockerfile at
+# 623b072320d2e8c68059ec5e7e33958267203a9c before claiming image identity.
+# Dockerfile does NOT consume uv.lock (.dockerignore excludes uv.lock).
+
+python==3.11  # base: python:3.11-slim-bookworm
+fastapi
+uvicorn[standard]
+pydantic
+pydantic-settings
+asyncpg
+redis>=5
+httpx
+structlog
+pyyaml
+instructor==1.15.1
+openai>=2.32.0
+Pillow>=10.0
+numpy==1.26.4
+justhtml==3.11.2
+aiofiles>=23.0
+prometheus-client>=0.20.0
+prometheus-fastapi-instrumentator>=7.0.0
+playwright==1.56.0
+# Chromium pin asserted in the same Dockerfile (retain until 623b07232 proves otherwise):
+#   ARG PLAYWRIGHT_VERSION=1.56.0
+#   ARG CHROMIUM_REVISION=1194

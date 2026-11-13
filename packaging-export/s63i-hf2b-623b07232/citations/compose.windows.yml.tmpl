@@ -1,0 +1,39 @@
+version: "3.3"
+
+volumes:
+  postgres_data:
+  redis_data:
+  app_data:
+  app_logs:
+
+services:
+  postgres:
+    ports:
+      - "127.0.0.1:${POSTGRES_HOST_PORT}:5432"
+
+  redis:
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "127.0.0.1:${REDIS_HOST_PORT}:6379"
+    volumes:
+      - "redis_data:/data"
+
+  embedding-worker:
+    ports:
+      - "127.0.0.1:${EMBEDDING_HOST_PORT}:8090"
+    volumes:
+      - "${BACKEND_WORKSPACE_PATH}:/app"
+
+  orchestration-app:
+    ports:
+      - "127.0.0.1:${APP_HOST_PORT}:8000"
+    environment:
+      XDISPLAY_AI_REDIS_URL: redis://redis:6379/0
+      XDISPLAY_AI_PG_DSN: postgresql://postgres:postgres@postgres:5432/ai_orchestration
+      XDISPLAY_AI_EMBEDDING_WORKER_URL: http://embedding-worker:8090
+      XDISPLAY_AI_LOG_DIR: /data/logs
+      XDISPLAY_AI_IMAGE_GEN_OUTPUT_DIR: /data/xdisplay_images
+    volumes:
+      - "${BACKEND_WORKSPACE_PATH}:/app"
+      - "app_data:/data"
+      - "app_logs:/data/logs"

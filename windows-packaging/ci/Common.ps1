@@ -369,8 +369,8 @@ function Get-SourceContentFingerprint {
 }
 
 function Get-ForbiddenLegacyOrchestrationRuntimeFingerprintPaths {
-    # These paths were an older packaging fingerprint. They do not exist at
-    # prod/s63f / dd6ab3d50 and must not be required to compute or reuse a cache.
+    # These paths were an older packaging fingerprint. They must not be required
+    # to compute or reuse a cache for the approved card (prod/s63i-hf2b / 623b07232).
     return @(
         'docker\export_runtime_requirements.py',
         'docker\strict-ocr'
@@ -378,12 +378,12 @@ function Get-ForbiddenLegacyOrchestrationRuntimeFingerprintPaths {
 }
 
 function Get-OrchestrationAppRuntimeFingerprintPaths {
-    # Actual s63f Dockerfile COPYs xd_render_cli sources, app/, and pyproject.toml,
+    # Approved-card Dockerfile COPYs xd_render_cli sources, app/, and pyproject.toml,
     # then pip-installs inline deps and playwright==1.56.0 / Chromium 1194.
     # uv.lock is listed in .dockerignore and is not used by the image build.
     # app/data/prompts stay out of this fingerprint because compose bind-mounts
-    # /app from the source snapshot; s63f still requires a new image because these
-    # Dockerfile/renderer inputs changed versus F3EECC91.
+    # /app from the source snapshot; the card still requires a new image versus
+    # forbidden previous tars (F3EECC91 / s63f 514ACD60 / cloud 35E5F27E).
     # Do not hash the export's Mach-O xd_render_cli binary; Dockerfile rm -f's it
     # and rebuilds a Linux CLI with qmake6. Do not invent a Linux CLI here.
     return @(
@@ -407,7 +407,7 @@ function Get-EmbeddingRuntimeFingerprintPaths {
 
 function Get-S63fAppImageCompanionTags {
     return @(
-        'orches/orchestration-app:s63f-dd6ab3d50',
+        'orches/orchestration-app:s63i-hf2b-623b07232',
         'orches/orchestration-app:latest'
     )
 }

@@ -43,10 +43,13 @@ Assert-True -Condition ($entrypoint -match '\[switch\]\$VerifyExistingOutputsOnl
 Assert-True -Condition ($entrypoint -match '\[string\]\$WorkRoot') -Message 'The one-click entrypoint must expose -WorkRoot for scarce C:/P: scratch.'
 Assert-True -Condition ($entrypoint -match '\[string\]\$StagingRoot') -Message 'The one-click entrypoint must expose -StagingRoot.'
 Assert-True -Condition ($entrypoint -match '\[string\]\$DistRoot') -Message 'The one-click entrypoint must expose -DistRoot.'
-Assert-True -Condition ($entrypoint -match '2A80890DB988157371CF28D24CA23685D7933C4E59630E5A2DCD2363B7DB5600') -Message 'Cached release must default to the pinned catalogwrite client SHA256.'
+Assert-True -Condition ($entrypoint -match 'Assert-ApprovedCardPinsReady') -Message 'Cached release must refuse to pack when approved-card client/image hashes are pending.'
 Assert-True -Condition ($entrypoint -match 'F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36') -Message 'Cached release must default to the pinned Converter SHA256.'
-Assert-True -Condition ($entrypoint -match '675539394') -Message 'Cached release must pin catalogwrite Xdisplay.exe size 675539394.'
 Assert-True -Condition ($entrypoint -match '529920') -Message 'Cached release must pin Converter.exe size 529920.'
+Assert-True -Condition ($entrypoint -notmatch 'AFDE40DBC47A1680A053FA9AD63E0532CD4A893824BB58E162FCDC2AD905E71F') -Message 'Entrypoint must not pin the Mac c186 SHA as the Windows client.'
+. (Join-Path $PackagingRoot 'ci\CachedRelease.ps1')
+Assert-True -Condition ([string]::IsNullOrWhiteSpace((Get-PinnedCatalogwriteClientSha256))) -Message 'Windows c186 client SHA must be empty/pending until the real Windows release exists.'
+Assert-True -Condition ((Get-PinnedCatalogwriteClientBytes) -eq 0) -Message 'Windows c186 client bytes must be pending (0) until the real Windows release exists.'
 Assert-True `
     -Condition ($entrypoint -match 'SkipClientBuild' -and $entrypoint -match 'build-xdisplay-from-source' -and $entrypoint -match 'if \(\$SkipClientBuild') `
     -Message 'SkipClientBuild must short-circuit the unconditional client source rebuild.'

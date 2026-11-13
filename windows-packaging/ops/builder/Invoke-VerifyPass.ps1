@@ -1,4 +1,4 @@
-<#
+﻿<#
 .SYNOPSIS
   Feed the .29 acceptance evidence to build-offline-package.ps1 -VerifyExistingOutputsOnly so the release gate can
   flip release-status.json to "pass" and remove NOT_READY.txt. Runs detached; watch <Logs>\<Run>-verify-pass.stdout.log

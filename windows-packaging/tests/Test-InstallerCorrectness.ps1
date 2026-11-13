@@ -418,7 +418,7 @@ try {
         $healProblems = @(Get-PromptVersionTableStartupProblems -EffectiveTable $healedTable -DefaultTable (Get-S63fRegisteredPromptVersionTable))
         Assert-True -Condition ($healProblems.Count -eq 0) -Message ('Leftover a62 crash table must be healed before stack start: ' + ($healProblems -join '; '))
         Assert-True -Condition ($healedTable -notmatch 'PAGE_HTML') -Message 'Healed leftover env must drop PAGE_HTML from prompt_versions.'
-        Assert-True -Condition ($healedBackend -match '(?m)^XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION=v19\s*$') -Message 'Healed leftover env must gain the PAGE_HTML Settings key when missing.'
+        Assert-True -Condition ($healedBackend -match '(?m)^XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION=v20\s*$') -Message 'Healed leftover env must gain the PAGE_HTML Settings key when missing.'
         Assert-True -Condition ($healedBackend -match '(?m)^XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION=v6\s*$') -Message 'Healed leftover env must gain the STYLESHEET Settings key when missing.'
     }
     finally {

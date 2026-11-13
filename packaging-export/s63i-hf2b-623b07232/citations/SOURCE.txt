@@ -1,0 +1,4 @@
+source: github.com/molc/xdisplay_ai
+ref: packaging-export/s63i-hf2b-623b07232 (this tree)
+path: windows-packaging/src/templates/compose/compose.windows.yml.tmpl
+note: compose overlay citation copied as structure-only; backend revision is 623b072320d2e8c68059ec5e7e33958267203a9c / prod/s63i-hf2b.

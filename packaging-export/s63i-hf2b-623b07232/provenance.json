@@ -1,0 +1,91 @@
+{
+  "kind": "s63i-hf2b-offline-backend-export-metadata",
+  "status": "PACKAGING_SOURCE_ONLY_PENDING_HASHES",
+  "notACodeChange": true,
+  "notADeploy": true,
+  "notBuilt": true,
+  "notAccepted": true,
+  "dockerAvailableInExportEnv": false,
+  "qmake6AvailableInExportEnv": false,
+  "linuxXdRenderCliProduced": false,
+  "appImageTarProduced": false,
+  "sourceArchiveProduced": false,
+  "forbiddenAppImageSha256List": [
+    "F3EECC91AB386DE950F175329AB7CCF078435FF9E863E55708F60485BFFC2309",
+    "514ACD60DF0D7D6FAB00684116F9F863A6A58F161A4C9BAF73CFAD76E0B83A24",
+    "35E5F27EEB4623B816120020116995216CBF2E601CD357ACC676A4384BE9E638"
+  ],
+  "forbiddenMacClientSha256": "AFDE40DBC47A1680A053FA9AD63E0532CD4A893824BB58E162FCDC2AD905E71F",
+  "forbiddenMacClientNote": "Mac c186 package bytes only; never pin as Windows Xdisplay.exe.",
+  "source": {
+    "repo": "https://github.com/molc/ai_orchestration",
+    "tag": "prod/s63i-hf2b",
+    "authorCard": "s63i-hf2b",
+    "fullCommit": "623b072320d2e8c68059ec5e7e33958267203a9c",
+    "authorCardPrefix": "623b07232",
+    "submodule": {
+      "path": "external/xdisplay",
+      "url": "https://github.com/molc/xdisplay.git",
+      "commit": "0c657ad3eac7ece814206bd40fea807ec6568f81",
+      "note": "Retained from verified s63f pin until parent confirms gitlink at 623b07232; do not invent a different submodule SHA."
+    }
+  },
+  "archive": {
+    "relativePath": "ai_orchestration-s63i-hf2b-623b07232.tar.gz",
+    "sha256": null,
+    "sizeBytes": null,
+    "status": "PENDING_PARENT_SANITIZED_EXPORT",
+    "unpacksTo": "ai_orchestration-s63i-hf2b-623b07232/",
+    "note": "Do not invent or copy the s63f archive hash 767E9305…. Parent must supply immutable sanitized source archive from 623b07232."
+  },
+  "runtimeContract": {
+    "image": "orches/orchestration-app:latest",
+    "dockerfile": "Dockerfile",
+    "buildContext": ".",
+    "bindMount": "/app",
+    "composeCopies": ["docker-compose.yml"],
+    "migrations": [
+      "db/migrations/0001_init.sql",
+      "db/migrations/0002_rag.sql",
+      "db/migrations/0003_orch_runtime.sql"
+    ],
+    "hasNewDataMigrations": false,
+    "note": "Keep migrations 0001-0003 only unless parent proves otherwise from the 623b07232 tree."
+  },
+  "promptPinsFromAuthorCard": {
+    "intent_extractor": "v2.24",
+    "PAGE_HTML": "v20",
+    "read_display_declarer": "v1.15",
+    "write_action_declarer": "v1.10",
+    "write_action_declarer_link": "v1.10",
+    "sketch_interpreter": "v4.0",
+    "STYLESHEET": "v6",
+    "sketchVisionTimeoutSeconds": 90
+  },
+  "retiredEnvKeys": ["XDISPLAY_AI_STAGED_DRAFTER_ENABLED"],
+  "clientPolicy": {
+    "clientTag": "client/c-186",
+    "clientCommit": "1898d30cc036241f5af5283c4dc9d7f95dbb8887",
+    "clientBranch": "codex/int-6001",
+    "windowsSha256": null,
+    "windowsBytes": null,
+    "status": "PENDING_WINDOWS_C186_RELEASE_HASHES",
+    "retainWordFixSuperset": true,
+    "macPackageSha1": "50ba545e366058e3f18879aa8afaaa82a208b83c",
+    "macPackageSha256": "afde40dbc47a1680a053fa9ad63e0532cd4a893824bb58e162fcdc2ad905e71f",
+    "macPackageNote": "Mac-only evidence; MUST NOT be used as Windows client pin.",
+    "converterSha256": "F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36",
+    "converterNote": "Retained Word-fix converter lineage until parent says otherwise."
+  },
+  "appImage": {
+    "imageId": null,
+    "tarSha256": null,
+    "tarBytes": null,
+    "runtimeFingerprint": null,
+    "status": "PENDING_LINUX_AMD64_DOCKER_SAVE_AND_INSPECT"
+  },
+  "packagingRepo": {
+    "repo": "https://github.com/molc/xdisplay_ai",
+    "pinManifest": "windows-packaging/manifests/pins/offline-inputs.s63i-hf2b.json"
+  }
+}

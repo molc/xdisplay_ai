@@ -702,7 +702,7 @@ function Initialize-RuntimeEnvironment {
             -DefaultPromptVersions (Get-S63fRegisteredPromptVersionTable)
         if ($promptMigration.Changed) {
             $changedAgents = @($promptMigration.Added + $promptMigration.Removed)
-            Write-Step ('已按 s63f 注册表补全 prompt 钉扎（保留用户已有版本，删除 PAGE_HTML/STYLESHEET 别名）：' + ($changedAgents -join ', '))
+            Write-Step ('已按 s63i-hf2b 注册表补全 prompt 钉扎（保留用户已有版本，删除 PAGE_HTML/STYLESHEET 别名）：' + ($changedAgents -join ', '))
         }
         $browserPins = Ensure-BackendBrowserSolverPromptPins -EnvPath $stateLayout.BackendEnvFile
         if ($browserPins.Changed) {
