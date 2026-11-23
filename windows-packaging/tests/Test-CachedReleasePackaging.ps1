@@ -43,9 +43,9 @@ Assert-True -Condition ($entrypoint -match '\[switch\]\$VerifyExistingOutputsOnl
 Assert-True -Condition ($entrypoint -match '\[string\]\$WorkRoot') -Message 'The one-click entrypoint must expose -WorkRoot for scarce C:/P: scratch.'
 Assert-True -Condition ($entrypoint -match '\[string\]\$StagingRoot') -Message 'The one-click entrypoint must expose -StagingRoot.'
 Assert-True -Condition ($entrypoint -match '\[string\]\$DistRoot') -Message 'The one-click entrypoint must expose -DistRoot.'
-Assert-True -Condition ($entrypoint -match '2A80890DB988157371CF28D24CA23685D7933C4E59630E5A2DCD2363B7DB5600') -Message 'Cached release must default to the pinned catalogwrite client SHA256.'
+Assert-True -Condition ($entrypoint -match 'B4A8B616DADAB2D7704BF30C8419E4D3DB97D9B8CB44B4FD37DE47260C888645') -Message 'Cached release must default to the pinned catalogwrite client SHA256.'
 Assert-True -Condition ($entrypoint -match 'F7C50DB87D082DE31A154A123B05FA3D327A4117F7CE5FCD2F5E51CF3D595D36') -Message 'Cached release must default to the pinned Converter SHA256.'
-Assert-True -Condition ($entrypoint -match '675539394') -Message 'Cached release must pin catalogwrite Xdisplay.exe size 675539394.'
+Assert-True -Condition ($entrypoint -match '782747572') -Message 'Cached release must pin catalogwrite Xdisplay.exe size 782747572.'
 Assert-True -Condition ($entrypoint -match '529920') -Message 'Cached release must pin Converter.exe size 529920.'
 Assert-True `
     -Condition ($entrypoint -match 'SkipClientBuild' -and $entrypoint -match 'build-xdisplay-from-source' -and $entrypoint -match 'if \(\$SkipClientBuild') `
