@@ -734,6 +734,14 @@ function Assert-ExistingBackendInputs {
         }
     }
 
+    # Only the four pinned images may sit in backend/images: the installer docker-loads every *.tar in name order, so a
+    # stray backup (e.g. s63f-orches_orchestration-app_latest.tar) loaded last re-points :latest at the old image.
+    $imagesDir = Get-InputsRelativePath -Root $InputsRoot -RelativePath 'backend/images'
+    $allowedImages = @('orches_orchestration-app_latest.tar', 'orches_embedding-http_latest.tar', 'pgvector_pgvector_pg15.tar', 'redis_7.tar')
+    $strayImages = @(Get-ChildItem -LiteralPath $imagesDir -File -Force | Where-Object { $_.Name -notin $allowedImages -and $_.Name -notmatch '\.inspect\.json$' -and $_.Name -ne '.gitkeep' } | ForEach-Object { $_.Name })
+    if ($strayImages.Count -gt 0) {
+        throw ("backend/images holds files that would be shipped and docker-loaded: " + ($strayImages -join ', ') + '. Move backups out of the inputs tree.')
+    }
     $sourceRoot = Get-InputsRelativePath -Root $InputsRoot -RelativePath 'backend/source'
     $migrationDir = Get-InputsRelativePath -Root $InputsRoot -RelativePath 'backend/migrations'
 
