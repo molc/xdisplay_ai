@@ -326,14 +326,14 @@ try {
         Initialize-DevelopmentWorkspace | Out-Null
         Assert-Equal -Expected 'developer-update' -Actual ([System.IO.File]::ReadAllText($workspaceMainPath)) -Message 'Same-seed relaunch must keep developer backend edits.'
         [System.IO.File]::WriteAllText($seedMain, 'new-seed')
-        [System.IO.File]::WriteAllText($runtimeState.RuntimeEnvFile, (([System.IO.File]::ReadAllText($runtimeState.RuntimeEnvFile).TrimEnd()) + "`nT203_UPGRADE_SENTINEL=t203-offline-upgrade-20261109`nXDISPLAY_AI_LLM_MODEL_DEFAULT=kept-model`n"))
+        [System.IO.File]::WriteAllText($runtimeState.RuntimeEnvFile, (([System.IO.File]::ReadAllText($runtimeState.RuntimeEnvFile).TrimEnd()) + "`nT203_UPGRADE_SENTINEL=t203-offline-upgrade-20261109`nXDISPLAY_AI_LLM_BASE_URL=https://kept.example/v1`n"))
         $script:BundleMetadataCache = $null
         Initialize-RuntimeEnvironment | Out-Null
         Assert-Equal -Expected 'new-seed' -Actual ([System.IO.File]::ReadAllText($workspaceMainPath).Trim()) -Message 'Changed seed fingerprint must update shipped backend source.'
         Assert-Equal -Expected 'user-bytes' -Actual ([System.IO.File]::ReadAllText($userProjectPath)) -Message 'Seed update must keep extra user project files.'
         $runtimeAfter = Get-Content -Path $runtimeState.RuntimeEnvFile -Raw
         Assert-True -Condition ($runtimeAfter -match 'T203_UPGRADE_SENTINEL=t203-offline-upgrade-20261109') -Message 'Initialize-RuntimeEnvironment must preserve the upgrade sentinel.'
-        Assert-True -Condition ($runtimeAfter -match 'XDISPLAY_AI_LLM_MODEL_DEFAULT=kept-model') -Message 'Initialize-RuntimeEnvironment must preserve provider/model settings.'
+        Assert-True -Condition ($runtimeAfter -match 'XDISPLAY_AI_LLM_BASE_URL=https://kept.example/v1') -Message 'Initialize-RuntimeEnvironment must preserve provider/model settings.'
         Assert-True -Condition ($runtimeAfter -match 'APP_HOST_PORT=18001') -Message 'Initialize-RuntimeEnvironment must keep APP_HOST_PORT at 18001.'
     }
     finally {
@@ -361,7 +361,7 @@ try {
     }
     $oldRuntimePath = Join-InstallRelativePath -Root $upgradeDataRoot -RelativePath 'config/runtime.env'
     New-Item -ItemType Directory -Path (Split-Path $oldRuntimePath -Parent) -Force | Out-Null
-    [System.IO.File]::WriteAllText($oldRuntimePath, "APP_HOST_PORT=18001`nT203_UPGRADE_SENTINEL=t203-offline-upgrade-20261109`nXDISPLAY_AI_LLM_MODEL_DEFAULT=old-machine-model`n")
+    [System.IO.File]::WriteAllText($oldRuntimePath, "APP_HOST_PORT=18001`nT203_UPGRADE_SENTINEL=t203-offline-upgrade-20261109`nXDISPLAY_AI_LLM_BASE_URL=https://old-machine.example/v1`n")
     $previousInstallRoot = $script:InstallRoot
     $previousBundleMetadataCache = $script:BundleMetadataCache
     try {
@@ -371,7 +371,7 @@ try {
         $upgradeRuntime = Get-Content -Path $upgradeState.RuntimeEnvFile -Raw
         $upgradeBackend = Get-Content -Path (Join-InstallRelativePath -Root $upgradeState.BackendWorkspace -RelativePath '.env') -Raw
         Assert-True -Condition ($upgradeRuntime -match 'T203_UPGRADE_SENTINEL=t203-offline-upgrade-20261109') -Message '0.1.0-style runtime.env sentinel must survive first workspace create.'
-        Assert-True -Condition ($upgradeBackend -match 'XDISPLAY_AI_LLM_MODEL_DEFAULT=old-machine-model') -Message 'Old runtime application settings must overlay seed backend.env when no previous workspace existed.'
+        Assert-True -Condition ($upgradeBackend -match 'XDISPLAY_AI_LLM_BASE_URL=https://old-machine.example/v1') -Message 'Old runtime application settings must overlay seed backend.env when no previous workspace existed.'
     }
     finally {
         $script:InstallRoot = $previousInstallRoot
