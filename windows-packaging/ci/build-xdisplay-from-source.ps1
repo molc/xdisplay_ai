@@ -288,47 +288,30 @@ function Copy-DefaultClientFonts {
         [string]$ReleaseDirectory
     )
 
-    $requiredNames = @(
-        'OPPO Sans 4.0.ttf',
-        'SourceHansCN.otf',
-        'fangsong_GB2312.ttf',
-        'subset_font.exe'
-    )
-    $candidateDirectories = @(
-        (Join-Path $RepoRoot 'res'),
-        (Join-Path $RepoRoot 'bin\res'),
-        (Join-FromRoot 'inputs\client\default-fonts')
-    )
-    $sourceDirectory = $null
-    foreach ($candidateDirectory in $candidateDirectories) {
-        $complete = $true
-        foreach ($requiredName in $requiredNames) {
-            if (-not (Test-Path -LiteralPath (Join-Path $candidateDirectory $requiredName) -PathType Leaf)) {
-                $complete = $false
-                break
-            }
-        }
-        if ($complete) {
-            $sourceDirectory = $candidateDirectory
-            break
-        }
-    }
-    if ([string]::IsNullOrWhiteSpace($sourceDirectory)) {
-        throw "客户端默认字体不完整。需要在 xdisplay\res、xdisplay\bin\res 或 inputs\client\default-fonts 提供：$($requiredNames -join ', ')"
-    }
-
-    Write-Step "复制客户端默认字体：$sourceDirectory"
+    # The three fonts are tracked in the client repo res/ (client/c-184). subset_font.exe is third-party and lives in the
+    # pinned cached client tree (RUNTIME_RESOURCES.md). The fonts are NOT copied into data/keyboard_a/font: the official
+    # 2.4.4 templates carry only data_font.json there (copying them re-bloated the templates before r8).
+    $fontNames = @('OPPO Sans 4.0.ttf', 'SourceHansCN.otf', 'fangsong_GB2312.ttf')
     $resourceDestination = Join-Path $ReleaseDirectory 'res'
-    $keyboardFontDestination = Join-Path $ReleaseDirectory 'data\keyboard_a\font'
     Ensure-Directory -Path $resourceDestination
-    Ensure-Directory -Path $keyboardFontDestination
-    foreach ($requiredName in $requiredNames) {
-        $sourcePath = Join-Path $sourceDirectory $requiredName
-        Copy-Item -LiteralPath $sourcePath -Destination (Join-Path $resourceDestination $requiredName) -Force
-        if ($requiredName -ne 'subset_font.exe') {
-            Copy-Item -LiteralPath $sourcePath -Destination (Join-Path $keyboardFontDestination $requiredName) -Force
+    foreach ($fontName in $fontNames) {
+        $sourcePath = Join-Path (Join-Path $RepoRoot 'res') $fontName
+        if (-not (Test-Path -LiteralPath $sourcePath -PathType Leaf)) {
+            throw "客户端默认字体缺失：$sourcePath"
         }
+        Copy-Item -LiteralPath $sourcePath -Destination (Join-Path $resourceDestination $fontName) -Force
     }
+    $subsetCandidates = @(
+        (Join-Path $RepoRoot 'res\subset_font.exe'),
+        (Join-FromRoot 'inputs\client\xdisplay-win64\res\subset_font.exe'),
+        (Join-FromRoot 'inputs\client\default-fonts\subset_font.exe')
+    )
+    $subset = $subsetCandidates | Where-Object { Test-Path -LiteralPath $_ -PathType Leaf } | Select-Object -First 1
+    if (-not $subset) {
+        throw "缺少 subset_font.exe（第三方，应在 inputs\client\xdisplay-win64\res）。"
+    }
+    Copy-Item -LiteralPath $subset -Destination (Join-Path $resourceDestination 'subset_font.exe') -Force
+    Write-Step "复制客户端默认字体（repo res）与 subset_font.exe（$subset）"
 }
 
 $resolvedXdisplayRepoPath = Resolve-XdisplayRepoPath -PathValue $XdisplayRepoPath

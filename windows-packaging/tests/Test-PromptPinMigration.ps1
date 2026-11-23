@@ -83,7 +83,8 @@ try {
     Assert-Equal -Expected $true -Actual $crashResult.Changed -Message 'The a62 truncated table must be expanded to the full registered-agent map.'
     if (($crashResult.Removed -join ',') -notmatch 'PAGE_HTML') { throw 'PAGE_HTML must be dropped from prompt_versions.' }
     if (($crashResult.Removed -join ',') -notmatch 'STYLESHEET') { throw 'STYLESHEET must be dropped from prompt_versions.' }
-    if (@($crashResult.Added).Count -lt 26) { throw 'Migration must append the 26 registered agents missing from the a62 crash table.' }
+    $expectedMissing = @((ConvertTo-PromptVersionMap -Value $fullTable).Keys | Where-Object { (Get-S63fRejectedTruncatedPromptVersionPins) -notmatch ('(^|,)' + [regex]::Escape($_) + ':') }).Count
+    if (@($crashResult.Added).Count -lt $expectedMissing) { throw "Migration must append the $expectedMissing registered agents missing from the a62 crash table." }
     $healed = [IO.File]::ReadAllText($crashPath)
     if ($healed -notmatch 'T014_UPGRADE_SENTINEL=keep-t014') { throw 'Prompt pin migration must preserve upgrade sentinels.' }
     if ($healed -notmatch 'XDISPLAY_AI_LOG_LEVEL=DEBUG') { throw 'Prompt pin migration must preserve unrelated settings.' }
