@@ -25,11 +25,14 @@
       "pip": true,
       "playwright": "1.56.0",
       "chromiumRevision": "1194",
-      "uvLockIgnored": true,
+      "uvLockIgnored": false,
       "dockerfileCopies": [
         "external/xdisplay/bin/xd_render_cli",
+        "data/fonts",
         "app",
-        "pyproject.toml"
+        "pyproject.toml",
+        "uv.lock",
+        "docker/strict-ocr"
       ]
     },
     "bindMount": "compose bind-mounts app/ data/ .env at /app; migrations 0001-0003 are separate SQL inputs",
