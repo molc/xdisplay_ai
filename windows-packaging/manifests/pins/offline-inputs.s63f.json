@@ -168,8 +168,8 @@
     },
     {
       "relativePath": "backend/images/orches_orchestration-app_latest.tar",
-      "sizeBytes": 1910111744,
-      "sha256": "514ACD60DF0D7D6FAB00684116F9F863A6A58F161A4C9BAF73CFAD76E0B83A24"
+      "sizeBytes": 2534717440,
+      "sha256": "A9223DC329A51AAA523AC35A1827516333AFE56B9CF1F88131853E02FD6CDCA8"
     },
     {
       "relativePath": "backend/images/orches_embedding-http_latest.tar",

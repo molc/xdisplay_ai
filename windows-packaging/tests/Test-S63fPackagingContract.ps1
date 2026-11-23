@@ -210,6 +210,8 @@ try {
     $localManifestPath = Join-Path $testRoot 'local-s63f.json'
     $localManifest = Get-Content -LiteralPath $pinPath -Raw | ConvertFrom-Json
     $localManifest.backend.forbiddenAppImageSha256 = $localForbidden
+    # the fixture uses 4-byte placeholders for the prerequisites and image tars; real per-file pins are enforced by the build
+    $localManifest.files = @()
     $localManifest | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $localManifestPath
     $forbiddenRejected = $false
     try {
