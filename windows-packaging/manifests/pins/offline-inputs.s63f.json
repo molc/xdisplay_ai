@@ -172,8 +172,9 @@
     },
     {
       "relativePath": "backend/images/orches_orchestration-app_latest.tar",
-      "sizeBytes": 2534717440,
-      "sha256": "A9223DC329A51AAA523AC35A1827516333AFE56B9CF1F88131853E02FD6CDCA8"
+      "sizeBytes": 1003987433,
+      "sha256": "BD3D8D3CA221B03E50783A42A76FD6548A2CCC78B1BD104CC7C798DBF0526A9E",
+      "note": "gzip-compressed docker save stream (A9223DC3, 2,534,717,440 B uncompressed); MSI files must be < 2 GiB and docker load detects gzip"
     },
     {
       "relativePath": "backend/images/orches_embedding-http_latest.tar",
