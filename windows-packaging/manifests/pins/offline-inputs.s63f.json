@@ -7,7 +7,7 @@
     "requiredRevisionPrefix": "61d37700a",
     "requiredRevisionFull": "61d37700ac224e675b2d55ee62acd21c813e15e3",
     "requiredTag": "prod/s70",
-    "sourceArchiveSha256": "B7242DA687E0FB5043171D80F98BB028EFF9E6B0DFB3713887ADD6C5CB89E88D",
+    "sourceArchiveSha256": "8906618EC0FE86ECE70D61AAFD011B6F5D20E8AA5EB838ABAFA9146D5A63B7CF",
     "appTree": "prod/s70 61d37700a (production .21 since 2026-11-23 07:33Z); snapshot = git archive of app config data db docker scripts + root files, data/fonts from production (md5-verified), external/xdisplay 0c657ad3",
     "noDataMigrations": true,
     "migrations": [
