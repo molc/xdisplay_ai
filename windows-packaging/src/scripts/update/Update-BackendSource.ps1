@@ -91,15 +91,7 @@ try {
 
     Initialize-RuntimeEnvironment | Out-Null
     Assert-Command -Name 'docker'
-    Write-Step '检查新后端所需的 prompt 版本钉扎。'
-    $defaultPromptVersions = Get-UpdatedBackendDefaultPromptVersions
-    $promptMigration = Update-BackendPromptVersionPins `
-        -EnvPath $layout.BackendEnvFile `
-        -DefaultPromptVersions $defaultPromptVersions
-    if ($promptMigration.Changed) {
-        Write-Step "已补充 prompt 版本钉扎：$($promptMigration.Added -join ', ')"
-        Write-Step "原 .env 已备份：$($promptMigration.BackupPath)"
-    }
+    # s70: behaviour pins come from the backend code defaults; only retired override keys are removed.
     $retired = Remove-RetiredBackendEnvKeys -EnvPath $layout.BackendEnvFile
     if ($retired.Changed) {
         Write-Step ("已删除退役 .env 键：" + ($retired.Removed -join ', '))

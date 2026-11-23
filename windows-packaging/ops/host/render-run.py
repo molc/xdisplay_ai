@@ -21,7 +21,13 @@ ap.add_argument('--force', action='store_true')
 a = ap.parse_args()
 if not re.fullmatch(r'r\d+', a.run): sys.exit('run id must look like r12')
 if not re.fullmatch(r'[0-9a-fA-F]{64}', a.bundle_sha): sys.exit('bundle sha must be 64 hex chars')
-subs = {'__RUN__': a.run, '__RUNU__': a.run.upper(), '__BUNDLE_SHA__': a.bundle_sha.lower(),
+import json
+pins = json.loads((here.parent.parent / 'manifests' / 'pins' / 'offline-inputs.s63f.json').read_text(encoding='utf-8-sig'))
+subs = {'__BACKEND_SHA__': pins['backend']['requiredRevisionFull'], '__BACKEND_TAG__': pins['backend']['requiredTag'],
+        '__RUNTIME_FP__': pins['backend']['runtimeFingerprint'], '__CLIENT_SHA__': pins['client']['sha256'],
+        '__CONVERTER_SHA__': pins['converter']['sha256'], '__PAGE_HTML__': pins['browserSolverPageHtmlPromptVersion'],
+        '__STYLESHEET__': pins['browserSolverEngineeringStylesheetContractVersion'], '__PROMPT_TABLE__': pins['promptPins'],
+        '__RUN__': a.run, '__RUNU__': a.run.upper(), '__BUNDLE_SHA__': a.bundle_sha.lower(),
         '__HTTP_PORT__': str(a.http_port), '__PACKAGING_COMMIT__': a.packaging_commit}
 def render(text):
     for k, v in subs.items(): text = text.replace(k, v)

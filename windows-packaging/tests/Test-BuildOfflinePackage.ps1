@@ -570,8 +570,8 @@ try {
         -Condition ($backendUpdateScriptContent -match '(?s)/XF.*?\.env' -and $backendUpdateScriptContent -match "restart.*embedding-worker.*orchestration-app") `
         -Message 'Backend update must preserve .env and restart both Python services.'
     Assert-True `
-        -Condition ($backendUpdateScriptContent -match 'Get-UpdatedBackendDefaultPromptVersions' -and $backendUpdateScriptContent -match 'Update-BackendPromptVersionPins') `
-        -Message 'Backend update must migrate missing prompt pins before restarting the updated source.'
+        -Condition ($backendUpdateScriptContent -match 'Remove-RetiredBackendEnvKeys' -and $backendUpdateScriptContent -notmatch 'Update-BackendPromptVersionPins') `
+        -Message 'Backend update must remove retired behaviour overrides and must not seed prompt pins (s70: code defaults).'
     $clientUpdateScriptContent = Get-Content -Path $clientUpdateScriptPath -Raw
     Assert-True `
         -Condition ($clientUpdateScriptContent -match 'plugins\\platforms\\qwindows\.dll' -and $clientUpdateScriptContent -match "Join-Path.*'qml'") `

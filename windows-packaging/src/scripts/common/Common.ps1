@@ -697,17 +697,7 @@ function Initialize-RuntimeEnvironment {
         if ($retiredRemoval.Changed) {
             Write-Step ('已删除退役后端配置键：' + (@($retiredRemoval.Removed) -join ', '))
         }
-        $promptMigration = Update-BackendPromptVersionPins `
-            -EnvPath $stateLayout.BackendEnvFile `
-            -DefaultPromptVersions (Get-S63fRegisteredPromptVersionTable)
-        if ($promptMigration.Changed) {
-            $changedAgents = @($promptMigration.Added + $promptMigration.Removed)
-            Write-Step ('已按 s63f 注册表补全 prompt 钉扎（保留用户已有版本，删除 PAGE_HTML/STYLESHEET 别名）：' + ($changedAgents -join ', '))
-        }
-        $browserPins = Ensure-BackendBrowserSolverPromptPins -EnvPath $stateLayout.BackendEnvFile
-        if ($browserPins.Changed) {
-            Write-Step ('已补全浏览器求解器 PAGE_HTML/STYLESHEET 合同键：' + ($browserPins.Added -join ', '))
-        }
+        # s70: no prompt / PAGE_HTML / STYLESHEET seeding; those keys are retired above and the code defaults apply.
     }
 
     return [pscustomobject]@{

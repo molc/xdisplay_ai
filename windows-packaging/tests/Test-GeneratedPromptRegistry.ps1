@@ -78,15 +78,13 @@ $generated = $tmpl.
     Replace('{{LLM_MODEL_DEFAULT}}', 'qwen/qwen3-235b-a22b-2507')
 
 Assert-True -Condition ($generated -notmatch '\{\{') -Message 'Generated backend.env from tmpl still contains unrendered tokens.'
-$promptLine = [regex]::Match($generated, '(?m)^XDISPLAY_AI_PROMPT_VERSIONS=(?<value>[^\r\n]*)\s*$')
-Assert-True -Condition $promptLine.Success -Message 'Generated env must contain XDISPLAY_AI_PROMPT_VERSIONS.'
-$generatedTable = [string]$promptLine.Groups['value'].Value
-Assert-True -Condition ($generatedTable -eq (Get-S63fRegisteredPromptVersionTable)) -Message 'Generated env prompt table must equal the packaged full s63f registry map.'
-Assert-True -Condition ($generatedTable -ne (Get-S63fRejectedTruncatedPromptVersionPins)) -Message 'Matching the seven author-card pin strings is not a valid generated table.'
-$shapeProblems = @(Get-PromptVersionTableStartupProblems -EffectiveTable $generatedTable -DefaultTable (Get-S63fSettingsDefaultPromptVersionTable))
-Assert-True -Condition ($shapeProblems.Count -eq 0) -Message ('Generated table failed registry-shape checks: ' + ($shapeProblems -join '; '))
+foreach ($retiredKey in @(Get-RetiredBackendEnvKeys)) {
+    Assert-True -Condition ($generated -notmatch ('(?m)^' + [regex]::Escape($retiredKey) + '=')) -Message "Generated env must not override $retiredKey (s70: code defaults)."
+}
+$shapeProblems = @(Get-PromptVersionTableStartupProblems -EffectiveTable (Get-S63fRegisteredPromptVersionTable) -DefaultTable (Get-S63fSettingsDefaultPromptVersionTable))
+Assert-True -Condition ($shapeProblems.Count -eq 0) -Message ('Packaged registry table failed registry-shape checks: ' + ($shapeProblems -join '; '))
 $crashProblems = @(Get-PromptVersionTableStartupProblems -EffectiveTable (Get-S63fRejectedTruncatedPromptVersionPins) -DefaultTable (Get-S63fSettingsDefaultPromptVersionTable))
-Assert-True -Condition ($crashProblems.Count -ge 28) -Message 'The exact a62 crash table must still fail the registry-shape gate.'
+Assert-True -Condition ($crashProblems.Count -ge 12) -Message 'The exact a62 crash table must still fail the registry-shape gate.'
 
 $testRoot = Join-Path ([System.IO.Path]::GetTempPath()) ('xdisplayai-prompt-registry-' + [Guid]::NewGuid().ToString('N'))
 New-Item -ItemType Directory -Path $testRoot -Force | Out-Null

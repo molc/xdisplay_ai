@@ -410,19 +410,71 @@ function Get-WorkspaceSyncDecision {
 }
 
 function Get-RetiredBackendEnvKeys {
-    return @('XDISPLAY_AI_STAGED_DRAFTER_ENABLED')
+    # s70 (24-869): behaviour (models, timeouts, prompt pins, PAGE_HTML/STYLESHEET, feature switches) comes from the
+    # backend's code defaults = config/production_behaviour.env.snapshot, exactly as on .21. Earlier installers wrote these
+    # keys into the backend .env; left in place they override the new defaults (PAGE_HTML v19 is not even a valid s70 value),
+    # so install/upgrade removes them. User-added keys are never touched.
+    return @(
+        'XDISPLAY_AI_STAGED_DRAFTER_ENABLED',
+        'XDISPLAY_AI_PROMPT_VERSIONS',
+        'XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION',
+        'XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION',
+        'XDISPLAY_AI_SKETCH_VISION_TIMEOUT_SECONDS',
+        'XDISPLAY_AI_RAG_BACKEND',
+        'XDISPLAY_AI_RAG_ACTIVE_INDEX_VERSION',
+        'XDISPLAY_AI_RAG_EMBEDDING_VERSION',
+        'XDISPLAY_AI_LLM_MODEL_DEFAULT',
+        'XDISPLAY_AI_LLM_MODEL_AUDIT_PAGE_DRAFT',
+        'XDISPLAY_AI_LLM_MODEL_INTENT_EXTRACTOR',
+        'XDISPLAY_AI_LLM_MODEL_INTERPRET_SKETCH',
+        'XDISPLAY_AI_LLM_TIMEOUT_SECONDS',
+        'XDISPLAY_AI_LLM_TEMPERATURE',
+        'XDISPLAY_AI_LLM_TEMPERATURE_AUDIT',
+        'XDISPLAY_AI_LLM_TEMPERATURE_INTENT_EXTRACT',
+        'XDISPLAY_AI_LLM_MAX_TOKENS_THINKING',
+        'XDISPLAY_AI_LLM_OPENROUTER_PROVIDER_PREFS',
+        'XDISPLAY_AI_INTENT_EXTRACT_TIMEOUT_SECONDS',
+        'XDISPLAY_AI_INTENT_EXTRACT_MAX_ATTEMPTS',
+        'XDISPLAY_AI_AUDIT_TOTAL_TIMEOUT_SECONDS',
+        'XDISPLAY_AI_AGENT_RUNTIME_TIMEOUT_SECONDS',
+        'XDISPLAY_AI_BROWSER_SOLVER_ENABLED',
+        'XDISPLAY_AI_BROWSER_SOLVER_MODEL',
+        'XDISPLAY_AI_BROWSER_SOLVER_PROVIDER_PREFS',
+        'XDISPLAY_AI_BROWSER_SOLVER_BUTTON_SKIN_ENABLED',
+        'XDISPLAY_AI_BROWSER_SOLVER_TWEAK_ENABLED',
+        'XDISPLAY_AI_VISUAL_AUDITOR_ENABLED',
+        'XDISPLAY_AI_VISUAL_AUDITOR_MODEL',
+        'XDISPLAY_AI_VISUAL_AUDITOR_TIMEOUT_S',
+        'XDISPLAY_AI_VISUAL_AUDITOR_RATE_LIMIT_PER_SESSION_PER_MINUTE',
+        'XDISPLAY_AI_VISUAL_AUDITOR_MIN_SCORE',
+        'XDISPLAY_AI_AUTOFIX_ENABLED',
+        'XDISPLAY_AI_AUTOFIX_MAX_ROUNDS',
+        'XDISPLAY_AI_AUTOFIX_TIMEOUT_S',
+        'XDISPLAY_AI_AUTOFIX_MAX_COMPONENTS_CHANGED_PER_ROUND',
+        'XDISPLAY_AI_FIXER_MODEL',
+        'XDISPLAY_AI_FIXER_TIMEOUT_S',
+        'XDISPLAY_AI_IMAGE_GEN_ENABLED',
+        'XDISPLAY_AI_IMAGE_GEN_MODEL',
+        'XDISPLAY_AI_IMAGE_GEN_TIMEOUT_SECONDS',
+        'XDISPLAY_AI_IMAGE_GEN_DEFAULT_SIZE',
+        'XDISPLAY_AI_MULTI_PAGE_ENABLED',
+        'XDISPLAY_AI_RENDER_BACKEND',
+        'XDISPLAY_AI_RENDER_CLI_BIN_PATH',
+        'XDISPLAY_AI_RENDER_CLI_TIMEOUT_S',
+        'XDISPLAY_AI_SHADOW_STORE_TTL_SECONDS'
+    )
 }
 
 function Get-ApprovedBackendRevisionPrefix {
-    return 'dd6ab3d50'
+    return '61d37700a'
 }
 
 function Get-ApprovedBackendRevisionFull {
-    return 'dd6ab3d505827a94cbc9d59d7067fcce14db6fbe'
+    return '61d37700ac224e675b2d55ee62acd21c813e15e3'
 }
 
 function Get-ApprovedBackendTag {
-    return 'prod/s63f'
+    return 'prod/s70'
 }
 
 function Get-S63fPackagingGitShaLabelName {
@@ -525,6 +577,9 @@ function Test-BackendImageMatchesS63fContract {
 }
 
 function Test-BackendPromptContractFromEnvEntries {
+    <# s70 contract: the backend .env must not override behaviour. Prompt versions, PAGE_HTML (v22) and STYLESHEET (v7)
+       come from the backend's code defaults, which equal the production snapshot. A .env still carrying a retired
+       behaviour key (e.g. an upgraded 0.1.3 .env with PAGE_HTML v19) is not this package's contract. #>
     param(
         [AllowNull()]
         [System.Collections.IDictionary]$Entries = $null
@@ -533,62 +588,17 @@ function Test-BackendPromptContractFromEnvEntries {
     $reasons = New-Object System.Collections.Generic.List[string]
     if ($null -eq $Entries) {
         $reasons.Add('backend .env is missing')
-        return [pscustomobject]@{
-            Ok = $false
-            Reasons = @($reasons)
-            AgentCount = 0
-        }
+        return [pscustomobject]@{ Ok = $false; Reasons = @($reasons); AgentCount = 0 }
     }
-
     foreach ($retired in @(Get-RetiredBackendEnvKeys)) {
         if ($Entries.Contains($retired)) {
-            $reasons.Add("retired env key $retired is still present")
+            $reasons.Add("retired env key $retired is still present (behaviour must come from the s70 code defaults)")
         }
     }
-
-    $table = ''
-    if ($Entries.Contains('XDISPLAY_AI_PROMPT_VERSIONS')) {
-        $table = [string]$Entries['XDISPLAY_AI_PROMPT_VERSIONS']
-    }
-    $agentCount = 0
-    if ([string]::IsNullOrWhiteSpace($table)) {
-        $reasons.Add('XDISPLAY_AI_PROMPT_VERSIONS is missing; HTTP 200 does not waive the 31-agent prompt contract')
-    }
-    else {
-        $map = ConvertTo-PromptVersionMap -Value $table
-        $agentCount = @($map.Keys).Count
-        $problems = @(Get-PromptVersionTableStartupProblems -EffectiveTable $table -DefaultTable (Get-S63fRegisteredPromptVersionTable))
-        foreach ($problem in $problems) {
-            $reasons.Add([string]$problem)
-        }
-        $authorPins = ConvertTo-PromptVersionMap -Value (Get-S63fAuthorAgentPromptPins)
-        foreach ($agent in @($authorPins.Keys)) {
-            if (-not $map.Contains($agent) -or -not [string]::Equals([string]$map[$agent], [string]$authorPins[$agent], [StringComparison]::Ordinal)) {
-                $reasons.Add("author pin ${agent}:$($authorPins[$agent]) is missing from the effective prompt table")
-            }
-        }
-        foreach ($alias in @(Get-S63fNonAgentPromptPinNames)) {
-            if ($map.Contains($alias)) {
-                $reasons.Add("$alias must not appear in XDISPLAY_AI_PROMPT_VERSIONS")
-            }
-        }
-    }
-
-    $pageHtmlKey = 'XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION'
-    $stylesheetKey = 'XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION'
-    $pageHtml = if ($Entries.Contains($pageHtmlKey)) { [string]$Entries[$pageHtmlKey] } else { '' }
-    $stylesheet = if ($Entries.Contains($stylesheetKey)) { [string]$Entries[$stylesheetKey] } else { '' }
-    if ($pageHtml -ne (Get-S63fBrowserSolverPageHtmlPromptVersion)) {
-        $reasons.Add("$pageHtmlKey must be $(Get-S63fBrowserSolverPageHtmlPromptVersion) on its own Settings key")
-    }
-    if ($stylesheet -ne (Get-S63fBrowserSolverEngineeringStylesheetContractVersion)) {
-        $reasons.Add("$stylesheetKey must be $(Get-S63fBrowserSolverEngineeringStylesheetContractVersion) on its own Settings key")
-    }
-
     return [pscustomobject]@{
         Ok = ($reasons.Count -eq 0)
         Reasons = @($reasons)
-        AgentCount = $agentCount
+        AgentCount = @((ConvertTo-PromptVersionMap -Value (Get-S63fSettingsDefaultPromptVersionTable)).Keys).Count
     }
 }
 
@@ -654,7 +664,8 @@ function Get-ApprovedS63fSourceArchiveSha256 {
 }
 
 function Get-ForbiddenS63fAppImageSha256 {
-    return 'F3EECC91AB386DE950F175329AB7CCF078435FF9E863E55708F60485BFFC2309'
+    # the s63f app tar shipped in 0.1.4 r6..r12 must not be relabelled as s70
+    return '514ACD60DF0D7D6FAB00684116F9F863A6A58F161A4C9BAF73CFAD76E0B83A24'
 }
 
 function Get-S63fPlaywrightVersion {
@@ -724,12 +735,12 @@ function ConvertFrom-PromptVersionMap {
 }
 
 function Get-S63fSettingsDefaultPromptVersionTable {
-    # Exact s63f Settings.prompt_versions default (app/config.py at dd6ab3d50).
-    return 'planner:v1.2,clarifier:v1.0,diagnoser:v1.0,explainer:v1.0,drafter:v1.0,drafter_dsl:v2.4,sketch_interpreter:v4.0,sketch_interpretation_auditor:v1.0,sketch_layout_auditor:v1.0,auditor_dsl:v1.5,intent_extractor:v2.24,linker_dsl:v1.1,layout_planner:v1.1,component_planner:v1.4,composition_layout_planner:v2.5,component_slot_type_selector:v1.0,component_slot_props_planner:v2.0,page_scene_tweak_planner:v1.0,fixer:v2.2,write_action_declarer:v1.10,nav_declarer:v1.6,engineering_setting_declarer:v1.0,write_action_declarer_link:v1.8,page_set_skeleton_declarer:v1.5,placement_declarer:v1.0,read_display_declarer:v1.15,point_table_column_annotator:v1.1,repeated_series_declarer:v1.2,style_token_declarer:v1.2,strict_region_reader:v1.0,navigation_target_grouping_judge:v1.0'
+    # Settings.prompt_versions default of the packaged backend (app/config.py at prod/s70 61d37700a).
+    return 'sketch_interpreter:v4.0,sketch_layout_auditor:v1.0,intent_extractor:v2.24,write_action_declarer:v1.10,nav_declarer:v1.6,engineering_setting_declarer:v1.0,write_action_declarer_link:v1.10,page_set_skeleton_declarer:v1.5,placement_declarer:v1.0,read_display_declarer:v1.15,point_table_column_annotator:v1.1,repeated_series_declarer:v1.2,style_token_declarer:v1.2,strict_region_reader:v1.0,navigation_target_grouping_judge:v1.0'
 }
 
 function Get-S63fAuthorAgentPromptPins {
-    return 'intent_extractor:v2.24,read_display_declarer:v1.15,write_action_declarer:v1.10,write_action_declarer_link:v1.8,sketch_interpreter:v4.0'
+    return 'intent_extractor:v2.24,read_display_declarer:v1.15,write_action_declarer:v1.10,write_action_declarer_link:v1.10,sketch_interpreter:v4.0'
 }
 
 function Get-S63fNonAgentPromptPinNames {
@@ -742,11 +753,11 @@ function Get-S63fRejectedTruncatedPromptVersionPins {
 }
 
 function Get-S63fBrowserSolverPageHtmlPromptVersion {
-    return 'v19'
+    return 'v22'
 }
 
 function Get-S63fBrowserSolverEngineeringStylesheetContractVersion {
-    return 'v6'
+    return 'v7'
 }
 
 function Get-S63fRegisteredPromptVersionTable {

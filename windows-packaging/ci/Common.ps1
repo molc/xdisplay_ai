@@ -407,7 +407,7 @@ function Get-EmbeddingRuntimeFingerprintPaths {
 
 function Get-S63fAppImageCompanionTags {
     return @(
-        'orches/orchestration-app:s63f-dd6ab3d50',
+        'orches/orchestration-app:s70-61d37700a',
         'orches/orchestration-app:latest'
     )
 }

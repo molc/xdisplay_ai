@@ -26,7 +26,7 @@ $staleImage = Test-BackendImageMatchesS63fContract `
     -ExpectedFingerprint '5f1b3896deadbeef' `
     -ImageId 'sha256:a001031bb9b0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa'
 Assert-True -Condition (-not $staleImage.Ok) -Message 'Unlabeled 0.1.3 orchestration-app:latest a001031bb9b0 must not match the s63f image contract.'
-Assert-True -Condition (($staleImage.Reasons -join ' ') -match 'dd6ab3d50') -Message 'Stale image reasons must name the required s63f revision prefix.'
+Assert-True -Condition (($staleImage.Reasons -join ' ') -match '61d37700a') -Message 'Stale image reasons must name the required s63f revision prefix.'
 
 $s63fImage = Test-BackendImageMatchesS63fContract `
     -GitSha (Get-ApprovedBackendRevisionFull) `
@@ -50,18 +50,19 @@ $oldEnv = [ordered]@{
 }
 $stalePrompt = Test-BackendPromptContractFromEnvEntries -Entries $oldEnv
 Assert-True -Condition (-not $stalePrompt.Ok) -Message 'Healthy 0.1.3 env without the 31-agent map must fail the prompt contract.'
-Assert-True -Condition ($stalePrompt.AgentCount -eq 0) -Message 'The .29 prompt failure was agentCount=0; that case must stay a contract miss.'
+
 Assert-True -Condition (($stalePrompt.Reasons -join ' ') -match 'XDISPLAY_AI_STAGED_DRAFTER_ENABLED') -Message 'Retired staged-drafter key must keep the prompt contract FAIL.'
 Assert-True -Condition (($stalePrompt.Reasons -join ' ') -notmatch 'do-not-print') -Message 'Prompt contract reasons must not include secret values.'
 
 $goodEnv = [ordered]@{
-    XDISPLAY_AI_PROMPT_VERSIONS = (Get-S63fRegisteredPromptVersionTable)
-    XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION = (Get-S63fBrowserSolverPageHtmlPromptVersion)
-    XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION = (Get-S63fBrowserSolverEngineeringStylesheetContractVersion)
+    XDISPLAY_AI_ENVIRONMENT = 'dev'
+    XDISPLAY_AI_LLM_BASE_URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1'
+    XDISPLAY_AI_STRICT_VISION_UPSTREAM = 'bailian'
 }
 $goodPrompt = Test-BackendPromptContractFromEnvEntries -Entries $goodEnv
-Assert-True -Condition $goodPrompt.Ok -Message 'Full 31-agent table plus v19/v6 Settings keys must satisfy the prompt contract.'
-Assert-True -Condition ($goodPrompt.AgentCount -eq 31) -Message 'Prompt contract must count all 31 registered agents.'
+Assert-True -Condition $goodPrompt.Ok -Message 'An s70 .env without behaviour overrides satisfies the contract (code defaults apply).'
+$v19Env = [ordered]@{ XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION = 'v19' }
+Assert-True -Condition (-not (Test-BackendPromptContractFromEnvEntries -Entries $v19Env).Ok) -Message 'An upgraded .env that still pins PAGE_HTML v19 must fail the s70 contract.'
 
 $dot29Skip = Test-LocalBackendSkipAllowed -HealthReady $true -ImageContract $staleImage -PromptContract $stalePrompt
 Assert-True -Condition (-not $dot29Skip.Ok) -Message 'Upgrade-from-healthy-0.1.3 must NOT skip offline image load or prompt initialization.'

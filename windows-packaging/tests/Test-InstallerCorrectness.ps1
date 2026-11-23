@@ -414,12 +414,8 @@ try {
         $healedBackend = Get-Content -Path (Join-InstallRelativePath -Root $healState.BackendWorkspace -RelativePath '.env') -Raw
         Assert-True -Condition ($healedBackend -match 'T014_UPGRADE_SENTINEL=keep-t014') -Message 'Healing leftover truncated prompt_versions must preserve T014_UPGRADE_SENTINEL.'
         Assert-True -Condition ($healedBackend -match 'XDISPLAY_AI_LOG_LEVEL=DEBUG') -Message 'Healing leftover truncated prompt_versions must preserve unrelated user keys.'
-        $healedTable = [regex]::Match($healedBackend, '(?m)^XDISPLAY_AI_PROMPT_VERSIONS=(?<value>[^\r\n]*)\s*$').Groups['value'].Value
-        $healProblems = @(Get-PromptVersionTableStartupProblems -EffectiveTable $healedTable -DefaultTable (Get-S63fRegisteredPromptVersionTable))
-        Assert-True -Condition ($healProblems.Count -eq 0) -Message ('Leftover a62 crash table must be healed before stack start: ' + ($healProblems -join '; '))
-        Assert-True -Condition ($healedTable -notmatch 'PAGE_HTML') -Message 'Healed leftover env must drop PAGE_HTML from prompt_versions.'
-        Assert-True -Condition ($healedBackend -match '(?m)^XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION=v19\s*$') -Message 'Healed leftover env must gain the PAGE_HTML Settings key when missing.'
-        Assert-True -Condition ($healedBackend -match '(?m)^XDISPLAY_AI_BROWSER_SOLVER_ENGINEERING_STYLESHEET_CONTRACT_VERSION=v6\s*$') -Message 'Healed leftover env must gain the STYLESHEET Settings key when missing.'
+                Assert-True -Condition ($healedBackend -notmatch '(?m)^XDISPLAY_AI_PROMPT_VERSIONS=') -Message 'Leftover prompt_versions (a62 crash table) must be removed; s70 uses the code-default table.'
+        Assert-True -Condition ($healedBackend -notmatch '(?m)^XDISPLAY_AI_BROWSER_SOLVER_PAGE_HTML_PROMPT_VERSION=') -Message 'Runtime init must not seed PAGE_HTML; s70 code default is v22.'
     }
     finally {
         $script:InstallRoot = $healPreviousInstallRoot
@@ -474,8 +470,8 @@ try {
     $commonContent = Get-Content -Path (Join-Path $PackagingRoot 'src\scripts\common\Common.ps1') -Raw
     Assert-True -Condition ($commonContent -match 'Merge-EnvEntries') -Message 'Runtime env initialization must merge all existing keys.'
     Assert-True -Condition ($commonContent -match 'Get-WorkspaceSyncDecision') -Message 'Workspace initialization must be version/hash aware.'
-    Assert-True -Condition ($commonContent -match 'Update-BackendPromptVersionPins') -Message 'Runtime init must heal leftover truncated XDISPLAY_AI_PROMPT_VERSIONS against the full s63f registry table.'
-    Assert-True -Condition ($commonContent -match 'Ensure-BackendBrowserSolverPromptPins') -Message 'Runtime init must seed PAGE_HTML/STYLESHEET on their Settings keys, not as prompt_versions agents.'
+    Assert-True -Condition ($commonContent -match 'Remove-RetiredBackendEnvKeys') -Message 'Runtime init must remove retired behaviour overrides from an upgraded backend .env.'
+    Assert-True -Condition ($commonContent -notmatch 'Ensure-BackendBrowserSolverPromptPins -EnvPath') -Message 'Runtime init must not seed PAGE_HTML/STYLESHEET (s70 code defaults v22/v7).'
 
     $healthContent = Get-Content -Path (Join-Path $PackagingRoot 'src\scripts\health\Test-Health.ps1') -Raw
     Assert-True -Condition ($healthContent -match '-TimeoutSec') -Message 'Health probes must pass TimeoutSec to Invoke-WebRequest.'

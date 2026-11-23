@@ -109,7 +109,7 @@ function Resolve-XdisplayRuntimeDataDir {
     }
 
     $searched = ($candidatePaths | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }) -join '; '
-    throw "未找到完整 XDisplay 运行时 data 目录。keyboard_a..keyboard_e 都必须包含真实 keypage.json，以及 image、font、text、var、audio。已检查：$searched"
+    throw "未找到完整 XDisplay 运行时 data 目录。keyboard_a..keyboard_e 都必须包含真实 keypage.json，以及 image、font、text、var 的 data_*.json。已检查：$searched"
 }
 
 function Test-XdisplayRuntimeDataDir {
@@ -138,9 +138,8 @@ function Test-XdisplayRuntimeDataDir {
                 return $false
             }
         }
-        if (-not (Test-Path -LiteralPath (Join-Path $keyboardRoot 'audio') -PathType Container)) {
-            return $false
-        }
+        # no 'audio' requirement: the official 2.4.4 templates (client/c-184) have no audio directory and git cannot
+        # track an empty one; the client creates it on demand.
     }
     return $true
 }
