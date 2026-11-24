@@ -84,6 +84,7 @@ Assert-True `
 
 $backendInstall = Get-Content -LiteralPath (Join-Path $PackagingRoot 'src\scripts\install\Install-BackendPayload.ps1') -Raw
 Assert-True -Condition ($backendInstall -match 'Sync-StaleAppContainersToLoadedImages') -Message 'After docker load, stale running app/embedding containers must be force-recreated.'
+Assert-True -Condition ($backendInstall -match 'orches/orchestration-app:s70-61d37700a' -and $backendInstall -match 'dockerCommand tag') -Message 'docker load must retag the loaded s70 app image as :latest before compose up.'
 Assert-True -Condition ($backendInstall -match '--force-recreate') -Message 'Stale app image refresh must use compose force-recreate, not health-only up -d.'
 Assert-True -Condition ($backendInstall -match 'postgres') -Message 'Postgres service path must remain for the cold-start wait.'
 Assert-True -Condition ($backendInstall -match 'ConvertTo-PostgresQueryProbeResult') -Message 'Cold-PG two-consecutive SELECT 1 wait must not regress.'

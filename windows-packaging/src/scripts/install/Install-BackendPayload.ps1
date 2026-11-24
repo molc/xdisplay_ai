@@ -448,6 +448,19 @@ foreach ($imageFile in $imageFiles) {
     }
 }
 
+# docker load does not move an existing :latest tag. Compose starts :latest,
+# so an older image keeps running against the new source snapshot.
+$loadedAppTag = 'orches/orchestration-app:s70-61d37700a'
+$latestAppTag = 'orches/orchestration-app:latest'
+& $dockerCommand image inspect $loadedAppTag | Out-Null
+if ($LASTEXITCODE -eq 0) {
+    Write-Step "将 $loadedAppTag 固定为 $latestAppTag"
+    & $dockerCommand tag $loadedAppTag $latestAppTag
+    if ($LASTEXITCODE -ne 0) {
+        throw "标记 $latestAppTag 失败"
+    }
+}
+
 Write-Step '选择可用的本机发布端口。'
 Update-PublishedHostPorts | Out-Null
 
