@@ -85,11 +85,11 @@
     "authorClientCard": "s69 testcard / s70 mail: new package 2026-11-23-s70-579d3509",
     "authorClientSha1Prefix": "a1690e359e3be5df",
     "displayName": "Xdisplay.exe",
-    "bytes": 782747572,
-    "sha256": "B4A8B616DADAB2D7704BF30C8419E4D3DB97D9B8CB44B4FD37DE47260C888645",
+    "bytes": 782748084,
+    "sha256": "01C1CA0E6908B815C1DE6925A917D6B27A8C983B8D5B391A0F8DC7F6B7E9BEE2",
     "builderPath": "T:\\work\\client579-compiled",
     "gitTip": "579d3509",
-    "note": "Windows build of orch/int-6001-s67 579d3509 (c-202 c-207..c-212; client/c-185 Word fixes and client/c-184 resources are ancestors; word-fix guard green). Qt runtime and all other files identical to the r12 frozen tree.",
+    "note": "Windows build of orch/int-6001-s67 579d3509 plus the sketch preview file-URL fix in widget_panelai.qml. client/c-185 Word fixes and client/c-184 resources are ancestors. Qt runtime and all other files identical to the r14 frozen tree.",
     "gitBranch": "orch/int-6001-s67"
   },
   "converter": {

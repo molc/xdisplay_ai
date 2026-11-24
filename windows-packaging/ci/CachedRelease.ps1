@@ -5,7 +5,7 @@ $ErrorActionPreference = 'Stop'
 . (Join-Path $PSScriptRoot '..\src\scripts\common\InstallerCorrectness.ps1')
 
 function Get-PinnedCatalogwriteClientSha256 {
-    return 'B4A8B616DADAB2D7704BF30C8419E4D3DB97D9B8CB44B4FD37DE47260C888645'
+    return '01C1CA0E6908B815C1DE6925A917D6B27A8C983B8D5B391A0F8DC7F6B7E9BEE2'
 }
 
 function Get-PinnedConverterSha256 {
@@ -13,7 +13,7 @@ function Get-PinnedConverterSha256 {
 }
 
 function Get-PinnedCatalogwriteClientBytes {
-    return [long]782747572
+    return [long]782748084
 }
 
 function Get-PinnedConverterBytes {
